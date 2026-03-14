@@ -1,0 +1,15 @@
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070f;--surf:#0d0d1e;--surf2:#111126;--border:#1e1e38;
+  --text:#b8b8d8;--dim:#505070;--chip:#6ab4ff;--mult:#ff7070;--tox:#50ffaa;--wb:#ff70b4;
+  --w95:#c0c0c0;--w95d:#808080;--w95dd:#404040;--w95l:#ffffff;--w95n:#000080;
+  --base:10px;--scale:1;
+  /* card sizing — adjust here to grow/shrink all cards */
+  --card-w:15rem;    /* ~150px */
+  --card-h:19rem;    /* ~190px */
+}
+html{font-size:calc(var(--base)*var(--scale));} 
+
+body{font-family:'Courier New',monospace;background:#008080;
+     height:100vh;overflow:hidden;display:flex;flex-direction:column}
+

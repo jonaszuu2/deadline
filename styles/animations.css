@@ -1,0 +1,313 @@
+/* ══ SMALL SCREEN / LAPTOP FIXES ══ */
+@media (max-height: 780px) {
+  /* KEY FIX: allow flex children to overflow instead of compress */
+  #main-layout{flex-shrink:0;min-height:auto}
+  #main-col{min-height:auto;overflow:visible}
+  #bottom-row{min-height:auto;overflow:visible}
+
+  /* Score machine — mniejsze fonty */
+  #score-machine{padding:6px 10px 4px}
+  .sm-led-strip{margin-bottom:4px}
+  .sm-display{font-size:26px !important;min-width:72px;padding:2px 6px}
+  .sm-display.score{font-size:36px !important;min-width:110px}
+  .sm-op{font-size:20px;padding-bottom:12px}
+
+  /* Hand — mniejsza wysokość */
+  #hand{height:160px;padding:12px 0 6px}
+  :root{--card-w:13rem;--card-h:16rem}
+
+  /* Stats bar i dashboard — kompaktowe */
+  .sb-stat{padding:2px 6px}
+  .sb-track{height:5px}
+  .ed-stat{padding:4px 8px}
+  .ed-value{font-size:12px}
+  .ed-track{height:7px}
+}
+
+@media (max-height: 620px) {
+  .sm-display{font-size:20px !important;min-width:60px}
+  .sm-display.score{font-size:28px !important;min-width:90px}
+  #hand{height:130px;padding:8px 0 4px}
+  :root{--card-w:11rem;--card-h:14rem}
+  #desktop-icons{display:none}
+}
+
+/* ── Draft Screen ── */
+.draft-screen{display:flex;flex-direction:column;align-items:center;padding:20px 16px;
+              background:var(--bg);height:100%;overflow-y:auto}
+.dr-header{text-align:center;margin-bottom:18px}
+.dr-title{font:bold 16px 'Courier New',monospace;color:#ffdd44;letter-spacing:3px;
+          margin-bottom:5px}
+.dr-sub{font:11px 'Tahoma',sans-serif;color:var(--dim)}
+.dr-cards{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.dr-card{width:200px;background:var(--surf);
+         border:2px solid var(--border);padding:14px 12px;
+         cursor:pointer;display:flex;flex-direction:column;gap:6px;
+         transition:transform .12s,border-color .15s,box-shadow .15s;position:relative}
+.dr-card:hover{transform:translateY(-6px);box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.dr-card.PRODUCTION{border-color:var(--chip)}.dr-card.PRODUCTION:hover{box-shadow:0 0 20px rgba(106,180,255,.4)}
+.dr-card.STRATEGY{border-color:var(--mult)}.dr-card.STRATEGY:hover{box-shadow:0 0 20px rgba(255,112,112,.4)}
+.dr-card.CRUNCH{border-color:#ff9040}.dr-card.CRUNCH:hover{box-shadow:0 0 20px rgba(255,144,64,.4)}
+.dr-card.RECOVERY{border-color:var(--tox)}.dr-card.RECOVERY:hover{box-shadow:0 0 20px rgba(80,255,170,.4)}
+.dr-arch{font:bold 8px 'Courier New',monospace;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.dr-rarity{font:8px 'Courier New',monospace;color:var(--dim);position:absolute;top:12px;right:10px}
+.dr-name{font:bold 15px 'Courier New',monospace;color:#fff;margin:4px 0}
+.dr-flavor{font:italic 9px 'Tahoma',sans-serif;color:var(--dim);line-height:1.4;
+           border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
+.dr-fx{font:11px 'Courier New',monospace;color:var(--text);line-height:1.7}
+.dr-syn{font:9px 'Courier New',monospace;color:#ffdd44;margin-top:4px;line-height:1.4;
+        padding:3px 5px;background:rgba(255,221,68,.08);border:1px solid rgba(255,221,68,.2)}
+.dr-pick-btn{margin-top:auto;padding:6px 10px;background:#0a200a;
+             border:2px solid #1a501a;color:#70ff78;
+             font:bold 10px 'Courier New',monospace;cursor:pointer;width:100%;
+             transition:background .1s}
+.dr-pick-btn:hover{background:#102810}
+.dr-skip-row{margin-top:4px}
+.dr-skip-btn{background:transparent;border:1px solid var(--dim);color:var(--dim);
+             font:10px 'Courier New',monospace;cursor:pointer;padding:5px 16px;
+             letter-spacing:1px;transition:all .1s}
+.dr-skip-btn:hover{color:var(--text);border-color:var(--text)}
+
+/* ── Shop v2 — matches draft screen style ── */
+.sh2-stats{display:flex;gap:16px;justify-content:center;margin-top:6px;font:bold 11px 'Courier New',monospace}
+.sh2-card{width:200px;background:var(--surf);border:2px solid var(--border);padding:14px 12px;
+          display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;
+          transition:transform .12s,border-color .15s,box-shadow .15s;position:relative}
+.sh2-card.sh2-buyable{cursor:pointer}
+.sh2-card.sh2-buyable:hover{transform:translateY(-6px);border-color:#ffdd44;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.sh2-type{font:bold 8px 'Courier New',monospace;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.sh2-icon{font-size:32px;margin:4px 0}
+.sh2-name{font:bold 14px 'Courier New',monospace;color:#fff}
+.sh2-desc{font:11px 'Tahoma',sans-serif;color:var(--dim);line-height:1.5;flex:1}
+.sh2-buy-btn{margin-top:auto;padding:6px 10px;background:#0a200a;border:2px solid #1a501a;
+             color:#70ff78;font:bold 10px 'Courier New',monospace;cursor:pointer;width:100%;
+             transition:background .1s}
+.sh2-buy-btn:hover:not([disabled]){background:#102810}
+.sh2-buy-btn[disabled]{cursor:not-allowed}
+.sh2-buy-btn.sh2-cant{color:#ff7070;border-color:#501a1a;background:#200a0a}
+.sh2-buy-btn.sh2-owned{color:#555;border-color:#333;background:#111}
+.sh2-class-perk{border-color:#ffdd44 !important;box-shadow:0 0 10px rgba(255,221,68,.25)}
+.sh2-class-perk .sh2-type{color:#ffdd44}
+.sh2-actions{margin:8px 0 4px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.sh2-upgrade-btn{background:#0a1020;border:1px solid #3a5090;color:#6ab4ff;
+                 font:10px 'Courier New',monospace;cursor:pointer;padding:5px 14px;
+                 letter-spacing:.5px;transition:all .1s}
+.sh2-upgrade-btn:hover:not([disabled]){background:#102030;border-color:#6ab4ff}
+.sh2-upgrade-btn[disabled]{opacity:.4;cursor:not-allowed}
+.sh2-installed{font:9px 'Courier New',monospace;color:var(--dim);margin:4px 0;text-align:center}
+.sh2-footer{display:flex;gap:12px;justify-content:center;margin-top:10px;padding:10px 0 4px;
+            border-top:1px solid var(--border)}
+.sh2-skip-btn{background:transparent;border:1px solid var(--dim);color:var(--dim);
+              font:10px 'Courier New',monospace;cursor:pointer;padding:5px 16px;
+              letter-spacing:1px;transition:all .1s}
+.sh2-skip-btn:hover:not([disabled]){color:var(--text);border-color:var(--text)}
+.sh2-skip-btn[disabled]{opacity:.4;cursor:not-allowed}
+.sh2-next-btn{padding:7px 20px;background:#0a1a20;border:2px solid #1a5070;
+              color:#6ab4ff;font:bold 11px 'Courier New',monospace;cursor:pointer;
+              letter-spacing:1px;transition:background .1s}
+.sh2-next-btn:hover{background:#102030}
+
+/* ── Teammate Choice Screen ── */
+.tm-choice-screen{display:flex;flex-direction:column;align-items:center;padding:20px 16px;
+                  background:var(--bg);height:100%;overflow-y:auto}
+.tm-choice-header{text-align:center;margin-bottom:20px}
+.tm-choice-title{font:bold 16px 'Courier New',monospace;color:#ffdd44;letter-spacing:3px;margin-bottom:6px}
+.tm-choice-sub{font:11px 'Tahoma',sans-serif;color:var(--dim);margin-bottom:4px}
+.tmc-tox-note{font:10px 'Courier New',monospace;color:var(--dim);margin-top:4px}
+.tmc-cards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap}
+.tmc-card{width:230px;background:var(--surf);border:2px solid var(--border);padding:16px 14px;
+          cursor:pointer;display:flex;flex-direction:column;gap:7px;
+          transition:transform .12s,box-shadow .15s,border-color .15s}
+.tmc-card:hover{transform:translateY(-5px);box-shadow:0 10px 28px rgba(0,0,0,.7);border-color:#888}
+.tmc-portrait{font-size:38px;text-align:center;line-height:1}
+.tmc-name{font:bold 13px 'Courier New',monospace;text-align:center;letter-spacing:1px}
+.tmc-tier{font:bold 9px 'Courier New',monospace;text-align:center;letter-spacing:2px;opacity:.9}
+.tmc-desc{font:italic 10px 'Tahoma',sans-serif;color:#bbb;text-align:center;
+          border-bottom:1px solid var(--border);padding-bottom:8px}
+.tmc-effects{display:flex;flex-direction:column;gap:5px}
+.tmc-buff{font:10px 'Courier New',monospace;color:#70ff78;line-height:1.4}
+.tmc-penalty{font:10px 'Courier New',monospace;color:#ff7070;line-height:1.4}
+.tmc-quote{font:italic 9px 'Tahoma',sans-serif;color:var(--dim);line-height:1.4;
+           border-top:1px solid var(--border);padding-top:7px;margin-top:2px}
+.tmc-btn{margin-top:auto;padding:7px 10px;background:#0a1a0a;border:2px solid #1a501a;
+         color:#70ff78;font:bold 10px 'Courier New',monospace;cursor:pointer;width:100%;
+         letter-spacing:1px;transition:background .1s}
+.tmc-btn:hover{background:#102810}
+.tmc-loyalty{font:bold 9px 'Courier New',monospace;color:#ffdd44;margin:4px 0 2px;
+             padding:2px 5px;background:rgba(255,221,68,.08);border:1px solid rgba(255,221,68,.3)}
+.tmc-loyalty.deep{color:#ffe87a;background:rgba(255,221,68,.16);border-color:rgba(255,221,68,.55)}
+.tmc-loyalty.dim{color:var(--dim);background:transparent;border:1px solid rgba(255,255,255,.1)}
+.tmc-card.returning{border-color:rgba(255,221,68,.4)}
+
+/* ══ DECISION DEPTH: ARCHETYPE TRACK ══ */
+.arch-track-row{display:flex;gap:5px;margin-top:6px;padding-top:5px;
+                border-top:1px solid var(--border);align-items:center}
+.at-item{display:flex;align-items:center;gap:3px;flex:1;min-width:0}
+.at-lbl{font:bold 7px 'Courier New',monospace;letter-spacing:.3px;min-width:28px;
+        text-align:right;flex-shrink:0}
+.at-track{flex:1;height:4px;background:rgba(255,255,255,.07);min-width:20px}
+.at-fill{height:100%;transition:width .35s ease}
+.at-cnt{font:7px 'Courier New',monospace;min-width:20px;text-align:left;flex-shrink:0}
+
+/* ══ DECISION DEPTH: PLAY BANKING ══ */
+.btn-bank{background:#0f1a00;border:2px solid #557700;color:#aaff44;
+          font:bold 10px 'Courier New',monospace;padding:5px 10px;cursor:pointer;
+          width:100%;margin-bottom:4px;letter-spacing:1px;transition:background .1s}
+.btn-bank:hover{background:#1a2e00}
+
+/* ══ DECISION DEPTH: PRESSURE RELEASE ══ */
+.btn-vent{background:#001818;border:2px solid #007777;color:#44ffee;
+          font:bold 9px 'Courier New',monospace;padding:4px 8px;cursor:pointer;
+          white-space:nowrap;letter-spacing:.5px;transition:background .1s;flex-shrink:0}
+.btn-vent:hover{background:#002828}
+
+/* ══ DRAMA: WB DAMAGE FEEDBACK ══ */
+.wb-damage-flash{position:fixed;inset:0;pointer-events:none;z-index:1999;
+                 background:rgba(220,0,0,.25);animation:wb-damage-flash .55s ease-out forwards}
+@keyframes wb-damage-flash{0%{opacity:1}60%{opacity:.6}100%{opacity:0}}
+.wb-hit-num{position:fixed;pointer-events:none;z-index:2100;
+            font:bold 24px 'Courier New',monospace;color:#ff3030;
+            text-shadow:0 0 10px rgba(255,0,0,.7),0 0 20px rgba(255,0,0,.3);
+            animation:wb-hit-fly 1.2s ease-out forwards}
+@keyframes wb-hit-fly{
+  0%{transform:translateY(0) scale(1.2);opacity:1}
+  30%{transform:translateY(-20px) scale(1);opacity:1}
+  100%{transform:translateY(-55px) scale(.85);opacity:0}}
+
+/* ══ DRAMA: CRISIS MODE (LAST PLAY) ══ */
+.crisis-banner{text-align:center;font:bold 11px 'Courier New',monospace;color:#ff2020;
+               letter-spacing:2px;padding:4px 8px;background:rgba(80,0,0,.55);
+               border:1px solid rgba(255,30,30,.4);margin-bottom:6px;
+               animation:crisis-pulse .75s ease-in-out infinite alternate}
+@keyframes crisis-pulse{
+  from{opacity:.65;box-shadow:0 0 3px rgba(255,0,0,.2)}
+  to{opacity:1;box-shadow:0 0 14px rgba(255,0,0,.7)}}
+.play-tox-risk{font:9px 'Courier New',monospace;color:#ff8040;
+               text-align:center;margin-top:3px;letter-spacing:.5px;opacity:.9}
+
+/* ══ DRAMA: TOXIC ATMOSPHERE PULSE (tox ≥ 70) ══ */
+#win.tox-atmos{animation:tox-atmos-pulse 3s ease-in-out infinite}
+@keyframes tox-atmos-pulse{
+  0%,100%{box-shadow:inset 0 0 0 rgba(200,60,0,0)}
+  50%{box-shadow:inset 0 0 40px rgba(200,60,0,.2)}}
+
+/* ══ DRAMA: COMBO ANNOUNCER ══ */
+.combo-announcer{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                 pointer-events:none;z-index:2050;
+                 font:bold 26px 'Courier New',monospace;color:#ffdd44;
+                 text-shadow:0 0 18px rgba(255,220,60,.9),0 0 40px rgba(255,180,0,.4);
+                 letter-spacing:3px;white-space:nowrap;
+                 animation:combo-announce 1.8s ease-out forwards}
+@keyframes combo-announce{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.55)}
+  15%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}
+  30%{transform:translate(-50%,-50%) scale(1.0)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1.0)}
+  100%{opacity:0;transform:translate(-50%,-58%) scale(1.04)}}
+
+/* ══ POWER PROGRESSION: POWER RATING ══ */
+.power-rating{font:bold 9px 'Courier New',monospace;margin-top:3px;letter-spacing:1px;padding:2px 5px;border:1px solid;display:inline-block}
+.pwr-low {color:#ff5050;border-color:#ff505040;background:rgba(255,80,80,.06)}
+.pwr-mid {color:#ffdd44;border-color:#ffdd4440;background:rgba(255,221,68,.06)}
+.pwr-ok  {color:#70ff78;border-color:#70ff7840;background:rgba(112,255,120,.06)}
+.pwr-high{color:#ffdd44;border-color:#ffdd44;background:rgba(255,221,68,.12);
+          box-shadow:0 0 8px rgba(255,221,68,.3);animation:pwr-pulse 2s ease-in-out infinite}
+@keyframes pwr-pulse{0%,100%{box-shadow:0 0 8px rgba(255,221,68,.3)}50%{box-shadow:0 0 14px rgba(255,221,68,.6)}}
+
+/* ══ POWER PROGRESSION: CARD LEVELING ══ */
+.card-level-stars{font-size:8px;color:#ffdd44;letter-spacing:1px;position:absolute;top:8px;right:8px;
+                  text-shadow:0 0 6px rgba(255,221,68,.7)}
+.card-play-count{font:8px 'Courier New',monospace;color:var(--dim);margin-top:2px;text-align:right}
+.card-lv1{border-color:#806600 !important}
+.card-lv2{border-color:#c0a000 !important;box-shadow:0 0 6px rgba(192,160,0,.3)}
+.card-lv3{border-color:#ffdd44 !important;box-shadow:0 0 10px rgba(255,221,68,.5)}
+
+/* ══ POWER PROGRESSION: POWER SPIKE EVENT SCREEN ══ */
+.power-event-screen{display:flex;flex-direction:column;align-items:center;padding:24px 16px;
+                    background:var(--bg);height:100%;overflow-y:auto}
+.pe-header{text-align:center;margin-bottom:22px}
+.pe-eyebrow{font:9px 'Tahoma',sans-serif;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-bottom:4px}
+.pe-title{font:bold 18px 'Courier New',monospace;color:#ffdd44;letter-spacing:3px;
+          text-shadow:0 0 14px rgba(255,221,68,.6);margin-bottom:6px}
+.pe-sub{font:11px 'Tahoma',sans-serif;color:var(--dim)}
+.pe-options{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.pe-option{width:210px;background:var(--surf);border:2px solid #ffdd4444;padding:16px 14px;
+           cursor:pointer;display:flex;flex-direction:column;gap:8px;
+           transition:transform .12s,border-color .15s,box-shadow .15s;
+           box-shadow:0 0 8px rgba(255,221,68,.1)}
+.pe-option:hover{transform:translateY(-6px);border-color:#ffdd44;box-shadow:0 0 20px rgba(255,221,68,.35)}
+.pe-opt-icon{font-size:28px;text-align:center}
+.pe-opt-name{font:bold 12px 'Courier New',monospace;color:#ffdd44;letter-spacing:2px;text-align:center}
+.pe-opt-desc{font:10px 'Tahoma',sans-serif;color:var(--text);line-height:1.5;text-align:center}
+.pe-opt-fx{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.pe-fx-good{font:8px 'Courier New',monospace;color:#70ff78;background:rgba(112,255,120,.1);
+            border:1px solid rgba(112,255,120,.3);padding:2px 5px}
+.pe-fx-bad {font:8px 'Courier New',monospace;color:#ff7070;background:rgba(255,112,112,.1);
+            border:1px solid rgba(255,112,112,.3);padding:2px 5px}
+.pe-opt-btn{margin-top:auto;padding:7px 10px;background:#1a1a00;border:2px solid #ffdd4488;
+            color:#ffdd44;font:bold 10px 'Courier New',monospace;cursor:pointer;
+            letter-spacing:1px;transition:background .1s,box-shadow .1s}
+.pe-opt-btn:hover{background:#2a2a00;box-shadow:0 0 10px rgba(255,221,68,.3)}
+
+/* ══ CARD OVERLAY PICKER (upgrade / remove / hold) ══ */
+.oc-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:4px 16px 12px;max-height:65vh;overflow-y:auto}
+.oc-grid .oc-sort-row{width:100%;flex-basis:100%}
+.oc-card{width:158px;background:var(--surf);border:2px solid var(--border);padding:11px 10px;
+         cursor:pointer;display:flex;flex-direction:column;gap:5px;position:relative;
+         transition:transform .1s,border-color .15s,box-shadow .15s}
+.oc-card:hover{transform:translateY(-5px)}
+.oc-card.PRODUCTION{border-color:#2a4a70}.oc-card.PRODUCTION:hover{border-color:var(--chip);box-shadow:0 0 14px rgba(106,180,255,.35)}
+.oc-card.STRATEGY  {border-color:#702a2a}.oc-card.STRATEGY:hover  {border-color:#ff9090;box-shadow:0 0 14px rgba(255,144,144,.35)}
+.oc-card.CRUNCH    {border-color:#703020}.oc-card.CRUNCH:hover    {border-color:#ff6030;box-shadow:0 0 14px rgba(255,96,48,.35)}
+.oc-card.RECOVERY  {border-color:#1a4a30}.oc-card.RECOVERY:hover  {border-color:#60ff80;box-shadow:0 0 14px rgba(96,255,128,.35)}
+.oc-top{display:flex;justify-content:space-between;align-items:center}
+.oc-arch{font:bold 7px 'Courier New',monospace;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+.oc-card.PRODUCTION .oc-arch{color:var(--chip)}
+.oc-card.STRATEGY   .oc-arch{color:#ff9090}
+.oc-card.CRUNCH     .oc-arch{color:#ff6030}
+.oc-card.RECOVERY   .oc-arch{color:#60ff80}
+.oc-rarity{font:7px 'Courier New',monospace;color:var(--dim)}
+.oc-stars{color:#ffdd44;letter-spacing:1px;margin-left:3px;font-size:8px}
+.oc-name{font:bold 12px 'Courier New',monospace;color:#fff;line-height:1.3}
+.oc-flavor{font:italic 8px 'Tahoma',sans-serif;color:var(--dim);line-height:1.3;
+           border-bottom:1px solid var(--border);padding-bottom:4px}
+.oc-fx-row{display:flex;flex-wrap:wrap;gap:3px;font:9px 'Courier New',monospace;line-height:1.6}
+.oc-fx-chip{color:var(--chip)}.oc-fx-mult{color:#ff9090}
+.oc-fx-tox {color:#ff6060}.oc-fx-toxg{color:#60ff80}
+.oc-fx-wb  {color:#ff80c8}.oc-fx-wbn {color:#ff6060}
+.oc-upgrade-preview{margin-top:4px;padding:5px 6px;background:rgba(255,221,68,.07);
+                    border:1px solid rgba(255,221,68,.25);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.oc-upgrade-delta{font:bold 8px 'Courier New',monospace;color:#ffdd44;margin-left:2px}
+.oc-plays{font:8px 'Courier New',monospace;color:var(--dim);margin-top:2px}
+.oc-btn{margin-top:auto;padding:5px 8px;font:bold 9px 'Courier New',monospace;
+        cursor:pointer;width:100%;letter-spacing:.5px;border:2px solid;transition:background .1s}
+.oc-btn-upgrade{background:#0a1a0a;border-color:#2a702a;color:#70ff78}
+.oc-btn-upgrade:hover{background:#102810;border-color:#50c050}
+.oc-btn-remove {background:#1a0a0a;border-color:#702a2a;color:#ff7070}
+.oc-btn-remove:hover {background:#281010;border-color:#c05050}
+.oc-btn-hold   {background:#0a0a1a;border-color:#2a2a70;color:#7070ff}
+.oc-btn-hold:hover   {background:#101028;border-color:#5050c0}
+.ov-card-empty{color:var(--dim);padding:20px;font:12px 'Courier New',monospace;text-align:center}
+/* Sort bar */
+.oc-sort-row{display:flex;align-items:center;gap:6px;width:100%;padding:0 0 8px;margin-bottom:2px;
+             border-bottom:1px solid var(--border);flex-shrink:0}
+.oc-sort-label{font:8px 'Courier New',monospace;color:var(--dim);letter-spacing:1px;text-transform:uppercase;white-space:nowrap}
+.oc-sort-btn{background:transparent;border:1px solid var(--border);color:var(--dim);
+             font:8px 'Courier New',monospace;cursor:pointer;padding:3px 7px;letter-spacing:.5px;
+             transition:all .1s}
+.oc-sort-btn:hover{color:var(--text);border-color:var(--text)}
+.oc-sort-active{background:rgba(255,221,68,.1);border-color:#ffdd44 !important;color:#ffdd44 !important}
+/* Level badge */
+.oc-lv-badge{display:inline-block;font:bold 8px 'Courier New',monospace;letter-spacing:1px;
+             padding:1px 5px;margin-bottom:2px;border:1px solid}
+.oc-lv-badge.lv1{color:#c0a000;border-color:#806600;background:rgba(128,102,0,.15)}
+.oc-lv-badge.lv2{color:#ffcc00;border-color:#c0a000;background:rgba(192,160,0,.2);
+                  text-shadow:0 0 4px rgba(255,204,0,.5)}
+.oc-lv-badge.lv3{color:#ffdd44;border-color:#ffdd44;background:rgba(255,221,68,.15);
+                  text-shadow:0 0 6px rgba(255,221,68,.8);animation:lvbadge3 1.5s ease-in-out infinite}
+@keyframes lvbadge3{0%,100%{box-shadow:0 0 4px rgba(255,221,68,.4)} 50%{box-shadow:0 0 10px rgba(255,221,68,.9)}}
+/* Level-based glow on overlay cards */
+.oc-card.card-lv1{box-shadow:0 0 6px rgba(192,160,0,.25)}
+.oc-card.card-lv2{box-shadow:0 0 12px rgba(255,204,0,.5);border-color:#c0a000 !important}
+.oc-card.card-lv3{border-color:#ffdd44 !important;animation:lv3cardglow 1.8s ease-in-out infinite}
+@keyframes lv3cardglow{0%,100%{box-shadow:0 0 12px rgba(255,221,68,.6)} 50%{box-shadow:0 0 26px rgba(255,221,68,.95),0 0 50px rgba(255,221,68,.3)}}
