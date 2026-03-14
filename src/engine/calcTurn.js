@@ -344,9 +344,9 @@ export function calcTurn(cards, ctx) {
     let comboMult = 1.0;
     for (const [arch, cnt] of Object.entries(archCounts)) {
       if (cnt >= 3) {
-        if (arch === 'PRODUCTION') { comboMult *= 1.5; lg('sy', `  🔵 [FULL SPRINT] Triple PRODUCTION! ×1.5 ComboMult`); }
-        else if (arch === 'STRATEGY') { comboMult *= 1.5; lg('sy', `  🔴 [ALIGNED VISION] Triple STRATEGY! ×1.5 ComboMult`); }
-        else if (arch === 'CRUNCH')   { comboMult *= 2.0; lg('sy', `  🔥 [MANIC SPRINT] Triple CRUNCH! ×2.0 ComboMult`); }
+        if (arch === 'PRODUCTION') { comboMult *= 1.3; lg('sy', `  🔵 [FULL SPRINT] Triple PRODUCTION! ×1.3 ComboMult`); }
+        else if (arch === 'STRATEGY') { comboMult *= 1.2; lg('sy', `  🔴 [ALIGNED VISION] Triple STRATEGY! ×1.2 ComboMult`); }
+        else if (arch === 'CRUNCH')   { comboMult *= 1.4; lg('sy', `  🔥 [MANIC SPRINT] Triple CRUNCH! ×1.4 ComboMult`); }
         else if (arch === 'RECOVERY') {
           tox = clamp(tox - 30, 0, 100); wb = clamp(wb + 15, 0, 100); comboMult *= 1.2;
           lg('sy', `  💚 [DEEP RESET] Triple RECOVERY! -30% Tox | +15 WB | ×1.2 ComboMult`);

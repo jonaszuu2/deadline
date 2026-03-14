@@ -52,7 +52,7 @@ export function calculateFinalScore(G) {
   const multPts     = Math.floor(avgMult * 250);
   const wellnessPts = (G.wellnessWeeks || 0) * 150;
   const wbPts       = G.wb * 10;
-  const boPts       = G.bo * (-15);
+  const boPts       = G.bo * (-25);
   const toxPts      = G.peakTox * (-5);
   const synPts      = G.totalTeammateWeeks * 50;
   const baseTotal   = rawPts + multPts + wellnessPts + wbPts + boPts + toxPts + synPts;

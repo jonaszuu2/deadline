@@ -4,7 +4,7 @@ export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // ═══════════════════════════════════════════════════════
 //  GAME CONSTANTS & KPI
 // ═══════════════════════════════════════════════════════
-export const KPI = [150, 230, 320, 420, 520, 630, 710, 780, 820, 860];
+export const KPI = [150, 230, 320, 420, 520, 630, 820, 950, 1080, 1220];
 export const TOTAL_WEEKS = 10;
 export const PLAYS = 3;
 export const DISCS = 2;
@@ -84,31 +84,31 @@ export const CONTRACT_POOL = [
 ];
 
 export const CAREER_DB = [
-  {tier:10,min:10000,title:'VP of Synergy Marketing',
+  {tier:10,min:15000,title:'VP of Synergy Marketing',
    desc:"I don't work. I am the vision. The entire Q4 target is my coffee budget.",
    raiseMin:12.1,raiseMax:15.0,color:'#ffdd44'},
-  {tier:9,min:8500,title:'Director of Innovation',
+  {tier:9,min:11000,title:'Director of Innovation',
    desc:"My slides are pure art. They don't mean anything, but they're beautiful.",
    raiseMin:10.1,raiseMax:12.0,color:'#ffcc44'},
-  {tier:8,min:7000,title:'Senior Manager',
+  {tier:8,min:9000,title:'Senior Manager',
    desc:"I manage managers who manage interns. The cycle of bureaucracy is complete.",
    raiseMin:8.1,raiseMax:10.0,color:'#ffaa44'},
-  {tier:7,min:5500,title:'Team Lead',
+  {tier:7,min:7000,title:'Team Lead',
    desc:"I get CC'd on everything. My Inbox is a cry for help.",
    raiseMin:6.1,raiseMax:8.0,color:'#88ccff'},
-  {tier:6,min:4500,title:'Project Manager',
+  {tier:6,min:5500,title:'Project Manager',
    desc:"I update the spreadsheet. The spreadsheet updates me. We are one.",
    raiseMin:5.1,raiseMax:6.0,color:'#88aaff'},
-  {tier:5,min:3500,title:'Analyst',
+  {tier:5,min:4500,title:'Analyst',
    desc:"I found a macro that does my job. Now I play DEADLINE all day.",
    raiseMin:4.1,raiseMax:5.0,color:'#aaaaff'},
-  {tier:4,min:2500,title:'Associate',
+  {tier:4,min:3000,title:'Associate',
    desc:"I submitted my first HR compliant report. The photocopier knows my name.",
    raiseMin:3.1,raiseMax:4.0,color:'#b8b8d8'},
-  {tier:3,min:1500,title:'Junior Associate',
+  {tier:3,min:1800,title:'Junior Associate',
    desc:"I can reply to an email in under 3 hours. Efficiency is coming.",
    raiseMin:2.1,raiseMax:3.0,color:'#909090'},
-  {tier:2,min:800,title:'The Trainee',
+  {tier:2,min:1000,title:'The Trainee',
    desc:"I think my chair is broken. Gary helps first, Gary helps first.",
    raiseMin:1.1,raiseMax:2.0,color:'#707070'},
   {tier:1,min:-Infinity,title:'Unmotivated Intern',
