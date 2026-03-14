@@ -54,6 +54,8 @@ export class Game {
     this.totalMultSum = 0; this.totalPlayCount = 0; this.isTerminated = false;
     this.failedWeeks = 0; this.endCondition = 'annual'; // 'annual'|'burnout'|'terminated'
     this.weekHistory = []; // [{week:N, passed:bool}]
+    // Scoring reveal
+    this.scoringDisplay = null; this._nextPhase = null;
     // Upgrade reveal
     this.upgradeResultCard = null; this.upgradeResultFrom = null;
     this.upgradeResultTier = null; this.upgradeSpinning = false;
@@ -348,32 +350,60 @@ export class Game {
     for (const c of cards) this.weekArchetypes[c.archetype] = (this.weekArchetypes[c.archetype] || 0) + 1;
     this._checkArchetypeMilestones();
     for (const c of cards.filter(c => c.exhaust)) this.addLog('ng', `> ⊗ [${c.name}] exhausted — gone until next week.`);
-    if (!res.gameOver && !prevPassed && this.wscore >= this.kpi()) triggerKpiFlash();
-    if (res.gameOver) { this.isTerminated = true; this.phase = 'review'; }
-    else if (this.wscore >= this.kpi() || this.plays <= 0) this.phase = 'result';
-    else { this.drawUp(); }
+    // ── Compute intensity for scoring reveal ──
+    const cm = res.comboMult || 1.0;
+    const comboLabel = (res.log.filter(e => e.cls === 'sy' && e.t.includes('COMBO')).pop()?.t.match(/\[([^\]]+)\]/) || [])[1] || null;
+    let intensity = 'normal';
+    if      (cm >= 2.0 || res.score >= 500) intensity = 'epic';
+    else if (cm >= 1.5 || res.score >= 300) intensity = 'great';
+    else if (cm >= 1.2 || res.score >= 150) intensity = 'good';
+    // ── Determine next phase ──
+    let nextPhase;
+    if (res.gameOver) nextPhase = 'review';
+    else if (this.wscore >= this.kpi() || this.plays <= 0) nextPhase = 'result';
+    else nextPhase = 'draw_continue';
+    // ── Store scoring display data & enter scoring phase ──
+    this.scoringDisplay = {
+      chips: res.chips,
+      mult: parseFloat(res.mult),
+      comboMult: res.comboMult,
+      baseScore: res.baseScore ?? res.score,
+      score: res.score,
+      wbDelta: res.wbDelta,
+      toxDelta: res.toxDelta,
+      boDelta: res.boDelta,
+      prevWscore,
+      intensity,
+      comboLabel,
+      crossedKpi: !res.gameOver && !prevPassed && this.wscore >= this.kpi(),
+      activeSynergies: res.activeSynergies,
+      playedCards: cards.map(c => ({ name: c.name, archetype: c.archetype })),
+      nextPhase,
+    };
+    this.phase = 'scoring';
     this._commit();
-    // ── WB damage feedback ──
     if (prevWb > res.wb) showWbDamage(prevWb - res.wb);
-    if (!res.gameOver && res.score > 0) {
-      const cm = res.comboMult || 1.0;
-      const comboLabel = (res.log.filter(e => e.cls === 'sy' && e.t.includes('COMBO')).pop()?.t.match(/\[([^\]]+)\]/) || [])[1] || null;
-      let intensity = 'normal';
-      if      (cm >= 2.0 || res.score >= 500) intensity = 'epic';
-      else if (cm >= 1.5 || res.score >= 300) intensity = 'great';
-      else if (cm >= 1.2 || res.score >= 150) intensity = 'good';
-      showScorePopup(res.score, intensity, comboLabel);
-      animateWscore(prevWscore, this.wscore, intensity);
-      // ── Combo announcer for great/epic plays ──
-      if ((intensity === 'epic' || intensity === 'great') && comboLabel) showComboAnnouncer(comboLabel);
-    }
-    // ── Contextual tutorial tips ──
-    if (!res.gameOver) {
-      const toxDmgFired = res.log.some(e => e.cls === 'dm' && e.t.includes('TOXIC'));
-      if (toxDmgFired) setTimeout(() => showContextualTip?.('tox_damage'), 600);
-      else if (res.wb < 60) setTimeout(() => showContextualTip?.('low_wb'), 600);
-      const synergyFired = res.activeSynergies && res.activeSynergies.length > 0;
-      if (synergyFired) setTimeout(() => showContextualTip?.('first_synergy'), 900);
+  }
+
+  // ── Dismiss scoring reveal → continue game ──
+  finishScoring() {
+    const d = this.scoringDisplay;
+    if (!d) return;
+    this.scoringDisplay = null;
+    this._nextPhase = null;
+    animateWscore(d.prevWscore, this.wscore, d.intensity);
+    if (d.score > 0) showScorePopup(d.score, d.intensity, d.comboLabel);
+    if (d.crossedKpi) triggerKpiFlash();
+    if ((d.intensity === 'epic' || d.intensity === 'great') && d.comboLabel) showComboAnnouncer(d.comboLabel);
+    if (d.nextPhase === 'review') { this.isTerminated = true; this.phase = 'review'; }
+    else if (d.nextPhase === 'result') this.phase = 'result';
+    else { this.drawUp(); this.phase = 'play'; }
+    this._commit();
+    if (d.nextPhase !== 'review') {
+      const toxDmgFired = this.log.some(e => e.cls === 'dm' && e.t.includes('TOXIC'));
+      if (toxDmgFired) setTimeout(() => showContextualTip?.('tox_damage'), 400);
+      else if (this.wb < 60) setTimeout(() => showContextualTip?.('low_wb'), 400);
+      if (d.activeSynergies?.size > 0) setTimeout(() => showContextualTip?.('first_synergy'), 600);
     }
   }
 

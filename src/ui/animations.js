@@ -168,3 +168,70 @@ export function startUpgradeSpin(tier, onDone) {
   }
   setTimeout(tick, 80);
 }
+
+function _countUp(el, from, to, duration, onDone) {
+  if (!el) { onDone?.(); return; }
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (t < 1) requestAnimationFrame(tick);
+    else { el.textContent = to; onDone?.(); }
+  }
+  requestAnimationFrame(tick);
+}
+
+export function initScoringAnimation(G) {
+  const d = G.scoringDisplay;
+  if (!d) return;
+
+  const screen    = document.getElementById('sc-screen');
+  const chipsEl   = document.getElementById('sc-chips-val');
+  const opX       = document.getElementById('sc-op-x');
+  const multBlock = document.getElementById('sc-mult-block');
+  const multEl    = document.getElementById('sc-mult-val');
+  const opEq      = document.getElementById('sc-op-eq');
+  const scoreBlock= document.getElementById('sc-score-block');
+  const scoreEl   = document.getElementById('sc-score-val');
+  const comboRow  = document.getElementById('sc-combo-row');
+  const hint      = document.getElementById('sc-hint');
+
+  if (!chipsEl) return;
+
+  let done = false;
+  const finish = () => { if (done) return; done = true; clearTimeout(autoTimer); G.finishScoring(); };
+  const autoTimer = setTimeout(finish, 3600);
+  if (screen) screen.onclick = finish;
+
+  // Phase 1: chips count up
+  _countUp(chipsEl, 0, d.chips, 900, () => {
+    // Phase 2: × and mult appear
+    setTimeout(() => {
+      opX?.classList.add('sc-show');
+      if (multBlock) { multBlock.classList.add('sc-show'); }
+      if (multEl) multEl.textContent = d.mult.toFixed(2);
+
+      // Phase 3: = and score pop
+      setTimeout(() => {
+        opEq?.classList.add('sc-show');
+        scoreBlock?.classList.add('sc-show');
+        _countUp(scoreEl, 0, d.baseScore, 550, () => {
+
+          // Phase 4: combo multiplier (if any)
+          if (comboRow && d.comboMult > 1) {
+            setTimeout(() => {
+              comboRow.classList.add('sc-show');
+              const totalEl = document.getElementById('sc-combo-total');
+              _countUp(totalEl, d.baseScore, d.score, 450, () => {
+                hint?.classList.add('sc-show');
+              });
+            }, 250);
+          } else {
+            setTimeout(() => hint?.classList.add('sc-show'), 200);
+          }
+        });
+      }, 280);
+    }, 280);
+  });
+}

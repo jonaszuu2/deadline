@@ -6,7 +6,7 @@ import { DB } from '../data/cards.js';
 import { getEffectiveFx, simulateTurn } from '../engine/calcTurn.js';
 import { calculateFinalScore, predictCareerTier } from '../engine/scoring.js';
 import { esc, fmt1 } from '../engine/utils.js';
-import { initFinalReviewAnim, updateKpiBar } from './animations.js';
+import { initFinalReviewAnim, updateKpiBar, initScoringAnimation } from './animations.js';
 import { _currentHandH, HAND_H_DEF, applyHandHeight } from './resize.js';
 import { ovGameOver, ovWin, ovFinalReview } from './overlays.js';
 
@@ -75,6 +75,11 @@ export function render(G) {
   }
   if (G.phase === 'power_event') {
     document.getElementById('win-body').innerHTML = renderPowerEvent(G);
+    return;
+  }
+  if (G.phase === 'scoring') {
+    document.getElementById('win-body').innerHTML = renderScoring(G);
+    initScoringAnimation(G);
     return;
   }
   if (G.phase === 'upgrade_result') {
@@ -947,6 +952,54 @@ export function renderTargetedDraw(G) {
       <div class="dr-sub">Top 3 cards from your deck — choose 1 to draw into your hand</div>
     </div>
     <div class="dr-cards">${cardsHtml}</div>
+  </div>`;
+}
+
+export function renderScoring(G) {
+  const d = G.scoringDisplay;
+  if (!d) return '<div class="sc-screen"></div>';
+
+  const cardBadges = (d.playedCards || []).map(c =>
+    `<span class="sc-card-badge ${c.archetype}">${esc(c.name)}</span>`
+  ).join('');
+
+  const deltas = [
+    d.wbDelta < 0 ? `<span class="sc-delta sc-d-bad">❤ ${d.wbDelta} WB</span>` : '',
+    d.wbDelta > 0 ? `<span class="sc-delta sc-d-good">❤ +${d.wbDelta} WB</span>` : '',
+    d.toxDelta > 0 ? `<span class="sc-delta sc-d-bad">☣ +${d.toxDelta}% TOX</span>` : '',
+    d.toxDelta < 0 ? `<span class="sc-delta sc-d-good">☣ ${d.toxDelta}% TOX</span>` : '',
+    d.boDelta  > 0 ? `<span class="sc-delta sc-d-bad">🔥 +${d.boDelta}% BO</span>` : '',
+  ].filter(Boolean).join('');
+
+  const comboRow = d.comboMult > 1 ? `
+    <div class="sc-combo-row" id="sc-combo-row">
+      <span class="sc-combo-mult">×${fmt1(d.comboMult)} COMBO</span>
+      <span class="sc-combo-arrow">→</span>
+      <span class="sc-combo-total" id="sc-combo-total">0</span>
+    </div>` : '';
+
+  return `<div class="sc-screen" id="sc-screen">
+    <div class="sc-eyebrow">TURN RESULT</div>
+    <div class="sc-cards-row">${cardBadges}</div>
+    <div class="sc-formula">
+      <div class="sc-f-block" id="sc-chips-block">
+        <div class="sc-f-label">CHIPS</div>
+        <div class="sc-f-value sc-chips-color" id="sc-chips-val">0</div>
+      </div>
+      <div class="sc-f-op" id="sc-op-x">×</div>
+      <div class="sc-f-block" id="sc-mult-block">
+        <div class="sc-f-label">MULT</div>
+        <div class="sc-f-value sc-mult-color" id="sc-mult-val">?</div>
+      </div>
+      <div class="sc-f-op" id="sc-op-eq">=</div>
+      <div class="sc-f-block sc-f-score" id="sc-score-block">
+        <div class="sc-f-label">SCORE</div>
+        <div class="sc-f-value sc-score-color" id="sc-score-val">?</div>
+      </div>
+    </div>
+    ${comboRow}
+    <div class="sc-deltas">${deltas}</div>
+    <div class="sc-hint" id="sc-hint">click to continue</div>
   </div>`;
 }
 

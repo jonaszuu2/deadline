@@ -392,7 +392,7 @@ export function calcTurn(cards, ctx) {
     const maxToxDmg = toxLevels.length * TOX_DMG;
     const riskWb = clamp(finalWb - expectedToxDmg, 0, 100);
     return {
-      score, wb: finalWb, tox: finalTox, bo: finalBo, gameOver: false,
+      score, baseScore, wb: finalWb, tox: finalTox, bo: finalBo, gameOver: false,
       comboMult, chips: acc.chips, mult: fmt1(acc.mult),
       log, activeSynergies,
       firstCrunchUsed, weekCrunchCount, firstCardThisWeek, newExhausted,
