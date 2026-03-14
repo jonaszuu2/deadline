@@ -540,10 +540,12 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
   const isFirstHint = !!(ctx.isFirstPlay && c.archetype === 'PRODUCTION');
   const firstHintBadge = isFirstHint ? `<div class="first-card-hint">▲ Start here</div>` : '';
   const cardLevel = c.level || 0;
+  const upgCount = c.upgrades || 0;
+  const upgCls = upgCount >= 3 ? ' card-up3' : upgCount === 2 ? ' card-up2' : upgCount >= 1 ? ' card-up1' : '';
   const levelStars = cardLevel > 0 ? `<div class="card-level-stars" title="Card Level ${cardLevel}">${'★'.repeat(cardLevel)}${'☆'.repeat(3-cardLevel)}</div>` : '';
   const playCountHint = cardLevel < 3
     ? `<div class="card-play-count" title="Plays: ${c.playCount||0}">${(c.playCount||0) % 5}/5 ▶ Lv${cardLevel+1}</div>` : '';
-  return `<div class="card ${c.archetype}${isSel ? ' sel' : ''}${isSynActive ? ' syn-active' : ''}${isFirstHint ? ' first-hint' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}" onclick="G.toggle('${c.uid}')">
+  return `<div class="card ${c.archetype}${isSel ? ' sel' : ''}${isSynActive ? ' syn-active' : ''}${isFirstHint ? ' first-hint' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" onclick="G.toggle('${c.uid}')">
     <div class="cbadge">${idx + 1}</div>
     <div class="ctag">${c.archetype}</div>
     ${levelStars}
@@ -702,6 +704,9 @@ export function renderCardOverlay(G, cards, actionFn, emptyMsg, mode = 'remove')
   </div>`;
   const cardsHtml = sorted.map(c => {
     const lvl   = c.level || 0;
+    const upg     = c.upgrades || 0;
+    const upgCls  = upg >= 3 ? ' card-up3' : upg === 2 ? ' card-up2' : upg >= 1 ? ' card-up1' : '';
+    const upgBadge = upg > 0 ? `<span class="oc-up-badge${upg >= 3 ? ' up3' : upg === 2 ? ' up2' : ''}">&#8679; ×${upg} UPG</span>` : '';
     const lvlBadge = lvl > 0 ? `<span class="oc-lv-badge lv${lvl}">LV${lvl}</span>` : '';
     const stars = lvl > 0 ? `<span class="oc-stars">${'★'.repeat(lvl)}</span>` : '';
     const fxParts = [
@@ -720,12 +725,12 @@ export function renderCardOverlay(G, cards, actionFn, emptyMsg, mode = 'remove')
         </div>` : '';
     const playInfo = c.playCount !== undefined
       ? `<div class="oc-plays">${c.playCount||0} plays${lvl < 3 ? ` · ${(c.playCount||0)%5}/5 → Lv${lvl+1}` : ' · MAX LVL'}</div>` : '';
-    return `<div class="oc-card ${c.archetype}${lvl > 0 ? ` card-lv${lvl}` : ''}" onclick="${actionFn}('${c.uid}')">
+    return `<div class="oc-card ${c.archetype}${lvl > 0 ? ` card-lv${lvl}` : ''}${upgCls}" onclick="${actionFn}('${c.uid}')">
       <div class="oc-top">
         <span class="oc-arch">${c.archetype}</span>
         <span class="oc-rarity">${c.rarity}${stars}</span>
       </div>
-      ${lvlBadge}
+      ${lvlBadge}${upgBadge}
       <div class="oc-name">${esc(c.name)}</div>
       ${c.flavor ? `<div class="oc-flavor">"${esc(c.flavor)}"</div>` : ''}
       <div class="oc-fx-row">${fxParts || '<span style="color:var(--dim)">—</span>'}</div>

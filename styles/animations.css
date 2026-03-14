@@ -320,3 +320,63 @@
                   padding:3px 6px;background:rgba(255,232,122,.1);border:1px solid rgba(255,232,122,.35);margin:2px 0}
 .tmc-loyalty.bond{color:#00ffcc;background:rgba(0,255,204,.12);border-color:rgba(0,255,204,.5)}
 .rp-tm-loyalty.bond{color:#00ffcc}
+
+/* ══ UPGRADE FLASH OVERLAY ══ */
+.upgrade-flash-overlay{position:fixed;inset:0;pointer-events:none;z-index:2200;
+  display:flex;align-items:center;justify-content:center;
+  animation:upgrade-flash-bg 2s ease-out forwards}
+@keyframes upgrade-flash-bg{
+  0%  {background:rgba(0,200,255,.15)}
+  25% {background:rgba(0,200,255,.08)}
+  100%{background:rgba(0,200,255,0)}}
+.uf-inner{display:flex;flex-direction:column;align-items:center;gap:10px;
+  animation:upgrade-flash-in 2s ease-out forwards}
+@keyframes upgrade-flash-in{
+  0%  {opacity:0;transform:scale(.5) translateY(10px)}
+  12% {opacity:1;transform:scale(1.18) translateY(-6px)}
+  25% {transform:scale(1.0) translateY(0)}
+  70% {opacity:1;transform:scale(1.0) translateY(0)}
+  100%{opacity:0;transform:scale(1.04) translateY(-14px)}}
+.uf-eyebrow{font:9px 'Courier New',monospace;letter-spacing:4px;color:rgba(0,230,255,.7)}
+.uf-name{font:bold 30px 'Courier New',monospace;color:#fff;letter-spacing:2px;
+  text-shadow:0 0 20px rgba(0,220,255,.9),0 0 50px rgba(0,180,255,.4)}
+.uf-badge{font:bold 13px 'Courier New',monospace;letter-spacing:3px;padding:3px 14px;
+  border:2px solid rgba(0,220,255,.7);background:rgba(0,200,255,.1);
+  color:#00e8ff;text-shadow:0 0 10px rgba(0,220,255,.9)}
+.uf-stats{font:14px 'Courier New',monospace;display:flex;gap:12px;align-items:center}
+.uf-chips{color:#6ab4ff}.uf-mult{color:#ff9090}.uf-sep{color:#444}
+/* Tier 2 */
+.uf-tier2 .uf-name{text-shadow:0 0 28px rgba(0,230,255,1),0 0 70px rgba(0,200,255,.6),0 0 120px rgba(0,160,255,.3)}
+.uf-tier2 .uf-badge{border-color:#00e8ff;box-shadow:0 0 14px rgba(0,220,255,.6)}
+/* Tier 3 */
+.uf-tier3 .uf-name{color:#e0ffff;
+  text-shadow:0 0 36px rgba(0,255,255,1),0 0 90px rgba(0,220,255,.8),0 0 160px rgba(0,180,255,.4);
+  animation:upgrade-name-pulse .4s ease-in-out infinite alternate}
+@keyframes upgrade-name-pulse{
+  from{text-shadow:0 0 36px rgba(0,255,255,1),0 0 90px rgba(0,220,255,.8)}
+  to  {text-shadow:0 0 60px rgba(0,255,255,1),0 0 140px rgba(0,220,255,1),0 0 200px rgba(0,180,255,.5)}}
+.uf-tier3 .uf-badge{border-color:#00ffff;color:#00ffff;
+  animation:upgrade-badge-pulse .5s ease-in-out infinite alternate}
+@keyframes upgrade-badge-pulse{
+  from{box-shadow:0 0 16px rgba(0,255,255,.6)}
+  to  {box-shadow:0 0 32px rgba(0,255,255,1),0 0 60px rgba(0,220,255,.5)}}
+
+/* ══ PROGRESSIVE UPGRADE GLOW — hand cards ══ */
+.card-up1{box-shadow:0 0 8px rgba(0,180,255,.4)!important;border-color:#005080!important}
+.card-up2{box-shadow:0 0 14px rgba(0,210,255,.6),0 0 30px rgba(0,180,255,.2)!important;border-color:#0090c0!important}
+.card-up3{border-color:#00ccff!important;animation:card-up3-glow 1.6s ease-in-out infinite!important}
+@keyframes card-up3-glow{
+  0%,100%{box-shadow:0 0 14px rgba(0,210,255,.7),0 0 30px rgba(0,180,255,.3)}
+  50%    {box-shadow:0 0 28px rgba(0,230,255,1),0 0 55px rgba(0,200,255,.5),0 0 90px rgba(0,170,255,.2)}}
+/* ══ PROGRESSIVE UPGRADE GLOW — overlay picker ══ */
+.oc-card.card-up1{box-shadow:0 0 8px rgba(0,180,255,.35)!important;border-color:#005580!important}
+.oc-card.card-up2{box-shadow:0 0 14px rgba(0,210,255,.55)!important;border-color:#0095c0!important}
+.oc-card.card-up3{border-color:#00ccff!important;animation:card-up3-glow 1.6s ease-in-out infinite!important}
+/* ══ UPGRADE COUNT BADGE ══ */
+.oc-up-badge{display:inline-block;font:bold 8px 'Courier New',monospace;letter-spacing:1px;
+  padding:1px 5px;margin-bottom:2px;border:1px solid #005a80;
+  background:rgba(0,180,255,.1);color:#00ccff}
+.oc-up-badge.up2{color:#00e0ff;border-color:#0090c0;background:rgba(0,210,255,.15);
+  text-shadow:0 0 6px rgba(0,210,255,.7)}
+.oc-up-badge.up3{color:#00ffff;border-color:#00ccff;background:rgba(0,230,255,.18);
+  text-shadow:0 0 8px rgba(0,255,255,.9);animation:lvbadge3 1.5s ease-in-out infinite}

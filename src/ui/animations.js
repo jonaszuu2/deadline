@@ -112,3 +112,25 @@ export function triggerKpiFlash() {
   bar.classList.add('kpi-flash');
   setTimeout(() => bar.classList.remove('kpi-flash'), 900);
 }
+
+export function showUpgradeFlash(card) {
+  document.querySelector('.upgrade-flash-overlay')?.remove();
+  const upCount = card.upgrades || 1;
+  const upLabel = upCount === 1 ? 'UPGRADED' : upCount === 2 ? 'DOUBLE UPGRADE' : `×${upCount} UPGRADES`;
+  const tierCls = upCount >= 3 ? 'uf-tier3' : upCount === 2 ? 'uf-tier2' : 'uf-tier1';
+  const el = document.createElement('div');
+  el.className = `upgrade-flash-overlay ${tierCls}`;
+  el.innerHTML = `
+    <div class="uf-inner">
+      <div class="uf-eyebrow">CARD UPGRADED</div>
+      <div class="uf-name">${card.name}</div>
+      <div class="uf-badge">&#8679; ${upLabel}</div>
+      <div class="uf-stats">
+        <span class="uf-chips">&#x1F535; ${card.fx.chips || 0} Chips</span>
+        <span class="uf-sep">&middot;</span>
+        <span class="uf-mult">&#x1F534; ×${(card.fx.mult || 0).toFixed(2)} Mult</span>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}

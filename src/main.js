@@ -1,6 +1,6 @@
 import { Game, _setUIFunctions } from './game.js';
 import { render, zoomIn, zoomOut } from './ui/render.js';
-import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash } from './ui/animations.js';
+import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showUpgradeFlash } from './ui/animations.js';
 import { showClassScreen, selectClass, dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
 import { showStartupScreen, dismissStartup, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial } from './ui/tutorial.js';
@@ -18,6 +18,7 @@ _setUIFunctions({
   showComboAnnouncer,
   triggerKpiFlash,
   showClassScreen,
+  showUpgradeFlash,
 });
 
 // ═══════════════════════════════════════════════════════

@@ -10,7 +10,7 @@ import { DB } from './data/cards.js';
 
 // UI functions resolved lazily at runtime to avoid circular dependency issues.
 // These are set by main.js after all modules have loaded.
-let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen;
+let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, showUpgradeFlash;
 
 export function _setUIFunctions(fns) {
   render = fns.render;
