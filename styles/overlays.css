@@ -638,4 +638,27 @@
 /* hint */
 .sc-hint{font:8px 'Courier New',monospace;color:var(--dim);letter-spacing:2px;
   opacity:0;transition:opacity .6s}
-.sc-hint.sc-show{opacity:1}
+.sc-hint.sc-show{opacity:1}
+
+/* ══ INLINE SCORING MODE (embedded in play layout) ══ */
+/* Dim the hand during animation */
+.scoring-mode #hand-wrap{pointer-events:none}
+.scoring-mode #hand{opacity:.32;transition:opacity .3s}
+/* Dim the actions area */
+.scoring-mode #actions{opacity:.4;pointer-events:none}
+/* Card badges — archetype colors (lowercase class) */
+.sc-card-badge.sc-cb-production{color:#6ab4ff;border-color:rgba(106,180,255,.35)}
+.sc-card-badge.sc-cb-strategy{color:#ff9090;border-color:rgba(255,144,144,.35)}
+.sc-card-badge.sc-cb-crunch{color:#ff6030;border-color:rgba(255,96,48,.35)}
+.sc-card-badge.sc-cb-recovery{color:#60ff80;border-color:rgba(96,255,128,.35)}
+/* Score machine scoring mode overrides */
+.sm-scoring-mode{cursor:pointer;animation:be-in .2s ease-out;user-select:none;
+  border:1px solid rgba(255,221,68,.25)}
+.sm-scoring-mode #score-machine{display:flex;flex-direction:column;align-items:center;
+  gap:6px;padding:8px 0 4px}
+.sm-scoring-mode .sm-displays{justify-content:center;gap:10px}
+/* Make score display bigger for impact */
+.sm-scoring-mode #sc-score-block .sm-display{font-size:52px!important;min-width:130px}
+/* sc-deltas inside sm-bottom */
+.sm-scoring-mode .sc-deltas{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.sm-scoring-mode .sc-hint{display:block;text-align:center;margin-top:2px}

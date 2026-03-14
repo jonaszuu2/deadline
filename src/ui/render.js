@@ -79,6 +79,7 @@ export function render(G) {
   }
   if (G.phase === 'scoring') {
     document.getElementById('win-body').innerHTML = renderScoring(G);
+    if (_currentHandH !== HAND_H_DEF) applyHandHeight(_currentHandH);
     initScoringAnimation(G);
     return;
   }
@@ -957,10 +958,14 @@ export function renderTargetedDraw(G) {
 
 export function renderScoring(G) {
   const d = G.scoringDisplay;
-  if (!d) return '<div class="sc-screen"></div>';
+  if (!d) return '';
+
+  const {wb, tox, bo, log, hand, passives, exhausted} = G;
+  const wscore = d.prevWscore; // show OLD score during animation — suspense!
+  const target = G.kpi();
 
   const cardBadges = (d.playedCards || []).map(c =>
-    `<span class="sc-card-badge ${c.archetype}">${esc(c.name)}</span>`
+    `<span class="sc-card-badge sc-cb-${(c.archetype||'').toLowerCase()}">${esc(c.name)}</span>`
   ).join('');
 
   const deltas = [
@@ -978,29 +983,59 @@ export function renderScoring(G) {
       <span class="sc-combo-total" id="sc-combo-total">0</span>
     </div>` : '';
 
-  return `<div class="sc-screen" id="sc-screen">
-    <div class="sc-eyebrow">TURN RESULT</div>
-    <div class="sc-cards-row">${cardBadges}</div>
-    <div class="sc-formula">
-      <div class="sc-f-block" id="sc-chips-block">
-        <div class="sc-f-label">CHIPS</div>
-        <div class="sc-f-value sc-chips-color" id="sc-chips-val">0</div>
+  const leds = ['#6ab4ff','#ff7070','#50ffaa','#ff80c8','#ffdd44','#ff8800','#7070ff','#80ffcc'];
+  const ledHtml = leds.map(c => `<div class="sm-led" style="background:${c};color:${c}"></div>`).join('');
+
+  // The scoring machine replaces the score machine in-place.
+  // #sc-screen = click-to-skip target. #score-machine = shake animation target.
+  const scoringMachine = `
+    <div id="sc-screen" class="sm-scoring-mode">
+      <div id="score-machine">
+        <div class="sm-led-strip">${ledHtml}</div>
+        <div class="sc-cards-row">${cardBadges}</div>
+        <div class="sm-displays">
+          <div class="sm-panel">
+            <div class="sm-lbl">CHIPS</div>
+            <div class="sm-display sc-chips-color" id="sc-chips-val">0</div>
+          </div>
+          <div class="sm-op sc-f-op" id="sc-op-x">×</div>
+          <div class="sm-panel" id="sc-mult-block">
+            <div class="sm-lbl">MULT</div>
+            <div class="sm-display sc-mult-color" id="sc-mult-val">?</div>
+          </div>
+          <div class="sm-op sc-f-op" id="sc-op-eq">=</div>
+          <div class="sm-panel" id="sc-score-block">
+            <div class="sm-lbl">SCORE</div>
+            <div class="sm-display sc-score-color" id="sc-score-val">?</div>
+          </div>
+        </div>
+        ${comboRow}
+        <div class="sm-bottom">
+          <div class="sc-deltas">${deltas}</div>
+          <span class="sm-week"><b>${wscore}</b> / ${target}</span>
+        </div>
+        <div class="sc-hint" id="sc-hint">click to continue</div>
       </div>
-      <div class="sc-f-op" id="sc-op-x">×</div>
-      <div class="sc-f-block" id="sc-mult-block">
-        <div class="sc-f-label">MULT</div>
-        <div class="sc-f-value sc-mult-color" id="sc-mult-val">?</div>
+    </div>`;
+
+  return `
+    ${renderHeader(G)}
+    <div id="main-layout" class="scoring-mode">
+      <div id="main-col">
+        <div id="top-row">
+          ${renderEmployeeDashboard(wb, tox, bo, null)}
+          ${scoringMachine}
+          ${renderActions(G, null)}
+        </div>
+        ${renderHand(hand, [], null, exhausted, passives, G)}
+        <div id="hand-resize-handle" onmousedown="startHandResize(event)"></div>
+        <div id="bottom-row">
+          ${renderDeckPanel(G)}
+          ${renderLog(log, null)}
+        </div>
       </div>
-      <div class="sc-f-op" id="sc-op-eq">=</div>
-      <div class="sc-f-block sc-f-score" id="sc-score-block">
-        <div class="sc-f-label">SCORE</div>
-        <div class="sc-f-value sc-score-color" id="sc-score-val">?</div>
-      </div>
-    </div>
-    ${comboRow}
-    <div class="sc-deltas">${deltas}</div>
-    <div class="sc-hint" id="sc-hint">click to continue</div>
-  </div>`;
+      ${renderRightPanel(G)}
+    </div>`;
 }
 
 export function renderUpgradeResult(G) {

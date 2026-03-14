@@ -199,6 +199,8 @@ export function initScoringAnimation(G) {
 
   if (!chipsEl) return;
 
+  const show = el => { if (el) el.classList.add('sc-show'); };
+
   let done = false;
   const finish = () => { if (done) return; done = true; clearTimeout(autoTimer); G.finishScoring(); };
   const autoTimer = setTimeout(finish, 3600);
@@ -208,27 +210,27 @@ export function initScoringAnimation(G) {
   _countUp(chipsEl, 0, d.chips, 900, () => {
     // Phase 2: × and mult appear
     setTimeout(() => {
-      opX?.classList.add('sc-show');
-      if (multBlock) { multBlock.classList.add('sc-show'); }
+      show(opX);
+      show(multBlock);
       if (multEl) multEl.textContent = d.mult.toFixed(2);
 
       // Phase 3: = and score pop
       setTimeout(() => {
-        opEq?.classList.add('sc-show');
-        scoreBlock?.classList.add('sc-show');
+        show(opEq);
+        show(scoreBlock);
         _countUp(scoreEl, 0, d.baseScore, 550, () => {
 
           // Phase 4: combo multiplier (if any)
           if (comboRow && d.comboMult > 1) {
             setTimeout(() => {
-              comboRow.classList.add('sc-show');
+              show(comboRow);
               const totalEl = document.getElementById('sc-combo-total');
               _countUp(totalEl, d.baseScore, d.score, 450, () => {
-                hint?.classList.add('sc-show');
+                show(hint);
               });
             }, 250);
           } else {
-            setTimeout(() => hint?.classList.add('sc-show'), 200);
+            setTimeout(() => show(hint), 200);
           }
         });
       }, 280);

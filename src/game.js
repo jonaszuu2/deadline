@@ -331,8 +331,9 @@ export class Game {
     const prevWscore = this.wscore;
     const prevWb    = this.wb;
     const prevPassed = this.wscore >= this.kpi();
-    this.wscore += res.score; this.wb = res.wb; this.tox = res.tox; this.bo = res.bo;
-    this.lastScore = res.score; this.log.push(...res.log);
+    const newWscore  = this.wscore + res.score;
+    // State applied AFTER scoring animation in finishScoring()
+    this.log.push(...res.log);
     // ── Card Leveling: increment playCount, apply upgrade every 5 plays ──
     for (const c of cards) {
       c.playCount = (c.playCount || 0) + 1;
@@ -360,7 +361,7 @@ export class Game {
     // ── Determine next phase ──
     let nextPhase;
     if (res.gameOver) nextPhase = 'review';
-    else if (this.wscore >= this.kpi() || this.plays <= 0) nextPhase = 'result';
+    else if (newWscore >= this.kpi() || this.plays <= 0) nextPhase = 'result';
     else nextPhase = 'draw_continue';
     // ── Store scoring display data & enter scoring phase ──
     this.scoringDisplay = {
@@ -373,9 +374,14 @@ export class Game {
       toxDelta: res.toxDelta,
       boDelta: res.boDelta,
       prevWscore,
+      pendingScore:  res.score,
+      pendingWscore: newWscore,
+      pendingWb:     res.wb,
+      pendingTox:    res.tox,
+      pendingBo:     res.bo,
       intensity,
       comboLabel,
-      crossedKpi: !res.gameOver && !prevPassed && this.wscore >= this.kpi(),
+      crossedKpi: !res.gameOver && !prevPassed && newWscore >= this.kpi(),
       activeSynergies: res.activeSynergies,
       playedCards: cards.map(c => ({ name: c.name, archetype: c.archetype })),
       nextPhase,
@@ -391,8 +397,14 @@ export class Game {
     if (!d) return;
     this.scoringDisplay = null;
     this._nextPhase = null;
-    animateWscore(d.prevWscore, this.wscore, d.intensity);
-    if (d.score > 0) showScorePopup(d.score, d.intensity, d.comboLabel);
+    // Apply deferred state
+    this.wscore    = d.pendingWscore;
+    this.wb        = d.pendingWb;
+    this.tox       = d.pendingTox;
+    this.bo        = d.pendingBo;
+    this.lastScore = d.pendingScore;
+    animateWscore(d.prevWscore, d.pendingWscore, d.intensity);
+    if (d.pendingScore > 0) showScorePopup(d.pendingScore, d.intensity, d.comboLabel);
     if (d.crossedKpi) triggerKpiFlash();
     if ((d.intensity === 'epic' || d.intensity === 'great') && d.comboLabel) showComboAnnouncer(d.comboLabel);
     if (d.nextPhase === 'review') { this.isTerminated = true; this.phase = 'review'; }
