@@ -1,4 +1,4 @@
-import { PLAYS, DISCS, HAND, MAX_SEL, TOX_DMG, FAIL_BO, TOTAL_WEEKS, CONTRACT_POOL, clamp } from './data/constants.js';
+import { PLAYS, DISCS, HAND, MAX_SEL, TOX_DMG, FAIL_BO, TOTAL_WEEKS, CONTRACT_POOL, KPI, clamp } from './data/constants.js';
 import { nextUid, shuffle, getUnlockedTier, setUnlockedTier } from './engine/utils.js';
 import { makeDeck, makeClassDeck, wbEff, pickShopItems, DECK_BLUEPRINT } from './engine/deck.js';
 import { calcTurn, simulateTurn, getRiskLevel } from './engine/calcTurn.js';
