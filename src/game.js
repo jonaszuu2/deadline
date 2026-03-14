@@ -10,7 +10,7 @@ import { DB } from './data/cards.js';
 
 // UI functions resolved lazily at runtime to avoid circular dependency issues.
 // These are set by main.js after all modules have loaded.
-let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, showUpgradeFlash;
+let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, showUpgradeFlash, checkFirstShopTutorial, showContextualTip, resetCtxTips;
 
 export function _setUIFunctions(fns) {
   render = fns.render;
@@ -21,6 +21,9 @@ export function _setUIFunctions(fns) {
   showComboAnnouncer = fns.showComboAnnouncer;
   triggerKpiFlash = fns.triggerKpiFlash;
   showClassScreen = fns.showClassScreen;
+  checkFirstShopTutorial = fns.checkFirstShopTutorial;
+  showContextualTip = fns.showContextualTip;
+  resetCtxTips = fns.resetCtxTips;
 }
 
 export class Game {
@@ -359,6 +362,14 @@ export class Game {
       animateWscore(prevWscore, this.wscore, intensity);
       // ── Combo announcer for great/epic plays ──
       if ((intensity === 'epic' || intensity === 'great') && comboLabel) showComboAnnouncer(comboLabel);
+    }
+    // ── Contextual tutorial tips ──
+    if (!res.gameOver) {
+      const toxDmgFired = res.log.some(e => e.cls === 'dm' && e.t.includes('TOXIC'));
+      if (toxDmgFired) setTimeout(() => showContextualTip?.('tox_damage'), 600);
+      else if (res.wb < 60) setTimeout(() => showContextualTip?.('low_wb'), 600);
+      const synergyFired = res.activeSynergies && res.activeSynergies.length > 0;
+      if (synergyFired) setTimeout(() => showContextualTip?.('first_synergy'), 900);
     }
   }
 
@@ -704,6 +715,7 @@ export class Game {
     }
     this.shopItems = this._buildShopItems();
     this.phase = 'shop'; this._commit();
+    checkFirstShopTutorial?.();
   }
 
   _buildShopItems() {
@@ -784,6 +796,7 @@ export class Game {
     }
     this.shopItems = this._buildShopItems();
     this.phase = 'shop'; this._commit();
+    checkFirstShopTutorial?.();
   }
 
   answerBossQuestion(optionIdx) {
@@ -1010,6 +1023,7 @@ export class Game {
   _commit() { render(this); scrollLog(); }
 
   restart() {
+    resetCtxTips?.();
     const g = new Game();
     window.G = g;
     showClassScreen();

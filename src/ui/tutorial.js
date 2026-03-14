@@ -50,7 +50,30 @@ export const INTRO_SLIDES = [
     btn: 'Next →',
   },
   {
-    icon: '⚙️', step: 4,
+    icon: '🃏', step: 4,
+    title: 'Reading a Card',
+    content: '<p>Every card has four key parts:</p>'
+      + '<div class="it-card-demo">'
+      + '<div class="it-cd-arch CRUNCH">CRUNCH</div>'
+      + '<div class="it-cd-name">Mandatory Overtime</div>'
+      + '<div class="it-cd-stats"><span class="it-chip">+120 CHIPS</span> &nbsp; <span class="it-mult">+1.5× MULT</span></div>'
+      + '<div class="it-cd-cost"><span class="it-tox">+20% TOX</span> &nbsp; <span class="it-wb">−10 WB</span></div>'
+      + '<div class="it-cd-syn">★ If 2+ CRUNCH played this turn → +0.5× MULT</div>'
+      + '</div>'
+      + '<p><b>Chips</b> = base output. <b>Mult</b> = multiplier on all chips. <b>TOX/WB</b> are the costs you pay. The <b>★ synergy line</b> is a bonus that fires when conditions are met.</p>',
+    btn: 'Next →',
+  },
+  {
+    icon: '⚡', step: 5,
+    title: 'Synergies & Combos',
+    content: '<p>When you play <b>multiple cards together</b>, synergies can trigger. Example:</p>'
+      + '<div class="it-diagram">📋 PRODUCTION card<br>🔴 STRATEGY card<br>★ "1+ STRATEGY in play → +80 Chips" → TRIGGERED</div>'
+      + '<p>Always select <b>2–3 cards per play</b> — not just 1. The <b>Score Machine preview</b> shows your projected result before you commit. Read it before hitting Submit.</p>'
+      + '<div class="it-formula"><span class="it-chip">CHIPS</span> × <span class="it-mult">MULT</span> = SCORE &nbsp;★ synergies included</div>',
+    btn: 'Next →',
+  },
+  {
+    icon: '⚙️', step: 6,
     title: 'Choose your class',
     content: '<p>Before Week 1, you&#39;ll choose a <strong>Corporate Class</strong> — your department identity, starting deck, and permanent passive abilities.</p><div class="it-stat-row">⚙️ <em>The Grinder</em> — Extra plays, PRODUCTION heavy deck</div><div class="it-stat-row">🎯 <em>The Strategist</em> — High ceiling, STRATEGY + CRUNCH deck</div><div class="it-stat-row">☣️ <em>The Survivor</em> — RECOVERY heavy, converts Toxicity to power</div><p style="margin-top:8px">Now that you know what Chips, Mult, TOX, and WB mean — pick your department.</p>',
     btn: '▶ Choose My Class',
@@ -101,6 +124,7 @@ export function _skipIntroTutorial() {
 //  IN-GAME TUTORIAL (first run, walks through UI)
 // ═══════════════════════════════════════════════════════
 export let _tutStep = 0, _tutG = null;
+let _tutWaitPoll = null;
 
 export function checkAndStartTutorial(G) {
   _tutG = G; _tutStep = 0; _showTutStep(0); return true;
@@ -116,6 +140,9 @@ export function _showTutStep(idx) {
     : '';
   const dots = TUTORIAL_DB.map((_, i) => '<div class="tut-dot' + (i < idx ? ' done' : i === idx ? ' active' : '') + '"></div>').join('');
   const isLast = idx === TUTORIAL_DB.length - 1;
+  const waitNote = step.waitForCards
+    ? '<div style="font:italic 9px \'Tahoma\',sans-serif;color:#00aa66;margin-bottom:4px">↑ Select 2+ cards above to auto-continue</div>'
+    : '';
   document.body.insertAdjacentHTML('beforeend',
     '<div id="tut-ov"><div class="tut-win">'
     + '<div class="tut-tbar">' + step.icon + ' DEADLINE™ — Corporate Onboarding · Step ' + (idx + 1) + ' of ' + TUTORIAL_DB.length + '</div>'
@@ -123,10 +150,20 @@ export function _showTutStep(idx) {
     + '<div class="tut-text">' + step.content + '</div></div>'
     + '<div class="tut-footer"><div class="tut-progress">' + dots + '</div>'
     + '<div class="tut-btns">'
+    + waitNote
     + (!isLast ? '<button class="tut-skip" onclick="_skipTutorial()">Skip tutorial</button>' : '')
     + '<button class="w95-btn" onclick="_advanceTutorial()">' + step.btn + '</button>'
     + '</div></div></div></div>'
   );
+  if (step.waitForCards && _tutG) {
+    if (_tutWaitPoll) clearInterval(_tutWaitPoll);
+    _tutWaitPoll = setInterval(() => {
+      if (_tutG && _tutG.sel && _tutG.sel.length >= 2) {
+        clearInterval(_tutWaitPoll); _tutWaitPoll = null;
+        _advanceTutorial();
+      }
+    }, 400);
+  }
 }
 
 export function _advanceTutorial() {
@@ -138,7 +175,107 @@ export function _advanceTutorial() {
 export function _skipTutorial() { _completeTutorial(); }
 
 export function _completeTutorial() {
+  if (_tutWaitPoll) { clearInterval(_tutWaitPoll); _tutWaitPoll = null; }
   document.getElementById('tut-ov')?.remove();
   const hl = document.getElementById('tut-hl-style'); if (hl) hl.textContent = '';
   if (_tutG) { showTeammateModal(_tutG); _tutG = null; }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SHOP TUTORIAL (shown once, after first shop opens)
+// ═══════════════════════════════════════════════════════
+const SHOP_TUT_DB = [
+  {icon:'🛒',title:'THE CORPORATE STORE',
+   content:'At the end of each week, the <b>Shop</b> opens. Spend your <b>coins (CC)</b> on items — the shop offers a few random items each week and refreshes next week. Spend wisely.'},
+  {icon:'💊',title:'CONSUMABLES & PASSIVES',
+   content:'<b>Consumables</b> are one-time-use — they heal WB or lower TOX immediately. <b>Passives</b> are permanent bonuses for the rest of the run (e.g., +10 PRODUCTION chips, ×1.25 RECOVERY healing). Passives compound over time.'},
+  {icon:'⚡',title:'POWER ACTIONS',
+   content:'<b>Power Actions</b> modify your deck: <b>upgrade</b> a card (+chips/+mult), permanently <b>remove</b> a weak card, or <b>reclaim</b> an exhausted card. Removing bad cards from your deck is often more powerful than adding new ones.'},
+];
+let _shopTutStep = 0;
+let _shopTutOnComplete = null;
+
+export function checkFirstShopTutorial(onComplete) {
+  if (localStorage.getItem('dl_shop_tut')) { onComplete?.(); return; }
+  localStorage.setItem('dl_shop_tut', '1');
+  _shopTutStep = 0;
+  _shopTutOnComplete = onComplete;
+  _renderShopTutStep(0);
+}
+
+function _renderShopTutStep(idx) {
+  document.getElementById('shop-tut-ov')?.remove();
+  const step = SHOP_TUT_DB[idx];
+  if (!step) { _shopTutOnComplete?.(); return; }
+  const dots = SHOP_TUT_DB.map((_, i) =>
+    '<div class="tut-dot' + (i < idx ? ' done' : i === idx ? ' active' : '') + '"></div>'
+  ).join('');
+  const isLast = idx === SHOP_TUT_DB.length - 1;
+  document.body.insertAdjacentHTML('beforeend',
+    '<div id="shop-tut-ov" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:3500">'
+    + '<div class="tut-win" style="max-width:420px;width:calc(100% - 32px)">'
+    + '<div class="tut-tbar">' + step.icon + ' DEADLINE™ — Shop Orientation · Step ' + (idx + 1) + ' of ' + SHOP_TUT_DB.length + '</div>'
+    + '<div class="tut-body"><div class="tut-step-lbl">SHOP MODULE ' + (idx + 1) + ' — ' + step.title + '</div>'
+    + '<div class="tut-text">' + step.content + '</div></div>'
+    + '<div class="tut-footer"><div class="tut-progress">' + dots + '</div>'
+    + '<div class="tut-btns">'
+    + '<button class="tut-skip" onclick="_skipShopTutorial()">Skip</button>'
+    + '<button class="w95-btn" onclick="_advanceShopTutorial()">' + (isLast ? '▶ OPEN SHOP' : 'Next →') + '</button>'
+    + '</div></div></div></div>'
+  );
+}
+
+export function _advanceShopTutorial() {
+  _shopTutStep++;
+  if (_shopTutStep >= SHOP_TUT_DB.length) { document.getElementById('shop-tut-ov')?.remove(); _shopTutOnComplete?.(); }
+  else _renderShopTutStep(_shopTutStep);
+}
+
+export function _skipShopTutorial() {
+  document.getElementById('shop-tut-ov')?.remove();
+  _shopTutOnComplete?.();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTEXTUAL TIPS (shown once per run for key events)
+// ═══════════════════════════════════════════════════════
+let _ctxTipsShown = new Set();
+
+export function resetCtxTips() { _ctxTipsShown = new Set(); }
+
+export function showContextualTip(type) {
+  if (_ctxTipsShown.has(type)) return;
+  _ctxTipsShown.add(type);
+  const tips = {
+    tox_damage: {
+      title:'☣️ TOXIC ATMOSPHERE',
+      text:'Toxicity over 50%! Each play now risks a WB damage roll. Use <b>RECOVERY</b> cards or buy <b>Espresso Shot</b> in the shop to lower TOX.',
+    },
+    low_wb: {
+      title:'❤️ LOW WELLBEING',
+      text:'WB below 60% — your score output is penalized (×0.85 mult or worse). Play <b>RECOVERY</b> cards to heal before submitting more work.',
+    },
+    first_synergy: {
+      title:'★ SYNERGY TRIGGERED',
+      text:'A combo bonus just fired! Check the game log for details. Build your plays around triggering synergies for big score multipliers.',
+    },
+  };
+  const tip = tips[type]; if (!tip) return;
+  document.getElementById('ctx-tip')?.remove();
+  const el = document.createElement('div');
+  el.id = 'ctx-tip'; el.className = 'ctx-tip';
+  el.innerHTML = '<div class="ctx-tip-title">' + tip.title + '</div>'
+    + '<div>' + tip.text + '</div>'
+    + '<div class="ctx-tip-dismiss">Click to dismiss</div>';
+  el.onclick = () => {
+    el.style.animation = 'ctx-tip-out .3s ease-out forwards';
+    setTimeout(() => el.remove(), 300);
+  };
+  document.body.appendChild(el);
+  setTimeout(() => {
+    if (el.isConnected) {
+      el.style.animation = 'ctx-tip-out .3s ease-out forwards';
+      setTimeout(() => el.remove(), 300);
+    }
+  }, 7000);
 }

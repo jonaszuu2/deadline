@@ -3,7 +3,7 @@ import { render, zoomIn, zoomOut } from './ui/render.js';
 import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showUpgradeFlash } from './ui/animations.js';
 import { showClassScreen, selectClass, dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
-import { showStartupScreen, dismissStartup, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial } from './ui/tutorial.js';
+import { showStartupScreen, dismissStartup, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial, checkFirstShopTutorial, _advanceShopTutorial, _skipShopTutorial, showContextualTip, resetCtxTips } from './ui/tutorial.js';
 import { aprCopyRun } from './share.js';
 
 // ═══════════════════════════════════════════════════════
@@ -19,6 +19,9 @@ _setUIFunctions({
   triggerKpiFlash,
   showClassScreen,
   showUpgradeFlash,
+  checkFirstShopTutorial,
+  showContextualTip,
+  resetCtxTips,
 });
 
 // ═══════════════════════════════════════════════════════
@@ -41,6 +44,8 @@ window.dismissTeammateModal = dismissTeammateModal;
 window.dismissStartup       = dismissStartup;
 window._advanceTutorial     = _advanceTutorial;
 window._skipTutorial        = _skipTutorial;
+window._advanceShopTutorial = _advanceShopTutorial;
+window._skipShopTutorial    = _skipShopTutorial;
 window.zoomIn               = zoomIn;
 window.zoomOut              = zoomOut;
 window.startHandResize      = startHandResize;

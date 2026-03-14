@@ -416,4 +416,32 @@
 .ur-card-fx{color:var(--chip);font-size:9px}
 @keyframes ur-pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 
+/* ══ CARD ANATOMY DIAGRAM (intro slide) ══ */
+.it-card-demo{border:2px solid;border-color:var(--w95d,#808080) var(--w95l,#fff) var(--w95l,#fff) var(--w95d,#808080);
+  background:#181010;padding:10px 14px;margin:10px 0;font:11px 'Courier New',monospace}
+.it-cd-arch{font:bold 8px 'Courier New',monospace;letter-spacing:2px;
+  padding:1px 5px;display:inline-block;margin-bottom:6px}
+.it-cd-arch.CRUNCH{color:#ff9040;border:1px solid #ff9040}
+.it-cd-arch.PRODUCTION{color:#6ab4ff;border:1px solid #6ab4ff}
+.it-cd-arch.STRATEGY{color:#ff9090;border:1px solid #ff9090}
+.it-cd-arch.RECOVERY{color:#60ff80;border:1px solid #60ff80}
+.it-cd-name{font:bold 13px 'Courier New',monospace;color:#fff;margin-bottom:6px}
+.it-cd-stats{margin-bottom:4px}
+.it-cd-cost{margin-bottom:4px;font-size:10px}
+.it-cd-syn{font:italic 9px 'Tahoma',sans-serif;color:#ffdd44;padding:4px 6px;
+  border-left:2px solid #ffdd44;margin-top:6px;line-height:1.5}
+
+/* ══ CONTEXTUAL TIP ══ */
+.ctx-tip{position:fixed;bottom:20px;right:20px;background:#000c00;
+  border:2px solid #00ff88;
+  box-shadow:0 0 12px rgba(0,255,136,.4),3px 3px 0 #000;
+  padding:10px 14px;max-width:280px;z-index:3500;
+  font:11px 'Tahoma',sans-serif;color:#c0ffd8;
+  cursor:pointer;animation:ctx-tip-in .3s ease-out}
+.ctx-tip-title{font:bold 9px 'Courier New',monospace;letter-spacing:1px;
+  color:#00ff88;margin-bottom:5px;text-transform:uppercase}
+.ctx-tip-dismiss{font:8px 'Tahoma',sans-serif;color:#60a070;margin-top:6px}
+@keyframes ctx-tip-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ctx-tip-out{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(10px)}}
+
 /* ══ SMALL SCREEN / LAPTOP FIXES ══ */
