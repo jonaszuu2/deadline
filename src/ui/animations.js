@@ -134,3 +134,37 @@ export function showUpgradeFlash(card) {
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2000);
 }
+
+export function startUpgradeSpin(tier, onDone) {
+  // Visible labels/colors for the slot display (same order as UPGRADE_TIERS)
+  const ALL = [
+    { label: 'STANDARD',    color: '#888888' },
+    { label: 'IMPROVED',    color: '#60c060' },
+    { label: 'EXCELLENT',   color: '#6090ff' },
+    { label: 'EXCEPTIONAL', color: '#c060ff' },
+    { label: 'LEGENDARY',   color: '#ffcc00' },
+  ];
+  // Deceleration: each value is ms to wait before the NEXT tick
+  const schedule = [35,35,35,40,45,55,68,85,108,138,175,215,260,305,350,390];
+  let step = 0;
+  let idx = Math.floor(Math.random() * ALL.length);
+
+  function tick() {
+    const el = document.getElementById('upgr-slot-display');
+    if (!el) return; // screen was closed
+    const isLast = step >= schedule.length - 1;
+    const shown  = isLast ? tier : ALL[idx % ALL.length];
+    el.textContent = shown.label;
+    el.style.color = shown.color;
+    el.style.textShadow = `0 0 18px ${shown.color}, 0 0 5px ${shown.color}`;
+    idx++;
+    if (!isLast) {
+      step++;
+      setTimeout(tick, schedule[step]);
+    } else {
+      el.classList.add('upgr-slot-locked');
+      setTimeout(onDone, 650);
+    }
+  }
+  setTimeout(tick, 80);
+}

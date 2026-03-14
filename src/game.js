@@ -1,4 +1,4 @@
-import { PLAYS, DISCS, HAND, MAX_SEL, TOX_DMG, FAIL_BO, TOTAL_WEEKS, CONTRACT_POOL, KPI, clamp } from './data/constants.js';
+import { PLAYS, DISCS, HAND, MAX_SEL, TOX_DMG, FAIL_BO, TOTAL_WEEKS, CONTRACT_POOL, KPI, clamp, UPGRADE_TIERS } from './data/constants.js';
 import { nextUid, shuffle, getUnlockedTier, setUnlockedTier, fmt1 } from './engine/utils.js';
 import { makeDeck, makeClassDeck, wbEff, pickShopItems, DECK_BLUEPRINT } from './engine/deck.js';
 import { calcTurn, simulateTurn, getRiskLevel } from './engine/calcTurn.js';
@@ -10,7 +10,7 @@ import { DB } from './data/cards.js';
 
 // UI functions resolved lazily at runtime to avoid circular dependency issues.
 // These are set by main.js after all modules have loaded.
-let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, checkFirstShopTutorial, showContextualTip, resetCtxTips;
+let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, checkFirstShopTutorial, showContextualTip, resetCtxTips, startUpgradeSpin;
 
 export function _setUIFunctions(fns) {
   render = fns.render;
@@ -24,6 +24,14 @@ export function _setUIFunctions(fns) {
   checkFirstShopTutorial = fns.checkFirstShopTutorial;
   showContextualTip = fns.showContextualTip;
   resetCtxTips = fns.resetCtxTips;
+  startUpgradeSpin = fns.startUpgradeSpin;
+}
+
+function _rollUpgradeTier() {
+  const total = UPGRADE_TIERS.reduce((s, t) => s + t.weight, 0);
+  let r = Math.random() * total;
+  for (const t of UPGRADE_TIERS) { r -= t.weight; if (r <= 0) return t; }
+  return UPGRADE_TIERS[0];
 }
 
 export class Game {
@@ -48,6 +56,7 @@ export class Game {
     this.weekHistory = []; // [{week:N, passed:bool}]
     // Upgrade reveal
     this.upgradeResultCard = null; this.upgradeResultFrom = null;
+    this.upgradeResultTier = null; this.upgradeSpinning = false;
     // Strategic mechanics
     this.pendingRemove = false; this.pendingHold = false; this.heldCards = [];
     // Boss encounter
@@ -548,19 +557,30 @@ export class Game {
     this._commit();
   }
 
-  // ── Permanently upgrade a card ──
+  // ── Permanently upgrade a card (gambling roll) ──
   upgradeCard(uid) {
     const card = [...this.deck, ...this.pile].find(c => c.uid === uid);
     if (!card) return;
     const fromChips = card.fx.chips || 0;
     const fromMult  = card.fx.mult  || 0;
-    card.fx = {...card.fx, chips: fromChips + 80, mult: Number(fmt1(fromMult + 0.3))};
+    // Weighted random roll
+    const tier = _rollUpgradeTier();
+    card.fx = {...card.fx, chips: fromChips + tier.chips, mult: Number(fmt1(fromMult + tier.mult))};
     card.upgrades = (card.upgrades || 0) + 1;
     this.pendingUpgrade = false;
     this.upgradeResultCard = card;
     this.upgradeResultFrom = { chips: fromChips, mult: fromMult };
+    this.upgradeResultTier = tier;
+    this.upgradeSpinning = true;
     this.phase = 'upgrade_result';
-    this.addLog('ok', `> ⬆️ [${card.name}] upgraded: +80 Chips, +0.3 Mult permanently.`);
+    this.addLog('ok', `> ⬆️ [${card.name}] upgraded (${tier.label}): +${tier.chips} Chips, +${tier.mult} Mult permanently.`);
+    this._commit();
+    startUpgradeSpin(tier, () => this.stopUpgradeSpin());
+  }
+
+  // ── Called by animation when spin completes ──
+  stopUpgradeSpin() {
+    this.upgradeSpinning = false;
     this._commit();
   }
 
@@ -568,6 +588,8 @@ export class Game {
   dismissUpgradeResult() {
     this.upgradeResultCard = null;
     this.upgradeResultFrom = null;
+    this.upgradeResultTier = null;
+    this.upgradeSpinning = false;
     this.phase = 'shop';
     this._commit();
   }

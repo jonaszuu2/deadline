@@ -83,6 +83,17 @@ export const CONTRACT_POOL = [
    check: G => G.crunchPlayed !== true},
 ];
 
+// ═══════════════════════════════════════════════════════
+//  UPGRADE TIER TABLE  (gambling roll on Performance Upgrade)
+// ═══════════════════════════════════════════════════════
+export const UPGRADE_TIERS = [
+  { id:'standard',    chips:30,  mult:0.2, weight:50, label:'STANDARD',    color:'#888888', msg:'A solid, if unremarkable, improvement.' },
+  { id:'improved',    chips:50,  mult:0.3, weight:25, label:'IMPROVED',    color:'#60c060', msg:'Better than expected. Nice.' },
+  { id:'excellent',   chips:70,  mult:0.5, weight:15, label:'EXCELLENT',   color:'#6090ff', msg:'Outstanding execution.' },
+  { id:'exceptional', chips:100, mult:0.7, weight: 8, label:'EXCEPTIONAL', color:'#c060ff', msg:'Exceptional performance. Noted.' },
+  { id:'legendary',   chips:150, mult:1.0, weight: 2, label:'LEGENDARY',   color:'#ffcc00', msg:'A once-in-a-career result.' },
+];
+
 export const CAREER_DB = [
   {tier:10,min:15000,title:'VP of Synergy Marketing',
    desc:"I don't work. I am the vision. The entire Q4 target is my coffee budget.",

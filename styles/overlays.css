@@ -547,4 +547,37 @@
   animation:upgr-compare-in .4s .45s ease-out both}
 .upgr-continue-btn:hover{background:#002a00;box-shadow:0 0 12px rgba(68,255,136,.4)}
 
+/* ── Slot machine (spinning phase) ── */
+.upgr-slot-wrap{display:flex;flex-direction:column;align-items:center;gap:22px;margin:8px 0}
+.upgr-slot-box{width:300px;height:68px;border:2px solid rgba(255,255,255,.15);
+  background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden}
+.upgr-slot-scanline{position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,
+    rgba(255,255,255,.04) 3px,rgba(255,255,255,.04) 4px)}
+#upgr-slot-display{font:bold 24px 'Courier New',monospace;letter-spacing:4px;
+  z-index:1;transition:color .04s;color:#888}
+.upgr-slot-locked{animation:upgr-lock .45s ease-out}
+@keyframes upgr-lock{
+  0%  {transform:scale(1.4);filter:brightness(4)}
+  40% {transform:scale(1.15);filter:brightness(2)}
+  100%{transform:scale(1);filter:brightness(1)}}
+.upgr-prob-strip{display:flex;align-items:flex-end;gap:10px}
+.upgr-prob-item{display:flex;flex-direction:column;align-items:center;gap:3px;width:54px}
+.upgr-prob-bar{width:100%;min-height:3px;opacity:.55}
+.upgr-prob-pct{font:bold 9px 'Courier New',monospace}
+.upgr-prob-name{font:7px 'Courier New',monospace;color:var(--dim);
+  letter-spacing:.3px;text-align:center;line-height:1.2}
+
+/* ── Reveal phase extras ── */
+.upgr-reveal{animation:upgr-in .4s ease-out}
+.upgr-tier-badge{font:bold 13px 'Courier New',monospace;letter-spacing:4px;
+  border:2px solid;padding:5px 18px;margin-bottom:6px;
+  animation:upgr-tier-pop .5s cubic-bezier(.17,.67,.31,1.5) both}
+@keyframes upgr-tier-pop{
+  from{opacity:0;transform:scale(.6)}
+  to  {opacity:1;transform:scale(1)}}
+.upgr-tier-msg{font:italic 11px 'Tahoma',sans-serif;margin-bottom:14px;text-align:center;
+  animation:upgr-compare-in .4s .15s ease-out both}
+
 /* ══ SMALL SCREEN / LAPTOP FIXES ══ */

@@ -1,4 +1,4 @@
-import { clamp, KPI, TOTAL_WEEKS, PLAYS, MAX_SEL, CAREER_DB } from '../data/constants.js';
+import { clamp, KPI, TOTAL_WEEKS, PLAYS, MAX_SEL, CAREER_DB, UPGRADE_TIERS } from '../data/constants.js';
 import { SHOP_DB } from '../data/shop.js';
 import { COMP_DB, TEAMMATES_DB, CLASS_DB } from '../data/content.js';
 import { BOSS_DB } from '../data/boss.js';
@@ -955,24 +955,41 @@ export function renderUpgradeResult(G) {
   const from = G.upgradeResultFrom || { chips: 0, mult: 0 };
   if (!card) { G.dismissUpgradeResult(); return ''; }
 
+  // ── PHASE 1: slot machine spinning ─────────────────────
+  if (G.upgradeSpinning) {
+    const probBars = UPGRADE_TIERS.map(t => `
+      <div class="upgr-prob-item">
+        <div class="upgr-prob-bar" style="height:${Math.round(t.weight * 1.6)}px;background:${t.color}"></div>
+        <div class="upgr-prob-pct" style="color:${t.color}">${t.weight}%</div>
+        <div class="upgr-prob-name">${t.label}</div>
+      </div>`).join('');
+    return `<div class="upgr-screen">
+      <div class="upgr-title">⬆ PERFORMANCE UPGRADE</div>
+      <div class="upgr-subtitle">Rolling outcome...</div>
+      <div class="upgr-slot-wrap">
+        <div class="upgr-slot-box">
+          <div class="upgr-slot-scanline"></div>
+          <div id="upgr-slot-display" class="upgr-slot-display">???</div>
+        </div>
+        <div class="upgr-prob-strip">${probBars}</div>
+      </div>
+    </div>`;
+  }
+
+  // ── PHASE 2: reveal result ──────────────────────────────
+  const tier     = G.upgradeResultTier || UPGRADE_TIERS[0];
   const upg      = card.upgrades || 0;
   const upgCls   = upg >= 3 ? ' card-up3' : upg === 2 ? ' card-up2' : upg >= 1 ? ' card-up1' : '';
-  const archColors = {
-    PRODUCTION: { glow: '#3878cc', tag: '#6ab4ff' },
-    STRATEGY:   { glow: '#be2828', tag: '#ff9090' },
-    CRUNCH:     { glow: '#a02000', tag: '#ff6030' },
-    RECOVERY:   { glow: '#1e8028', tag: '#60ff80' },
-  };
-  const ac = archColors[card.archetype] || { glow: '#558', tag: '#aaa' };
-
+  const archGlow = { PRODUCTION:'#3878cc', STRATEGY:'#be2828', CRUNCH:'#a02000', RECOVERY:'#1e8028' };
+  const glow     = archGlow[card.archetype] || '#556';
   const newChips = card.fx.chips || 0;
   const newMult  = card.fx.mult  || 0;
 
-  return `<div class="upgr-screen">
-    <div class="upgr-title">⬆ PERFORMANCE UPGRADE</div>
-    <div class="upgr-subtitle">Card permanently improved</div>
+  return `<div class="upgr-screen upgr-reveal">
+    <div class="upgr-tier-badge" style="color:${tier.color};border-color:${tier.color}">${tier.label}</div>
+    <div class="upgr-tier-msg" style="color:${tier.color}">${tier.msg}</div>
     <div class="upgr-card-wrap">
-      <div class="upgr-glow" style="--glow-col:${ac.glow}"></div>
+      <div class="upgr-glow" style="--glow-col:${glow}"></div>
       <div class="oc-card ${card.archetype}${upgCls} upgr-card">
         <div class="oc-top">
           <span class="oc-arch">${card.archetype}</span>
@@ -993,14 +1010,14 @@ export function renderUpgradeResult(G) {
         <span class="upgr-cmp-before">${from.chips}</span>
         <span class="upgr-cmp-arrow">→</span>
         <span class="upgr-cmp-after upgr-cmp-chips">${newChips}</span>
-        <span class="upgr-cmp-delta">+80</span>
+        <span class="upgr-cmp-delta" style="color:${tier.color};border-color:${tier.color}60">+${tier.chips}</span>
       </div>
       <div class="upgr-cmp-row">
         <span class="upgr-cmp-label">Mult</span>
         <span class="upgr-cmp-before">×${from.mult.toFixed(2)}</span>
         <span class="upgr-cmp-arrow">→</span>
         <span class="upgr-cmp-after upgr-cmp-mult">×${newMult.toFixed(2)}</span>
-        <span class="upgr-cmp-delta">+0.3</span>
+        <span class="upgr-cmp-delta" style="color:${tier.color};border-color:${tier.color}60">+${tier.mult}</span>
       </div>
     </div>
     <button class="upgr-continue-btn" onclick="G.dismissUpgradeResult()">▶ CONTINUE TO SHOP</button>
