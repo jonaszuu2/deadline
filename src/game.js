@@ -302,16 +302,8 @@ export class Game {
       this.discardMultStack = fmt1(this.discardMultStack + bonus);
       discardLog += ` 🗑️ Risk Mitigator: +${fmt1(bonus)} Mult (total ${this.discardMultStack}×).`;
     }
-    // Targeted Draw: if deck has 3+ cards, offer choice instead of random draw
-    if (this.deck.length >= 3) {
-      this.targetedDrawOptions = this.deck.slice(-3).reverse(); // top 3 cards
-      this.phase = 'targeted_draw';
-      this.addLog('ch', discardLog + ' Choose a card to draw.');
-      this._commit();
-    } else {
-      this.addLog('ch', discardLog + ' Drawing...');
-      this.drawUp(); this._commit();
-    }
+    this.addLog('ch', discardLog);
+    this.drawUp(); this._commit();
   }
 
   playSelected() {
