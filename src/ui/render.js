@@ -77,6 +77,10 @@ export function render(G) {
     document.getElementById('win-body').innerHTML = renderPowerEvent(G);
     return;
   }
+  if (G.phase === 'upgrade_result') {
+    document.getElementById('win-body').innerHTML = renderUpgradeResult(G);
+    return;
+  }
   if (G.phase === 'shop') {
     document.getElementById('win-body').innerHTML = renderShop(G);
     return;
@@ -261,6 +265,7 @@ export function renderEmployeeDashboard(wb, tox, bo, preview) {
     <div class="ed-title">EMPLOYEE DASHBOARD</div>
     ${edStat('❤️', 'Wellbeing', wb,  'wb',  wbD,  '#ff80c8', wb  < 25 ? 'danger' : '', wbRiskFc)}
     ${edStat('☣️', 'Toxicity',  tox, 'tox', toxD, '#50ffaa', tox > 50 ? 'danger' : '')}
+    ${edStat('🔥', 'Burnout',   bo,  'bo',  boD,  '#ff6030', bo  > 75 ? 'danger' : '')}
     <div class="tox-tier-badge ${tierInfo.cls}" title="${tierInfo.tip}">${tierInfo.lbl}</div>
   </div>`;
 }
@@ -635,54 +640,98 @@ export function _fxBadges(fx) {
 }
 
 export function renderBossEncounter(G) {
-  const boss = BOSS_DB.midgame;
-  let inner;
+  const boss = BOSS_DB[G.currentBoss] || BOSS_DB.midgame;
+  const cssVars = `--bc:${boss.color};--bce:${boss.colorEnd}`;
+
+  const identityPanel = `
+    <div class="be-left">
+      <div class="be-portrait">${boss.portrait}</div>
+      <div class="be-name">${esc(boss.name)}</div>
+      <div class="be-title">${esc(boss.title)}</div>
+      <div class="be-id-stats">
+        <div class="be-id-stat${G.tox >= 60 ? ' be-id-warn' : ''}">☣ TOX <b>${G.tox}%</b></div>
+        <div class="be-id-stat${G.wb <= 30 ? ' be-id-warn' : ''}">❤ WB <b>${G.wb}%</b></div>
+        <div class="be-id-stat">🔥 BO <b>${G.bo}%</b></div>
+      </div>
+    </div>`;
+
+  let rightPanel;
+
   if (G.bossPhase === 'question') {
     const q    = boss.questions[G.bossQIdx];
-    const dots = boss.questions.map((_, i) => i <= G.bossQIdx ? '●' : '○').join(' ');
-    const intro = G.bossQIdx === 0 ? `<div class="boss-intro">${esc(boss.intro)}</div>` : '';
-    const opts  = q.options.map((o, i) =>
-      `<button class="boss-opt" onclick="G.answerBossQuestion(${i})">${esc(o.label)}</button>`
+    const dots = boss.questions.map((_, i) => {
+      const cls = i < G.bossQIdx ? ' be-dot-done' : i === G.bossQIdx ? ' be-dot-cur' : '';
+      return `<span class="be-dot${cls}">${i < G.bossQIdx ? '◆' : i === G.bossQIdx ? '◈' : '◇'}</span>`;
+    }).join('');
+    const intro = G.bossQIdx === 0
+      ? `<div class="be-intro">${esc(boss.intro)}</div>` : '';
+    const opts = q.options.map((o, i) =>
+      `<button class="be-opt" onclick="G.answerBossQuestion(${i})">
+        <span class="be-opt-key">${String.fromCharCode(65 + i)}</span>
+        <span class="be-opt-label">${esc(o.label)}</span>
+      </button>`
     ).join('');
-    inner = `
-      <div class="boss-portrait-row">
-        <div class="boss-portrait">${boss.portrait}</div>
-        <div><div class="boss-name">${esc(boss.name)}</div><div class="boss-title">${esc(boss.title)}</div></div>
-      </div>
-      ${intro}
-      <div class="boss-q-dots">${dots}</div>
-      <div class="boss-q-text">${esc(q.text)}</div>
-      <div class="boss-opts">${opts}</div>`;
+    rightPanel = `
+      <div class="be-right">
+        <div class="be-progress">${dots}<span class="be-prog-lbl">Q${G.bossQIdx + 1} / ${boss.questions.length}</span></div>
+        ${intro}
+        <div class="be-q-text">${esc(q.text)}</div>
+        <div class="be-opts">${opts}</div>
+      </div>`;
+
   } else if (G.bossPhase === 'result') {
-    const entry = G.bossAnswerLog[G.bossAnswerLog.length - 1];
+    const entry  = G.bossAnswerLog[G.bossAnswerLog.length - 1];
     const isLast = G.bossQIdx >= boss.questions.length - 1;
-    inner = `
-      <div class="boss-portrait-row">
-        <div class="boss-portrait">${boss.portrait}</div>
-        <div><div class="boss-name">${esc(boss.name)}</div><div class="boss-title">${esc(boss.title)}</div></div>
-      </div>
-      <div class="boss-result-flavor">${esc(entry.opt.flavor)}</div>
-      <div class="boss-fx-badges">${_fxBadges(entry.fx)}</div>
-      <button class="w95-btn" onclick="G.advanceBoss()">${isLast ? 'See rewards →' : 'Next question →'}</button>`;
+    const badges = _fxBadges(entry.fx);
+    rightPanel = `
+      <div class="be-right be-right-result">
+        <div class="be-result-lbl">RESPONSE</div>
+        <div class="be-flavor">${esc(entry.opt.flavor)}</div>
+        ${badges ? `<div class="be-fx-row">${badges}</div>` : ''}
+        <button class="be-next-btn" onclick="G.advanceBoss()">${isLast ? 'Review complete →' : 'Next question →'}</button>
+      </div>`;
+
   } else {
-    const cards = G.bossRewardPool.map(r =>
-      `<div class="boss-reward" onclick="G.claimBossReward('${r.id}')">
-        <div class="boss-reward-icon">${r.icon}</div>
-        <div class="boss-reward-label">${esc(r.label)}</div>
-        <div class="boss-reward-desc">${esc(r.desc)}</div>
+    const rewards = G.bossRewardPool.map(r =>
+      `<div class="be-reward" onclick="G.claimBossReward('${r.id}')">
+        <div class="be-rw-icon">${r.icon}</div>
+        <div class="be-rw-label">${esc(r.label)}</div>
+        <div class="be-rw-desc">${esc(r.desc)}</div>
       </div>`
     ).join('');
-    inner = `
-      <div style="font:bold 13px 'Tahoma',sans-serif;margin-bottom:4px">REVIEW COMPLETE</div>
-      <div style="font:10px 'Tahoma',sans-serif;color:var(--dim);margin-bottom:12px">Derek closes his laptop. "Pick your performance bonus."</div>
-      <div class="boss-reward-grid">${cards}</div>`;
+    return `<div class="be-root" style="${cssVars}">
+      <div class="be-banner">
+        <span class="be-banner-ico">⚠</span>
+        <span class="be-banner-week">WEEK ${G.week}</span>
+        <span class="be-banner-sep">·</span>
+        <span class="be-banner-enc">${esc(boss.encounter)}</span>
+      </div>
+      <div class="be-reward-screen">
+        <div class="be-rw-header">
+          <div class="be-rw-portrait">${boss.portrait}</div>
+          <div>
+            <div class="be-rw-complete">REVIEW COMPLETE</div>
+            <div class="be-rw-sub">${esc(boss.name)} closes their notebook. Select your performance bonus.</div>
+          </div>
+        </div>
+        <div class="be-reward-grid">${rewards}</div>
+      </div>
+    </div>`;
   }
-  return `<div class="shop-layout">
-    <div class="shop-panel">
-      <div class="boss-tbar">⚠ WEEK 5 — 1:1 WITH DEREK</div>
-      <div class="boss-body">${inner}</div>
+
+  return `<div class="be-root" style="${cssVars}">
+    <div class="be-banner">
+      <span class="be-banner-ico">⚠</span>
+      <span class="be-banner-week">WEEK ${G.week}</span>
+      <span class="be-banner-sep">·</span>
+      <span class="be-banner-enc">${esc(boss.encounter)}</span>
+      <span class="be-banner-sep">·</span>
+      <span class="be-banner-name">${esc(boss.name.toUpperCase())}</span>
     </div>
-    ${renderLog(G.log, null)}
+    <div class="be-body">
+      ${identityPanel}
+      ${rightPanel}
+    </div>
   </div>`;
 }
 
@@ -898,6 +947,63 @@ export function renderTargetedDraw(G) {
       <div class="dr-sub">Top 3 cards from your deck — choose 1 to draw into your hand</div>
     </div>
     <div class="dr-cards">${cardsHtml}</div>
+  </div>`;
+}
+
+export function renderUpgradeResult(G) {
+  const card = G.upgradeResultCard;
+  const from = G.upgradeResultFrom || { chips: 0, mult: 0 };
+  if (!card) { G.dismissUpgradeResult(); return ''; }
+
+  const upg      = card.upgrades || 0;
+  const upgCls   = upg >= 3 ? ' card-up3' : upg === 2 ? ' card-up2' : upg >= 1 ? ' card-up1' : '';
+  const archColors = {
+    PRODUCTION: { glow: '#3878cc', tag: '#6ab4ff' },
+    STRATEGY:   { glow: '#be2828', tag: '#ff9090' },
+    CRUNCH:     { glow: '#a02000', tag: '#ff6030' },
+    RECOVERY:   { glow: '#1e8028', tag: '#60ff80' },
+  };
+  const ac = archColors[card.archetype] || { glow: '#558', tag: '#aaa' };
+
+  const newChips = card.fx.chips || 0;
+  const newMult  = card.fx.mult  || 0;
+
+  return `<div class="upgr-screen">
+    <div class="upgr-title">⬆ PERFORMANCE UPGRADE</div>
+    <div class="upgr-subtitle">Card permanently improved</div>
+    <div class="upgr-card-wrap">
+      <div class="upgr-glow" style="--glow-col:${ac.glow}"></div>
+      <div class="oc-card ${card.archetype}${upgCls} upgr-card">
+        <div class="oc-top">
+          <span class="oc-arch">${card.archetype}</span>
+          <span class="oc-rarity">${card.rarity || ''}</span>
+        </div>
+        ${upg > 0 ? `<span class="oc-up-badge${upg >= 3 ? ' up3' : upg === 2 ? ' up2' : ''}">&#8679; ×${upg} UPG</span>` : ''}
+        <div class="oc-name">${esc(card.name)}</div>
+        ${card.flavor ? `<div class="oc-flavor">"${esc(card.flavor)}"</div>` : ''}
+        <div class="oc-fx-row">
+          ${newChips > 0 ? `<span class="oc-fx-chip">🔵 ${newChips} Chips</span>` : ''}
+          ${newMult  > 0 ? `<span class="oc-fx-mult">🔴 ×${newMult.toFixed(2)} Mult</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="upgr-compare">
+      <div class="upgr-cmp-row">
+        <span class="upgr-cmp-label">Chips</span>
+        <span class="upgr-cmp-before">${from.chips}</span>
+        <span class="upgr-cmp-arrow">→</span>
+        <span class="upgr-cmp-after upgr-cmp-chips">${newChips}</span>
+        <span class="upgr-cmp-delta">+80</span>
+      </div>
+      <div class="upgr-cmp-row">
+        <span class="upgr-cmp-label">Mult</span>
+        <span class="upgr-cmp-before">×${from.mult.toFixed(2)}</span>
+        <span class="upgr-cmp-arrow">→</span>
+        <span class="upgr-cmp-after upgr-cmp-mult">×${newMult.toFixed(2)}</span>
+        <span class="upgr-cmp-delta">+0.3</span>
+      </div>
+    </div>
+    <button class="upgr-continue-btn" onclick="G.dismissUpgradeResult()">▶ CONTINUE TO SHOP</button>
   </div>`;
 }
 

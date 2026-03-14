@@ -10,7 +10,7 @@ import { DB } from './data/cards.js';
 
 // UI functions resolved lazily at runtime to avoid circular dependency issues.
 // These are set by main.js after all modules have loaded.
-let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, showUpgradeFlash, checkFirstShopTutorial, showContextualTip, resetCtxTips;
+let render, scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, showClassScreen, checkFirstShopTutorial, showContextualTip, resetCtxTips;
 
 export function _setUIFunctions(fns) {
   render = fns.render;
@@ -46,12 +46,15 @@ export class Game {
     this.totalMultSum = 0; this.totalPlayCount = 0; this.isTerminated = false;
     this.failedWeeks = 0; this.endCondition = 'annual'; // 'annual'|'burnout'|'terminated'
     this.weekHistory = []; // [{week:N, passed:bool}]
+    // Upgrade reveal
+    this.upgradeResultCard = null; this.upgradeResultFrom = null;
     // Strategic mechanics
     this.pendingRemove = false; this.pendingHold = false; this.heldCards = [];
     // Boss encounter
-    this.bossEncounterDone = false; this.bossPhase = 'question'; this.bossQIdx = 0;
+    this.bossEncountersDone = new Set(); this.currentBoss = null;
+    this.bossPhase = 'question'; this.bossQIdx = 0;
     this.bossAnswerLog = []; this.bossChosenRewards = []; this.bossRewardPool = [];
-    this.bossExtraPlay = false; this.permMult = 0;
+    this.bossExtraPlay = 0; this.permMult = 0;
     // Draft state
     this.draftPool = []; this.pendingDraftCard = null;
     // Class state
@@ -549,9 +552,23 @@ export class Game {
   upgradeCard(uid) {
     const card = [...this.deck, ...this.pile].find(c => c.uid === uid);
     if (!card) return;
-    card.fx = {...card.fx, chips: (card.fx.chips || 0) + 80, mult: Number(fmt1((card.fx.mult || 0) + 0.3))};
+    const fromChips = card.fx.chips || 0;
+    const fromMult  = card.fx.mult  || 0;
+    card.fx = {...card.fx, chips: fromChips + 80, mult: Number(fmt1(fromMult + 0.3))};
+    card.upgrades = (card.upgrades || 0) + 1;
     this.pendingUpgrade = false;
+    this.upgradeResultCard = card;
+    this.upgradeResultFrom = { chips: fromChips, mult: fromMult };
+    this.phase = 'upgrade_result';
     this.addLog('ok', `> ⬆️ [${card.name}] upgraded: +80 Chips, +0.3 Mult permanently.`);
+    this._commit();
+  }
+
+  // ── Dismiss upgrade reveal → return to shop ──
+  dismissUpgradeResult() {
+    this.upgradeResultCard = null;
+    this.upgradeResultFrom = null;
+    this.phase = 'shop';
     this._commit();
   }
 
@@ -703,8 +720,10 @@ export class Game {
 
   _openShopAfterDraft() {
     this.draftPool = [];
-    if (this.week === 5 && !this.bossEncounterDone) {
-      this.phase = 'boss'; this.bossPhase = 'question'; this.bossQIdx = 0; this.bossAnswerLog = [];
+    const _bossId = {2:'early', 5:'midgame', 8:'late'}[this.week];
+    if (_bossId && !this.bossEncountersDone.has(this.week)) {
+      this.phase = 'boss'; this.bossPhase = 'question'; this.bossQIdx = 0;
+      this.bossAnswerLog = []; this.currentBoss = _bossId;
       this._commit(); return;
     }
     // Power Spike Event — runs after draft on weeks 3, 6, 9
@@ -790,8 +809,10 @@ export class Game {
       this.powerEventOptions = this._buildPowerEventOptions();
       this.phase = 'power_event'; this._commit(); return;
     }
-    if (this.week === 5 && !this.bossEncounterDone) {
-      this.phase = 'boss'; this.bossPhase = 'question'; this.bossQIdx = 0; this.bossAnswerLog = [];
+    const _bossId2 = {2:'early', 5:'midgame', 8:'late'}[this.week];
+    if (_bossId2 && !this.bossEncountersDone.has(this.week)) {
+      this.phase = 'boss'; this.bossPhase = 'question'; this.bossQIdx = 0;
+      this.bossAnswerLog = []; this.currentBoss = _bossId2;
       this._commit(); return;
     }
     this.shopItems = this._buildShopItems();
@@ -800,7 +821,7 @@ export class Game {
   }
 
   answerBossQuestion(optionIdx) {
-    const boss = BOSS_DB.midgame;
+    const boss = BOSS_DB[this.currentBoss];
     const q = boss.questions[this.bossQIdx];
     const opt = q.options[optionIdx];
     const fx = opt.fx;
@@ -815,14 +836,14 @@ export class Game {
     if (fx.bo)      fxParts.push(`${fx.bo > 0 ? '+' : ''}${fx.bo}% BO`);
     if (fx.coins)   fxParts.push(`${fx.coins > 0 ? '+' : ''}${fx.coins} CC`);
     if (fx.kpiMult) fxParts.push(`KPI ×${fx.kpiMult}`);
-    this.addLog('i', `> [Derek Q${this.bossQIdx + 1}] "${opt.label}" — ${fxParts.join(', ')}`);
+    this.addLog('i', `> [${boss.name} Q${this.bossQIdx + 1}] "${opt.label}" — ${fxParts.join(', ')}`);
     this.bossAnswerLog.push({qId: q.id, optIdx: optionIdx, opt, fx});
     this.bossPhase = 'result';
     this._commit();
   }
 
   advanceBoss() {
-    const boss = BOSS_DB.midgame;
+    const boss = BOSS_DB[this.currentBoss];
     if (this.bossQIdx < boss.questions.length - 1) {
       this.bossQIdx++; this.bossPhase = 'question';
     } else {
@@ -833,7 +854,7 @@ export class Game {
   }
 
   _buildBossRewardPool() {
-    const pool = [...BOSS_DB.midgame.rewardPool];
+    const pool = [...BOSS_DB[this.currentBoss].rewardPool];
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -853,8 +874,9 @@ export class Game {
       if (fx.permMult) this.permMult = fmt1((this.permMult || 0) + fx.permMult);
       this.addLog('ok', `> 🎁 Boss Reward claimed: ${reward.label}`);
     } else if (reward.type === 'EXTRA_PLAY') {
-      this.bossExtraPlay = true;
-      this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — one extra play next week!`);
+      const extra = reward.fx.extraPlays || 1;
+      this.bossExtraPlay = (this.bossExtraPlay || 0) + extra;
+      this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — +${extra} play(s) next week!`);
     } else if (reward.type === 'PASSIVE') {
       this.passives.push({itemId: reward.id, name: reward.label, passiveType: reward.passiveType, passiveVal: reward.passiveVal});
       this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} passive installed.`);
@@ -866,11 +888,22 @@ export class Game {
         this.deck.splice(at, 0, newCard);
         this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} added to deck.`);
       }
+    } else if (reward.type === 'REMOVE') {
+      this.pendingRemove = true;
+      this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — choose a card to remove.`);
+    } else if (reward.type === 'UPGRADE') {
+      this.pendingUpgrade = true;
+      this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — choose a card to upgrade.`);
+    } else if (reward.type === 'REMOVE_ADD') {
+      this.pendingRemove = true;
+      this.pendingDraftCard = true;
+      this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — remove a card, then draft a replacement.`);
     }
-    this.bossEncounterDone = true;
+    this.bossEncountersDone.add(this.week);
     this.bossChosenRewards.push(rewardId);
     this.shopItems = this._buildShopItems();
     this.phase = 'shop'; this._commit();
+    checkFirstShopTutorial?.();
   }
 
   buyItem(itemId) {
@@ -1001,9 +1034,10 @@ export class Game {
       this.addLog('wg', `> ☀ [Office Sunshine] Start of week — +${COMP_DB.comp_sunshine.passiveVal} Wellbeing → ${this.wb}%`);
     }
     // Boss extra play reward
-    if (this.bossExtraPlay) {
-      this.plays++; this.playsMax++; this.bossExtraPlay = false;
-      this.addLog('ok', `> ⏱️ Free Overtime turn granted — +1 play this week.`);
+    if (this.bossExtraPlay > 0) {
+      this.plays += this.bossExtraPlay; this.playsMax += this.bossExtraPlay;
+      this.addLog('ok', `> ⏱️ Boss Overtime — +${this.bossExtraPlay} play(s) this week.`);
+      this.bossExtraPlay = 0;
     }
     // Held cards from Overtime Briefcase — added directly to hand
     if (this.heldCards.length) {

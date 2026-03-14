@@ -296,40 +296,106 @@
 .apr-rc-fail .apr-rc-status{color:#ff6060}
 .apr-rc-fail .apr-rc-desc{text-decoration:line-through;color:var(--dim)}
 
-/* ══ BOSS ENCOUNTER ══ */
-.boss-tbar{background:linear-gradient(90deg,#800000,#c01020);color:#fff;
-           font:bold 11px 'Tahoma',sans-serif;padding:4px 8px;letter-spacing:.5px}
-.boss-body{padding:10px;background:var(--w95);overflow-y:auto}
-.boss-portrait-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;
-                   padding-bottom:8px;border-bottom:1px solid var(--w95d)}
-.boss-portrait{font-size:42px;line-height:1}
-.boss-name{font:bold 13px 'Tahoma',sans-serif;color:#000}
-.boss-title{font:10px 'Tahoma',sans-serif;color:var(--w95dd)}
-.boss-intro{font:italic 10px 'Tahoma',sans-serif;color:#444;margin-bottom:10px;
-            padding:6px 8px;background:#f4f0e8;border-left:3px solid #800000}
-.boss-q-dots{font-size:14px;letter-spacing:4px;margin-bottom:5px;color:#000}
-.boss-q-text{font:bold 12px 'Tahoma',sans-serif;color:#000;margin-bottom:10px;line-height:1.4}
-.boss-opts{display:flex;flex-direction:column;gap:6px}
-.boss-opt{background:var(--w95);border:2px outset var(--w95l);padding:8px 12px;
-          cursor:pointer;font:11px 'Tahoma',sans-serif;text-align:left;color:#000}
-.boss-opt:hover{background:#d4d0c8}
-.boss-opt:active{border-style:inset}
-.boss-result-flavor{font:italic 12px 'Tahoma',sans-serif;color:#333;
-                    margin-bottom:8px;padding:6px 8px;background:#f4f0e8;
-                    border-left:3px solid #800000}
-.boss-fx-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
-.boss-fx-pos{background:#c8ffc8;border:1px solid #40a040;padding:2px 6px;
-             font:bold 10px 'Tahoma',sans-serif;color:#004000}
-.boss-fx-neg{background:#ffc8c8;border:1px solid #c04040;padding:2px 6px;
-             font:bold 10px 'Tahoma',sans-serif;color:#600000}
-.boss-reward-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
-.boss-reward{background:var(--w95);border:2px outset var(--w95l);padding:10px 8px;
-             cursor:pointer;text-align:center}
-.boss-reward:hover{background:#d4d0c8;border-color:#000}
-.boss-reward:active{border-style:inset}
-.boss-reward-icon{font-size:24px;margin-bottom:4px}
-.boss-reward-label{font:bold 10px 'Tahoma',sans-serif;color:#000;margin-bottom:3px}
-.boss-reward-desc{font:9px 'Tahoma',sans-serif;color:var(--w95dd)}
+/* ══ BOSS ENCOUNTER (cinematic) ══ */
+.be-root{display:flex;flex-direction:column;flex:1;min-height:0;
+  background:var(--bg);overflow:hidden;animation:be-in .3s ease-out}
+@keyframes be-in{from{opacity:0}to{opacity:1}}
+
+/* ── top banner ── */
+.be-banner{background:linear-gradient(90deg,var(--bc),var(--bce));
+  padding:5px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;
+  position:relative;overflow:hidden}
+.be-banner::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,
+    rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)}
+.be-banner-ico{font-size:13px;z-index:1}
+.be-banner-week{font:bold 11px 'Courier New',monospace;color:#fff;letter-spacing:2px;z-index:1}
+.be-banner-sep{color:rgba(255,255,255,.35);z-index:1}
+.be-banner-enc{font:10px 'Courier New',monospace;color:rgba(255,255,255,.8);letter-spacing:1px;z-index:1}
+.be-banner-name{font:bold 11px 'Courier New',monospace;color:#fff;letter-spacing:2px;
+  margin-left:auto;z-index:1}
+
+/* ── two-column body ── */
+.be-body{display:flex;flex:1;min-height:0;overflow:hidden;
+  animation:be-body-in .3s .1s ease-out both}
+@keyframes be-body-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── left: identity panel ── */
+.be-left{width:128px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;
+  padding:18px 8px 14px;gap:4px;border-right:1px solid var(--bc);
+  background:linear-gradient(180deg,rgba(255,255,255,.03) 0%,transparent 100%)}
+.be-portrait{font-size:58px;line-height:1;margin-bottom:8px;
+  filter:drop-shadow(0 0 10px var(--bc))}
+.be-name{font:bold 11px 'Courier New',monospace;color:#fff;letter-spacing:1px;text-align:center}
+.be-title{font:9px 'Tahoma',sans-serif;color:var(--dim);text-align:center;line-height:1.45;
+  margin-bottom:8px}
+.be-id-stats{display:flex;flex-direction:column;gap:4px;width:100%;margin-top:auto;
+  border-top:1px solid rgba(255,255,255,.07);padding-top:8px}
+.be-id-stat{font:9px 'Courier New',monospace;color:#666;display:flex;
+  justify-content:space-between;padding:1px 2px}
+.be-id-stat b{color:#999}
+.be-id-warn b{color:#ff5050;animation:be-blink .9s ease-in-out infinite alternate}
+@keyframes be-blink{from{opacity:1}to{opacity:.4}}
+
+/* ── right: content area ── */
+.be-right{flex:1;padding:16px 18px;display:flex;flex-direction:column;
+  overflow-y:auto;min-width:0}
+.be-progress{display:flex;align-items:center;gap:5px;margin-bottom:13px}
+.be-dot{font-size:11px;color:rgba(255,255,255,.18);line-height:1}
+.be-dot-done{color:var(--bc);filter:drop-shadow(0 0 4px var(--bc))}
+.be-dot-cur{color:#fff;font-size:14px;filter:drop-shadow(0 0 6px #fff)}
+.be-prog-lbl{font:9px 'Courier New',monospace;color:var(--dim);margin-left:6px}
+.be-intro{font:italic 11px 'Tahoma',sans-serif;color:#bbb;line-height:1.55;
+  margin-bottom:14px;padding:10px 14px;
+  background:rgba(255,255,255,.04);border-left:3px solid var(--bc)}
+.be-q-text{font:bold 13px 'Tahoma',sans-serif;color:#fff;line-height:1.45;margin-bottom:16px}
+.be-opts{display:flex;flex-direction:column;gap:7px}
+.be-opt{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  padding:10px 14px;cursor:pointer;text-align:left;color:#bbb;
+  display:flex;align-items:center;gap:10px;
+  transition:background .12s,border-color .12s,color .12s}
+.be-opt:hover{background:rgba(255,255,255,.09);border-color:var(--bc);color:#fff}
+.be-opt:active{background:rgba(255,255,255,.14)}
+.be-opt-key{font:bold 10px 'Courier New',monospace;color:var(--bc);flex-shrink:0;
+  width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--bc);background:rgba(255,255,255,.05)}
+.be-opt-label{font:11px 'Tahoma',sans-serif;flex:1}
+
+/* ── result phase ── */
+.be-right-result{animation:be-body-in .25s ease-out both}
+.be-result-lbl{font:bold 9px 'Courier New',monospace;color:var(--dim);
+  letter-spacing:2px;margin-bottom:9px}
+.be-flavor{font:italic 13px 'Tahoma',sans-serif;color:#fff;line-height:1.55;
+  padding:12px 16px;background:rgba(255,255,255,.05);border-left:3px solid var(--bc);
+  margin-bottom:14px}
+.be-fx-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.boss-fx-pos{background:rgba(68,200,68,.12);border:1px solid #3a9040;
+  padding:3px 9px;font:bold 10px 'Courier New',monospace;color:#70e870;letter-spacing:.5px}
+.boss-fx-neg{background:rgba(200,68,68,.12);border:1px solid #983030;
+  padding:3px 9px;font:bold 10px 'Courier New',monospace;color:#e87070;letter-spacing:.5px}
+.be-next-btn{align-self:flex-start;padding:9px 22px;background:transparent;
+  border:2px solid var(--bc);color:var(--bc);
+  font:bold 11px 'Courier New',monospace;cursor:pointer;letter-spacing:1px;
+  transition:background .12s,color .12s}
+.be-next-btn:hover{background:var(--bc);color:#000}
+
+/* ── reward screen ── */
+.be-reward-screen{flex:1;display:flex;flex-direction:column;padding:16px 18px;
+  overflow-y:auto;animation:be-body-in .3s .05s ease-out both}
+.be-rw-header{display:flex;align-items:center;gap:14px;margin-bottom:18px;
+  padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.1)}
+.be-rw-portrait{font-size:48px;filter:drop-shadow(0 0 10px var(--bc))}
+.be-rw-complete{font:bold 14px 'Courier New',monospace;color:var(--bc);
+  letter-spacing:3px;margin-bottom:4px}
+.be-rw-sub{font:10px 'Tahoma',sans-serif;color:var(--dim)}
+.be-reward-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.be-reward{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  padding:14px 10px;cursor:pointer;text-align:center;
+  transition:border-color .12s,background .12s,transform .12s}
+.be-reward:hover{border-color:var(--bc);background:rgba(255,255,255,.09);transform:translateY(-3px)}
+.be-rw-icon{font-size:26px;margin-bottom:6px}
+.be-rw-label{font:bold 10px 'Courier New',monospace;color:#fff;margin-bottom:4px;letter-spacing:.5px}
+.be-rw-desc{font:9px 'Tahoma',sans-serif;color:var(--dim);line-height:1.35}
 
 /* ══ O1 — STARTUP PITCH BOX ══ */
 .su-pitch{background:#000080;color:#fff;padding:14px 16px;margin-bottom:0;border-bottom:2px solid #404040}
@@ -443,5 +509,42 @@
 .ctx-tip-dismiss{font:8px 'Tahoma',sans-serif;color:#60a070;margin-top:6px}
 @keyframes ctx-tip-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes ctx-tip-out{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(10px)}}
+
+/* ══ UPGRADE RESULT SCREEN ══ */
+.upgr-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 16px;height:100%;overflow-y:auto;background:var(--bg);
+  animation:upgr-in .4s ease-out}
+@keyframes upgr-in{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.upgr-title{font:bold 18px 'Courier New',monospace;letter-spacing:4px;color:#ffdd44;
+  text-align:center;margin-bottom:4px}
+.upgr-subtitle{font:11px 'Tahoma',sans-serif;color:var(--dim);letter-spacing:1px;
+  text-align:center;margin-bottom:20px}
+.upgr-card-wrap{position:relative;margin-bottom:24px}
+.upgr-glow{position:absolute;inset:-18px;border-radius:4px;
+  background:radial-gradient(ellipse at center,var(--glow-col) 0%,transparent 70%);
+  opacity:.45;animation:upgr-pulse 1.6s ease-in-out infinite alternate;pointer-events:none}
+@keyframes upgr-pulse{from{opacity:.3;transform:scale(.96)}to{opacity:.6;transform:scale(1.04)}}
+.upgr-card{position:relative;z-index:1;width:200px;pointer-events:none;
+  animation:upgr-card-pop .5s cubic-bezier(.17,.67,.31,1.4) both}
+@keyframes upgr-card-pop{from{opacity:0;transform:scale(.7) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.upgr-compare{display:flex;flex-direction:column;gap:8px;width:260px;margin-bottom:20px;
+  animation:upgr-compare-in .4s .25s ease-out both}
+@keyframes upgr-compare-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.upgr-cmp-row{display:flex;align-items:center;gap:8px;background:var(--surf);
+  border:1px solid var(--border);padding:7px 12px}
+.upgr-cmp-label{font:bold 9px 'Courier New',monospace;color:var(--dim);letter-spacing:1px;
+  width:34px;flex-shrink:0}
+.upgr-cmp-before{font:11px 'Tahoma',sans-serif;color:#888;width:52px;text-align:right;flex-shrink:0}
+.upgr-cmp-arrow{font:bold 12px 'Courier New',monospace;color:var(--dim);flex-shrink:0}
+.upgr-cmp-after{font:bold 13px 'Courier New',monospace;flex:1}
+.upgr-cmp-chips{color:#6ab4ff}
+.upgr-cmp-mult{color:#ff9090}
+.upgr-cmp-delta{font:bold 10px 'Courier New',monospace;color:#44ff88;letter-spacing:.5px;flex-shrink:0;
+  background:rgba(68,255,136,.1);border:1px solid rgba(68,255,136,.3);padding:1px 5px}
+.upgr-continue-btn{padding:10px 28px;background:#001a00;border:2px solid #44ff88;
+  color:#44ff88;font:bold 11px 'Courier New',monospace;cursor:pointer;letter-spacing:2px;
+  transition:background .1s,box-shadow .1s;
+  animation:upgr-compare-in .4s .45s ease-out both}
+.upgr-continue-btn:hover{background:#002a00;box-shadow:0 0 12px rgba(68,255,136,.4)}
 
 /* ══ SMALL SCREEN / LAPTOP FIXES ══ */
