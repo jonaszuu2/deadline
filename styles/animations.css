@@ -311,3 +311,12 @@
 .oc-card.card-lv2{box-shadow:0 0 12px rgba(255,204,0,.5);border-color:#c0a000 !important}
 .oc-card.card-lv3{border-color:#ffdd44 !important;animation:lv3cardglow 1.8s ease-in-out infinite}
 @keyframes lv3cardglow{0%,100%{box-shadow:0 0 12px rgba(255,221,68,.6)} 50%{box-shadow:0 0 26px rgba(255,221,68,.95),0 0 50px rgba(255,221,68,.3)}}
+
+/* ── Teammate Choice — tier warning & gary preview ── */
+.tmc-tier-thresholds{font:9px 'Courier New',monospace;color:var(--dim);text-align:center;margin:2px 0 4px;opacity:.7}
+.tmc-tier-warn{font:bold 9px 'Courier New',monospace;color:#ffaa00;text-align:center;
+               margin:2px 0 4px;padding:2px 4px;background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3)}
+.tmc-gary-preview{font:bold 10px 'Courier New',monospace;color:#ffe87a;text-align:center;
+                  padding:3px 6px;background:rgba(255,232,122,.1);border:1px solid rgba(255,232,122,.35);margin:2px 0}
+.tmc-loyalty.bond{color:#00ffcc;background:rgba(0,255,204,.12);border-color:rgba(0,255,204,.5)}
+.rp-tm-loyalty.bond{color:#00ffcc}

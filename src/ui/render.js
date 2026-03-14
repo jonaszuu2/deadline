@@ -402,7 +402,9 @@ export function renderRightPanel(G) {
       : '';
     const snitch = G.pendingSnitch ? `<div class="rp-snitch">⚠ HR SNITCH ACTIVE</div>` : '';
     const loyalty = G.consecutiveSameTeammate || 0;
-    const loyaltyHtml = loyalty >= 5
+    const loyaltyHtml = loyalty >= 7
+      ? `<div class="rp-tm-loyalty bond">🤝 Unbreakable Bond (${loyalty} wks) +0.6 Mult/play</div>`
+      : loyalty >= 5
       ? `<div class="rp-tm-loyalty deep">🤝 Deep Partnership (${loyalty} wks) +0.4 Mult/play</div>`
       : loyalty >= 3
       ? `<div class="rp-tm-loyalty">🤝 Trusted Ally (${loyalty} wks) +0.2 Mult/play</div>`
@@ -745,24 +747,41 @@ export function renderTeammateChoice(G) {
     const tierData = tm.tiers[toxTier - 1];
     const isCurrent = id === G.loyaltyTeammateId;
     const streak = isCurrent ? (G.consecutiveSameTeammate || 0) : 0;
-    const loyaltyTag = streak >= 5
+    const loyaltyTag = streak >= 7
+      ? `<div class="tmc-loyalty bond">🤝 Unbreakable Bond (${streak} wks) — +0.6 Mult/play</div>`
+      : streak >= 5
       ? `<div class="tmc-loyalty deep">🤝 Deep Partnership (${streak} wks) — +0.4 Mult/play</div>`
       : streak >= 3
       ? `<div class="tmc-loyalty">🤝 Trusted Ally (${streak} wks) — +0.2 Mult/play</div>`
       : streak >= 2
-      ? `<div class="tmc-loyalty dim">⏳ ${streak} wks together — 1 more for Trusted Ally</div>`
+      ? `<div class="tmc-loyalty dim">⏳ ${streak} wks together — ${3 - streak} more for Trusted Ally</div>`
       : streak === 1
-      ? `<div class="tmc-loyalty dim">⏳ Week 1 together</div>`
+      ? `<div class="tmc-loyalty dim">⏳ Week 1 together — 2 more for Trusted Ally</div>`
       : '';
+    // Tier proximity warning
+    const toxToNext = toxTier === 1 ? 30 - G.tox : toxTier === 2 ? 81 - G.tox : null;
+    const tierWarn = toxToNext !== null && toxToNext <= 15
+      ? `<div class="tmc-tier-warn">⚠ ${toxToNext}% TOX → tier escalates to T${toxTier + 1}</div>`
+      : `<div class="tmc-tier-thresholds">T1 &lt;30% · T2 &lt;81% · T3 81%+</div>`;
+    // Gary live Mult preview
+    let garyPreview = '';
+    if (id === 'gary' && toxTier >= 2) {
+      const bonus = toxTier === 2
+        ? fmt1(Math.floor(G.tox / 20) * 0.5)
+        : fmt1(Math.min(10, Math.floor(G.tox / 10) * 1.0));
+      garyPreview = `<div class="tmc-gary-preview">≈ +${bonus} Mult @ ${G.tox}% TOX now</div>`;
+    }
     return `<div class="tmc-card${isCurrent && streak >= 2 ? ' returning' : ''}" onclick="G.chooseTeammate('${id}')">
       <div class="tmc-portrait" style="color:${tm.color}">${tm.portrait}</div>
       <div class="tmc-name" style="color:${tm.color}">${esc(tm.fullName)}</div>
       <div class="tmc-tier" style="color:${tierColors[toxTier]}">T${toxTier} — ${tierLabels[toxTier]}</div>
+      ${tierWarn}
       <div class="tmc-desc">${esc(tierData.name)}</div>
       <div class="tmc-effects">
         <div class="tmc-buff">▲ ${esc(tierData.buffText)}</div>
         <div class="tmc-penalty">▼ ${esc(tierData.penaltyText)}</div>
       </div>
+      ${garyPreview}
       ${loyaltyTag}
       <div class="tmc-quote">"${esc(tierData.triggerQuote)}"</div>
       <button class="tmc-btn">ASSIGN THIS COLLEAGUE</button>

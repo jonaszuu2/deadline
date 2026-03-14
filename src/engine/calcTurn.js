@@ -159,9 +159,9 @@ export function calcTurn(cards, ctx) {
   // Loyalty bonus: consecutive weeks with same teammate
   const loyalty = ctx.consecutiveSameTeammate || 0;
   if (loyalty >= 3) {
-    const loyaltyMult = loyalty >= 5 ? 0.4 : 0.2;
+    const loyaltyMult = loyalty >= 7 ? 0.6 : loyalty >= 5 ? 0.4 : 0.2;
     acc.mult += loyaltyMult;
-    const label = loyalty >= 5 ? 'Deep Partnership' : 'Trusted Ally';
+    const label = loyalty >= 7 ? 'Unbreakable Bond' : loyalty >= 5 ? 'Deep Partnership' : 'Trusted Ally';
     lg('sy', `  🤝 [${label} — ${loyalty} wks] Workplace bond — +${loyaltyMult} Mult`);
   }
 
