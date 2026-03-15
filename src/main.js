@@ -1,5 +1,5 @@
 import { Game, _setUIFunctions } from './game.js';
-import { render, zoomIn, zoomOut } from './ui/render.js';
+import { render, zoomIn, zoomOut, setRpTab } from './ui/render.js';
 import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, startUpgradeSpin } from './ui/animations.js';
 import { showClassScreen, selectClass, dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
@@ -54,6 +54,7 @@ window._advanceIntroTutorial = _advanceIntroTutorial;
 window._skipIntroTutorial   = _skipIntroTutorial;
 window.openHelp             = openHelp;
 window.chooseBrief          = (id) => window.G.chooseBrief(id);
+window.setRpTab             = setRpTab;
 
 // ═══════════════════════════════════════════════════════
 //  BOOT

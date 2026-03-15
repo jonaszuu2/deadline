@@ -14,6 +14,39 @@ import { BRIEFS_DB } from '../data/briefs.js';
 export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80', SHOP:'#c8b8ff'};
 
 // ═══════════════════════════════════════════════════════
+//  MODULE STATE
+// ═══════════════════════════════════════════════════════
+let _rpTab = 'build';
+let _lastPhase = null;
+
+export function setRpTab(tab) {
+  _rpTab = tab;
+  if (window.G) render(window.G);
+}
+
+const _phaseFlashLabels = {
+  play:            wk => `WEEK ${wk} — DELIVERABLES`,
+  result:          ()  => 'WEEK COMPLETE',
+  scoring:         ()  => 'SUBMITTING WORK',
+  draft:           ()  => 'CARD DRAFT',
+  shop:            ()  => 'CORPORATE STORE',
+  boss:            ()  => 'PERFORMANCE REVIEW',
+  teammate_choice: ()  => 'STAFFING DECISION',
+  brief_select:    ()  => 'PROJECT BRIEF',
+  power_event:     ()  => 'CORPORATE ANNOUNCEMENT',
+};
+
+function _showPhaseFlash(phase, week) {
+  const labelFn = _phaseFlashLabels[phase];
+  if (!labelFn) return;
+  const el = document.createElement('div');
+  el.className = 'phase-flash';
+  el.textContent = labelFn(week);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 750);
+}
+
+// ═══════════════════════════════════════════════════════
 //  STATUS BAR
 // ═══════════════════════════════════════════════════════
 export function renderStatusBar(G) {
@@ -22,10 +55,6 @@ export function renderStatusBar(G) {
   const boIcon  = G.bo >= 90 ? '🔥' : '🔥';
   const cells = [
     `Week ${G.week}/${TOTAL_WEEKS}`,
-    `Score: ${G.wscore} / ${G.kpi()}`,
-    `WB: ${G.wb}%`,
-    `TOX: ${G.tox}%`,
-    `<span style="color:${boColor}">${boIcon} ${G.bo}%</span>`,
     phaseLbl[G.phase] || G.phase.toUpperCase(),
     `<span class="sb-zoom" onclick="zoomOut()">A-</span>`,
     `<span class="sb-zoom" onclick="zoomIn()">A+</span>`,
@@ -52,6 +81,10 @@ export function zoomOut() {
 //  MAIN RENDER
 // ═══════════════════════════════════════════════════════
 export function render(G) {
+  if (G.phase !== _lastPhase) {
+    _showPhaseFlash(G.phase, G.week);
+    _lastPhase = G.phase;
+  }
   const sb = document.getElementById('statusbar');
   if (sb) sb.innerHTML = renderStatusBar(G);
   updateKpiBar(G);
@@ -295,18 +328,16 @@ export function renderScoreMachine(p, wscore, target, G) {
   const willPass  = projTotal >= target;
   const chipsVal  = hasP ? p.chips : '—';
   const multVal   = hasP ? p.mult + '×' : '—';
-  const scoreVal  = hasP ? (p.score > 0 ? '+' + p.score : p.score) : (wscore > 0 ? wscore : '—');
+  const scoreVal  = hasP ? '???' : (wscore > 0 ? wscore : '—');
   const chipsCls  = hasP ? 'chips' : 'idle';
   const multCls   = hasP ? 'mult'  : 'idle';
-  const scoreCls  = hasP ? (willPass ? 'score win' : 'score') : (wscore > 0 ? 'score' : 'idle');
+  const scoreCls  = hasP ? 'score score-hidden' : (wscore > 0 ? 'score' : 'idle');
   const leds = ['#6ab4ff','#ff7070','#50ffaa','#ff80c8','#ffdd44','#ff8800','#7070ff','#80ffcc'];
   const ledHtml = leds.map(c => `<div class="sm-led" style="background:${c};color:${c}"></div>`).join('');
   let weekHtml = '';
   if (hasP) {
-    weekHtml = `<span class="sm-week${willPass ? ' pass' : ''}">
-      <b>${wscore}</b> <span style="color:var(--dim);font-size:9px">+${p.score} →</span>
-      <b>${projTotal}</b> / ${target} ${willPass ? '✓ PASS' : '✗'}
-    </span>`;
+    const need = Math.max(0, target - wscore);
+    weekHtml = `<span class="sm-week"><b>${wscore}</b> / ${target}${need > 0 ? ` · need <b>${need}</b> more` : ' ✓'}</span>`;
   } else {
     const need = Math.max(0, target - wscore);
     weekHtml = `<span class="sm-week"><b>${wscore}</b> / ${target}${need > 0 ? ` · need <b>${need}</b> more` : ' ✓'}</span>`;
@@ -317,9 +348,6 @@ export function renderScoreMachine(p, wscore, target, G) {
   const wbWarn = hasP && p.effLabel
     ? `<span class="sm-wb-warn">${p.effLabel}</span>`
     : '';
-  const formulaHtml = hasP
-    ? `<div class="sm-formula">${p.chips} chips × ${p.mult}× = <b>+${p.score} pts</b> this play</div>`
-    : '';
   return `<div id="score-machine">
     <div class="sm-led-strip">${ledHtml}</div>
     <div class="sm-displays">
@@ -329,7 +357,6 @@ export function renderScoreMachine(p, wscore, target, G) {
       <div class="sm-op">=</div>
       <div class="sm-panel"><div class="sm-lbl">KPI SCORE</div><div class="sm-display ${scoreCls}">${scoreVal}</div></div>
     </div>
-    ${formulaHtml}
     <div class="sm-bottom">${weekHtml}${toxWarn}${wbWarn}</div>
   </div>`;
 }
@@ -369,20 +396,22 @@ export function renderForecastPanel(G) {
   }).join('');
 
   return `
-    <div class="rp-section-hdr">CAREER FORECAST</div>
-    <div style="padding:4px 2px">
-      <div class="rp-proj-stat"><span>Chips</span><span>${s.chips.toLocaleString()}</span></div>
-      <div class="rp-proj-stat"><span>Avg ×</span><span>${s.avgMult}×</span></div>
-      <div class="rp-proj-stat"><span>WB</span><span style="${col(s.wbPts)}">${sign(s.wbPts)}</span></div>
-      <div class="rp-proj-stat"><span>BO</span><span style="${col(s.boPts)}">${sign(s.boPts)}</span></div>
-      <div class="rp-proj-divider"></div>
-      <div class="rp-proj-score">${s.total.toLocaleString()} pts</div>
-      <div class="rp-proj-tier" style="color:${tier.color}">→ ${esc(tier.title)}</div>
-      ${progressHtml}
-      <div class="rp-proj-divider" style="margin-top:6px"></div>
-      <div class="rp-section-hdr" style="margin-top:4px">ACHIEVEMENTS</div>
-      ${achRows}
-    </div>`;
+    <details class="forecast-details">
+      <summary class="rp-section-hdr forecast-summary">CAREER FORECAST ▸</summary>
+      <div style="padding:4px 2px">
+        <div class="rp-proj-stat"><span>Chips</span><span>${s.chips.toLocaleString()}</span></div>
+        <div class="rp-proj-stat"><span>Avg ×</span><span>${s.avgMult}×</span></div>
+        <div class="rp-proj-stat"><span>WB</span><span style="${col(s.wbPts)}">${sign(s.wbPts)}</span></div>
+        <div class="rp-proj-stat"><span>BO</span><span style="${col(s.boPts)}">${sign(s.boPts)}</span></div>
+        <div class="rp-proj-divider"></div>
+        <div class="rp-proj-score">${s.total.toLocaleString()} pts</div>
+        <div class="rp-proj-tier" style="color:${tier.color}">→ ${esc(tier.title)}</div>
+        ${progressHtml}
+        <div class="rp-proj-divider" style="margin-top:6px"></div>
+        <div class="rp-section-hdr" style="margin-top:4px">ACHIEVEMENTS</div>
+        ${achRows}
+      </div>
+    </details>`;
 }
 
 export function checkContractLive(c, G) {
@@ -477,15 +506,18 @@ export function renderRightPanel(G) {
     }).join('');
     contractsHtml = `<div class="rp-section-hdr">RUN CONTRACTS</div><div class="rp-contracts">${rows}</div>`;
   }
-  return `<div id="right-panel">
-    ${contractsHtml}
-    ${classTrackHtml}
-    <div class="rp-section-hdr">PERKS</div>
-    ${perksHtml}
-    <div class="rp-section-hdr">TEAMMATE</div>
-    ${tmHtml}
-    ${renderForecastPanel(G)}
+  const forecastHtml = renderForecastPanel(G);
+  const tabContents = {
+    build: `${classTrackHtml}<div class="rp-section-hdr">PERKS</div>${perksHtml}`,
+    team:  `${contractsHtml}<div class="rp-section-hdr">TEAMMATE</div>${tmHtml}`,
+    stats: forecastHtml,
+  };
+  const tabBar = `<div class="rp-tabs">
+    <div class="rp-tab${_rpTab==='build'?' active':''}" onclick="setRpTab('build')">BUILD</div>
+    <div class="rp-tab${_rpTab==='team'?' active':''}"  onclick="setRpTab('team')">TEAM</div>
+    <div class="rp-tab${_rpTab==='stats'?' active':''}" onclick="setRpTab('stats')">STATS</div>
   </div>`;
+  return `<div id="right-panel">${tabBar}${tabContents[_rpTab] || tabContents.build}</div>`;
 }
 
 export function renderDeckPanel(G) {
@@ -518,10 +550,9 @@ export function renderHand(hand, sel, preview, exhausted, passives, G) {
     ? `<div id="next-card-peek"><span class="ncp-label">NEXT CARD ▶</span><span class="ncp-name">${esc(topCard.name)}</span><span class="ncp-arch ncp-${topCard.archetype}">${topCard.archetype}</span></div>`
     : '';
   const crunchFree = !!(G && G.hasComp && G.hasComp('comp_networker') && !G.firstCrunchUsed);
-  const isFirstPlay = !!(G && G.week === 1 && G.plays === (G.playsMax || PLAYS));
-  const ctx = {showPct:!!(G && G.hasComp('comp_spreadsheet')), target:G ? G.kpi() : 0, wscore:G ? G.wscore : 0, crunchFree, crunchCount: G ? G.weekCrunchCount : 0, isFirstPlay};
+  const ctx = {showPct:!!(G && G.hasComp('comp_spreadsheet')), target:G ? G.kpi() : 0, wscore:G ? G.wscore : 0, crunchFree, crunchCount: G ? G.weekCrunchCount : 0};
   return `<div id="hand-wrap">
-    <div id="hand-hdr"><span>HAND — ${hand.length} cards | selected: ${sel.length} / ${ms}</span>${riskHint}</div>
+    <div id="hand-hdr"><span>HAND (${hand.length}) · ${sel.length ? `${sel.length}/${ms} selected` : `pick 1–${ms}`}</span>${riskHint}</div>
     ${nextPeek}
     <div id="hand" class="${maxed ? 'hand-maxed' : ''}">
       ${hand.map(c => renderCard(c, sel, preview, passives, ctx)).join('')}
@@ -549,7 +580,8 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
   if (!fx.chips && !fx.mult && !fx.tox && !fx.wb) effects.push(`<div class="fx" style="color:var(--dim)">—</div>`);
   const syns = c.synergies.map(s => {
     const active = preview && preview.activeSynergies.has(s.id);
-    return `<div class="csyn${active ? ' active' : ''}">${active ? '⚡ ' : '★ '}${s.desc}</div>`;
+    const desc = s.desc.length > 36 ? s.desc.slice(0, 34) + '…' : s.desc;
+    return `<div class="csyn${active ? ' active' : ''}" title="${s.desc}">${active ? '⚡ ' : '★ '}${desc}</div>`;
   }).join('');
   const comboPos = (isSel && preview)
     ? `<div style="font-size:8px;color:var(--dim);margin-top:3px;border-top:1px solid rgba(255,255,255,.08);padding-top:3px">${['1st','2nd','3rd','4th'][idx]} in combo</div>`
@@ -561,22 +593,20 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
   const crunchFatigueBadge = (c.archetype === 'CRUNCH' && ctx.crunchCount > 0)
     ? `<div class="crunch-fatigue-badge">⚠ +${ctx.crunchCount * 12}% Fatigue Tox</div>`
     : '';
-  const isFirstHint = !!(ctx.isFirstPlay && c.archetype === 'PRODUCTION');
-  const firstHintBadge = isFirstHint ? `<div class="first-card-hint">▲ Start here</div>` : '';
   const cardLevel = c.level || 0;
   const upgCount = c.upgrades || 0;
   const upgCls = upgCount >= 3 ? ' card-up3' : upgCount === 2 ? ' card-up2' : upgCount >= 1 ? ' card-up1' : '';
   const levelStars = cardLevel > 0 ? `<div class="card-level-stars" title="Card Level ${cardLevel}">${'★'.repeat(cardLevel)}${'☆'.repeat(3-cardLevel)}</div>` : '';
   const playCountHint = cardLevel < 3
     ? `<div class="card-play-count" title="Plays: ${c.playCount||0}">${(c.playCount||0) % 5}/5 ▶ Lv${cardLevel+1}</div>` : '';
-  return `<div class="card ${c.archetype}${isSel ? ' sel' : ''}${isSynActive ? ' syn-active' : ''}${isFirstHint ? ' first-hint' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" onclick="G.toggle('${c.uid}')">
+  return `<div class="card ${c.archetype}${isSel ? ' sel' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" onclick="G.toggle('${c.uid}')">
     <div class="cbadge">${idx + 1}</div>
     <div class="ctag">${c.archetype}</div>
     ${levelStars}
     <div class="cname">${c.name}</div>
     <div class="cfx">${effects.join('')}${exhaust}</div>
     ${syns}${comboPos}
-    ${crunchFreeBadge}${crunchFatigueBadge}${firstHintBadge}${pctHtml}${playCountHint}
+    ${crunchFreeBadge}${crunchFatigueBadge}${pctHtml}${playCountHint}
   </div>`;
 }
 
@@ -614,7 +644,7 @@ export function renderActions(G, preview) {
   }
   const ms = G.maxSel ? G.maxSel() : MAX_SEL;
   const discBtn = phase === 'play'
-    ? `<button class="btn btn-disc" ${discs <= 0 || !sel.length ? 'disabled' : ''} onclick="G.discardSelected()">✕ DISCARD +10/card (${discs} left)</button>`
+    ? `<button class="btn btn-disc" ${discs <= 0 || !sel.length ? 'disabled' : ''} onclick="G.discardSelected()">✕ DISCARD +10/card [${discs}]</button>`
     : '';
   const crisisBanner = (plays === 1 && wscore < target && phase === 'play')
     ? `<div class="crisis-banner">⚡ LAST PLAY — need ${target - wscore} more pts</div>` : '';
@@ -931,6 +961,33 @@ export function renderBriefSelect(G) {
   </div>`;
 }
 
+function _draftBuildHint(card, G) {
+  const allCards = [...(G.deck||[]), ...(G.hand||[]), ...(G.pile||[])];
+  const counts = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
+  for (const c of allCards) if (counts[c.archetype] !== undefined) counts[c.archetype]++;
+  const total = allCards.length || 1;
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const [domArch, domCnt] = sorted[0];
+  const domPct = domCnt / total;
+  const cardArch = card.archetype;
+  const ownCnt = counts[cardArch] || 0;
+  const existingSynIds = new Set(allCards.flatMap(c => (c.synergies||[]).map(s => s.id)));
+  const hasSynOverlap = (card.synergies||[]).some(s => existingSynIds.has(s.id));
+  if (cardArch === domArch && domPct >= 0.35) {
+    return {text:`Reinforces your ${domArch} build (${ownCnt+1}/${total+1})`, cls:'hint-good'};
+  }
+  if (hasSynOverlap) {
+    return {text:'Synergy overlap with existing cards', cls:'hint-good'};
+  }
+  if (ownCnt === 0) {
+    return {text:`New archetype — diversifies your deck`, cls:'hint-neutral'};
+  }
+  if (ownCnt <= 1) {
+    return {text:`Weak fit — only ${ownCnt} ${cardArch} in deck`, cls:'hint-weak'};
+  }
+  return {text:`${ownCnt} ${cardArch} already — situational`, cls:'hint-neutral'};
+}
+
 export function renderDraft(G) {
   const cardsHtml = G.draftPool.map(c => {
     const fxLines = [
@@ -942,6 +999,7 @@ export function renderDraft(G) {
       c.fx.wb < 0  ? `❤ ${c.fx.wb} WB` : '',
     ].filter(Boolean).join('<br>');
     const synDesc = c.synergies?.[0]?.desc ? `<div class="dr-syn">★ ${esc(c.synergies[0].desc)}</div>` : '';
+    const hint = _draftBuildHint(c, G);
     return `<div class="dr-card ${c.archetype}" onclick="G.claimDraftCard('${c.id}')">
       <div class="dr-arch">${c.archetype}</div>
       <div class="dr-rarity">${c.rarity}</div>
@@ -949,6 +1007,7 @@ export function renderDraft(G) {
       <div class="dr-flavor">"${esc(c.flavor)}"</div>
       <div class="dr-fx">${fxLines}</div>
       ${synDesc}
+      <div class="dr-hint ${hint.cls}">▸ ${hint.text}</div>
       <button class="dr-pick-btn">＋ Add to Deck</button>
     </div>`;
   }).join('');
