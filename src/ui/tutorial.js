@@ -90,14 +90,9 @@ export const INTRO_SLIDES = [
   },
   {
     icon: '⚙️', step: 5,
-    title: 'CHOOSE YOUR CLASS',
-    content: '<div class="tut-class-preview">'
-      + '<div class="tut-cls-row"><span class="tut-cls-ico">⚙️</span><div><b>Grinder</b> &mdash; PRODUCTION engine, extra Plays per week</div></div>'
-      + '<div class="tut-cls-row"><span class="tut-cls-ico">🎯</span><div><b>Strategist</b> &mdash; high Mult ceiling, STRATEGY + CRUNCH deck</div></div>'
-      + '<div class="tut-cls-row"><span class="tut-cls-ico">☣️</span><div><b>Survivor</b> &mdash; RECOVERY heavy, thrives in toxic chaos</div></div>'
-      + '</div>'
-      + '<p style="margin-top:10px">Each class has a <b>different starting deck</b> and passive bonuses. Your class defines your playstyle &mdash; pick the one that speaks to you.</p>',
-    btn: '▶ Choose My Class',
+    title: 'START YOUR RUN',
+    content: '<p>You have everything you need. Select cards, build <b>Chips \xd7 Mult</b>, hit your weekly KPI target, survive 10 weeks.</p><p style="margin-top:8px">As you play, you\'ll find <b>Desk Items</b> &mdash; objects that change how the game works entirely.</p>',
+    btn: '▶ START GAME',
   },
 ];
 
