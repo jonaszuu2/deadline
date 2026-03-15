@@ -241,6 +241,7 @@ export function showContextualTip(type) {
   };
   const tip = tips[type]; if (!tip) return;
   document.getElementById('ctx-tip')?.remove();
+
   const el = document.createElement('div');
   el.id = 'ctx-tip'; el.className = 'ctx-tip';
   el.innerHTML = '<div class="ctx-tip-title">' + tip.title + '</div>'
@@ -257,4 +258,71 @@ export function showContextualTip(type) {
       setTimeout(() => el.remove(), 300);
     }
   }, 7000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  GUIDE TIPS  (anchored to real UI elements, first-run only)
+// ═══════════════════════════════════════════════════════
+const GUIDE_TIP_DATA = {
+  first_hand: {
+    anchor: '#hand', pos: 'above',
+    title: '▶ ZACZNIJ TUTAJ',
+    text: 'Kliknij kartę żeby ją wybrać (maks 3). Potem <b>SUBMIT PLAY</b>. Score Machine nad kartami pokazuje podgląd przed zagraniem.',
+  },
+  score_formula: {
+    anchor: '#score-machine', pos: 'above',
+    title: '🎯 CHIPS × MULT = SCORE',
+    text: '<b>PRODUCTION</b> → Chips. <b>STRATEGY</b> → Mult. 100 Chips × 1.0 = 100. 100 Chips × 2.0 = 200. Miksuj archetypy.',
+  },
+  kpi_hit: {
+    anchor: '#hdr', pos: 'below',
+    title: '✓ KPI OSIĄGNIĘTE!',
+    text: 'Przekroczyłeś target tygodniowy. Możesz grać dalej żeby zdobyć wyższy score — albo poczekaj aż skończą się Plays.',
+  },
+};
+
+export function showGuideTip(type) {
+  const key = 'dl_gtip_' + type;
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, '1');
+
+  const data = GUIDE_TIP_DATA[type];
+  if (!data) return;
+
+  const anchor = document.querySelector(data.anchor);
+  document.getElementById('guide-tip')?.remove();
+  if (anchor) { anchor.classList.add('guide-anchor-glow'); }
+
+  const el = document.createElement('div');
+  el.id = 'guide-tip';
+  el.className = 'guide-tip guide-tip-' + data.pos;
+  el.innerHTML = '<div class="guide-tip-tbar">' + data.title + '</div>'
+    + '<div class="guide-tip-body">' + data.text + '</div>'
+    + '<div class="guide-tip-foot">Kliknij żeby zamknąć</div>';
+
+  const dismiss = () => {
+    anchor?.classList.remove('guide-anchor-glow');
+    el.style.animation = 'guide-tip-out .2s ease-out forwards';
+    setTimeout(() => el.remove(), 220);
+  };
+  el.onclick = dismiss;
+  document.body.appendChild(el);
+
+  // Position after render
+  requestAnimationFrame(() => {
+    if (!anchor) { el.style.bottom = '80px'; el.style.right = '16px'; return; }
+    const r = anchor.getBoundingClientRect();
+    const tw = el.offsetWidth || 260;
+    const th = el.offsetHeight || 90;
+    const lx = Math.max(8, Math.min(r.left, window.innerWidth - tw - 8));
+    if (data.pos === 'above') {
+      el.style.top = Math.max(8, r.top - th - 12) + 'px';
+      el.style.left = lx + 'px';
+    } else {
+      el.style.top = (r.bottom + 12) + 'px';
+      el.style.left = lx + 'px';
+    }
+  });
+
+  setTimeout(dismiss, 10000);
 }

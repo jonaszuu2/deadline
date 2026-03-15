@@ -239,6 +239,8 @@ export function finishScoring() {
   else if (d.nextPhase === 'result') this.transition('result');
   else { this.drawUp(); this.transition('play'); }
   this._commit();
+  if (this.week === 1) setTimeout(() => ui.showGuideTip?.('score_formula'), 300);
+  if (d.crossedKpi)    setTimeout(() => ui.showGuideTip?.('kpi_hit'), 500);
   if (d.nextPhase !== 'review') {
     const toxDmgFired = this.log.some(e => e.cls === 'dm' && e.t.includes('TOXIC'));
     if (toxDmgFired) setTimeout(() => ui.showContextualTip?.('tox_damage'), 400);

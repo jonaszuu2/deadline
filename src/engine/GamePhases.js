@@ -144,6 +144,7 @@ export function chooseTeammate(id) {
   this.teammateTier = this.getTeammateTier();
   this.transition('play');
   this._commit();
+  if (this.week === 1) setTimeout(() => ui.showGuideTip?.('first_hand'), 600);
 }
 
 // ═══════════════════════════════════════════════════════
