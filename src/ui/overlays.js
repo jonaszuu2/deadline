@@ -55,18 +55,6 @@ export function ovFinalReview(G) {
   // Year banner for promotion runs
   const yearBanner = G.promotionYear > 1
     ? `<div class="apr-year-banner">YEAR ${G.promotionYear} — PROMOTION RUN · KPI ×${G.kpiMultiplier.toFixed(2)}</div>` : '';
-  // Run contracts results
-  const contractsResultHtml = (G.runContracts?.length)
-    ? `<div class="apr-subtitle">── RUN CONTRACTS ──</div>
-       <div class="apr-contracts-row">${G.runContracts.map(c => {
-         const ok = c.achieved;
-         return `<div class="apr-contract ${ok?'apr-rc-ok':'apr-rc-fail'}">
-           <span class="apr-rc-icon">${c.icon}</span>
-           <span class="apr-rc-status">${ok?'✓':'✗'}</span>
-           <span class="apr-rc-desc">${esc(c.desc)}</span>
-           <span class="apr-rc-pts ${ok?'pos':'neu'}">${ok?'+'+c.pts:'—'}</span>
-         </div>`;}).join('')}</div>`
-    : '';
   // Cumulative score for promotion runs
   const cumulativeHtml = G.previousRunScore > 0
     ? `<div class="apr-cumulative">Career Total: <strong>${G.previousRunScore + s.total}</strong> pts (Year ${G.promotionYear-1}: ${G.previousRunScore} + Year ${G.promotionYear}: ${s.total})</div>`
@@ -97,7 +85,7 @@ export function ovFinalReview(G) {
       <div class="apr-subtitle">── PERFORMANCE BREAKDOWN ──</div>
       <div class="apr-lines">
         <div class="apr-line"><span class="apr-lbl">🔵 Chips Path — Total Chips</span><span class="apr-val">${s.chips.toLocaleString()}</span><span class="apr-pts ${ptsClass(s.rawPts)}">${sign(s.rawPts)} pts</span></div>
-        <div class="apr-line"><span class="apr-lbl">🔴 Mult Path — Avg Multiplier</span><span class="apr-val">${s.avgMult}× (×250)</span><span class="apr-pts ${ptsClass(s.multPts)}">${sign(s.multPts)} pts</span></div>
+        <div class="apr-line"><span class="apr-lbl">🔴 Mult Path — Avg Multiplier</span><span class="apr-val">${s.avgMult}× (×1000)</span><span class="apr-pts ${ptsClass(s.multPts)}">${sign(s.multPts)} pts</span></div>
         <div class="apr-line"><span class="apr-lbl">❤ Wellness Path — WB≥70% weeks</span><span class="apr-val">${G.wellnessWeeks || 0} / ${TOTAL_WEEKS} (×150)</span><span class="apr-pts ${ptsClass(s.wellnessPts)}">${sign(s.wellnessPts)} pts</span></div>
         <div class="apr-divider">· · · · · · · · · · · · · · · · · · · · · · · · · · · ·</div>
         <div class="apr-line"><span class="apr-lbl">Final Wellbeing</span><span class="apr-val">${G.wb}%</span><span class="apr-pts ${ptsClass(s.wbPts)}">${sign(s.wbPts)} pts</span></div>
@@ -110,9 +98,7 @@ export function ovFinalReview(G) {
         <div class="apr-line"><span class="apr-lbl">Failed Deliverables</span><span class="apr-val" style="color:${G.failedWeeks > 0 ? '#880000' : '#006600'}">${G.failedWeeks} / 3</span><span class="apr-pts neu"></span></div>
         <div class="apr-divider">· · · · · · · · · · · · · · · · · · · · · · · · · · · ·</div>
         <div class="apr-line"><span class="apr-lbl">Achievement Bonus</span><span class="apr-val">${s.achievements.filter(a=>a.pts>0).length} badges</span><span class="apr-pts ${ptsClass(s.achPts)}">${sign(s.achPts)} pts</span></div>
-        ${s.contractBonusPts ? `<div class="apr-line"><span class="apr-lbl">Run Contracts</span><span class="apr-val">${(G.runContracts||[]).filter(c=>c.achieved).length}/${(G.runContracts||[]).length} completed</span><span class="apr-pts pos">+${s.contractBonusPts} pts</span></div>` : ''}
       </div>
-      ${contractsResultHtml}
       <div class="apr-badges">${badgesHtml}</div>
       ${cumulativeHtml}
       ${(() => {

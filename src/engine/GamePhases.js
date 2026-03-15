@@ -3,7 +3,7 @@
 //  Phase transitions, week flow, shop/boss/draft/teammate screens,
 //  end-of-run logic. Mixed into Game.prototype in game.js.
 // ═══════════════════════════════════════════════════════
-import { PLAYS, DISCS, TOTAL_WEEKS, CONTRACT_POOL, clamp, FAIL_BO } from '../data/constants.js';
+import { PLAYS, DISCS, TOTAL_WEEKS, clamp, FAIL_BO } from '../data/constants.js';
 import { nextUid, shuffle, fmt1, getUnlockedTier, setUnlockedTier } from './utils.js';
 import { makeDeck, makeClassDeck, pickShopItems } from './deck.js';
 import { calculateFinalScore } from './scoring.js';
@@ -12,6 +12,7 @@ import { BOSS_DB } from '../data/boss.js';
 import { SHOP_DB } from '../data/shop.js';
 import { DB } from '../data/cards.js';
 import { BRIEFS_DB, BRIEFS_LIST } from '../data/briefs.js';
+import { CLASS_START_NODES } from '../data/passiveTree.js';
 import { ui } from './uiStore.js';
 
 // ═══════════════════════════════════════════════════════
@@ -56,8 +57,9 @@ export function start() {
     const at = Math.floor(Math.random() * (this.deck.length + 1));
     this.deck.splice(at, 0, this.legacyCard);
   }
-  const pool = shuffle([...CONTRACT_POOL]);
-  this.runContracts = pool.slice(0, 3).map(c => ({...c, achieved: false}));
+  // Unlock class starting node for free
+  const startNode = this.playerClass && CLASS_START_NODES[this.playerClass];
+  if (startNode && !this.unlockedNodes.has(startNode)) this.unlockedNodes.add(startNode);
   this.drawUp();
   const yearLabel = this.promotionRun ? ` — YEAR ${this.promotionYear}` : '';
   const kpiLabel  = this.promotionRun ? ` [KPI ×${this.kpiMultiplier.toFixed(2)}]` : '';
@@ -165,12 +167,6 @@ export function openShop() {
     if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
     return;
   }
-  // Failed week: check for power spike event
-  if ([3,6,9].includes(this.week) && !this.powerEventsDone.has(this.week)) {
-    this.powerEventsDone.add(this.week);
-    this.powerEventOptions = this._buildPowerEventOptions();
-    this.transition('power_event'); this._commit(); return;
-  }
   const bossId = {2:'early', 5:'midgame', 8:'late'}[this.week];
   if (bossId && !this.bossEncountersDone.has(this.week)) {
     this.transition('boss'); this.bossPhase = 'question'; this.bossQIdx = 0;
@@ -210,6 +206,12 @@ export function startNextWeek() {
   this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
   this.archetypeMilestonesHit = new Set(); this.pressureReleaseUsed = false;
   this.firstCardThisWeek = true; this.firstCrunchUsed = false;
+  this.stratWeekStack = 0;
+  // p_plays: +1 Play per week from skill tree
+  if (this.unlockedNodes?.has('p_plays')) {
+    this.plays += 1; this.playsMax += 1;
+    this.addLog('ok', `> 🌿 [OVERTIME APPROVED] +1 Play this week (${this.plays} total)`);
+  }
   // Office Sunshine: +WB at week start
   if (this.hasComp('comp_sunshine')) {
     this.wb = clamp(this.wb + COMP_DB.comp_sunshine.passiveVal, 0, 100);
@@ -302,10 +304,20 @@ export function _processEndOfWeekStats() {
     const bonusLabel = overPct >= 1.3 ? ' 🏆 Overperformance bonus!' : overPct >= 1.1 ? ' ⭐ Good work!' : '';
     if (!this.weekCrunched) { this.tox = clamp(this.tox - 5, 0, 100); this.addLog('tl', '> Clean week bonus — -5% Toxicity.'); }
     this.addLog('ok', `> Week ${this.week} PASSED! +${passReward} CC → ${this.coins} CC${bonusLabel}`);
+    // Skill Tree: +1 PP per KPI pass
+    this.pp = (this.pp || 0) + 1;
+    this.addLog('sy', `> 🌿 +1 Passive Point earned (total: ${this.pp} PP) — open Skill Tree to spend`);
+    // center node: all 4 archetypes played this week → +0.3 perm Mult
+    if (this.unlockedNodes?.has('center')) {
+      const w = this.weekArchetypes || {};
+      if (w.PRODUCTION > 0 && w.STRATEGY > 0 && w.CRUNCH > 0 && w.RECOVERY > 0) {
+        this.permMult = fmt1((this.permMult || 0) + 0.3);
+        this.addLog('sy', `> 🌿 [CROSS-FUNCTIONAL] All 4 archetypes this week — +0.3 perm Mult → ${this.permMult}×`);
+      }
+    }
     if (this.wscore >= this.kpi() * 2) {
       this.permMult = fmt1((this.permMult || 0) + 0.5);
       this.justBreakthrough = true;
-      this.achievedBreakthrough = true;
       this.addLog('sy', `> 💥 BREAKTHROUGH! Score ${this.wscore} ≥ 2× KPI — +0.5 permanent Mult → ${this.permMult}×`);
     }
     if (this.checkGameEndConditions(passed)) return false;
@@ -353,19 +365,12 @@ export function checkRunUnlocks() {
     this.permMult = fmt1((this.permMult || 0) + 3.0);
     this.addLog('sy', `> ⚡ [SCALE OR FAIL] Perfect run — zero fails — +3.0 permanent Mult → ${this.permMult}×!`);
   }
-  // Evaluate run contracts
-  let bonusPts = 0;
-  for (const c of this.runContracts) {
-    c.achieved = c.check(this);
-    if (c.achieved) bonusPts += c.pts;
-  }
-  this.contractBonusPts = bonusPts;
   // Card tier unlocks
   const s = calculateFinalScore(this);
   const cur = getUnlockedTier();
   let next = cur;
-  if (cur < 1 && (this.week >= 4 || s.total >= 1500)) next = 1;
-  if (cur < 2 && (this.week >= 7 || s.total >= 4000)) next = 2;
+  if (cur < 1 && (this.week >= 4 || s.total >= 7000)) next = 1;
+  if (cur < 2 && (this.week >= 7 || s.total >= 20000)) next = 2;
   if (cur < 3 && this.endCondition === 'annual') next = 3;
   if (next > cur) { setUnlockedTier(next); this.newUnlockTier = next; }
   else { this.newUnlockTier = null; }
@@ -403,11 +408,6 @@ export function _openShopAfterDraft() {
     this.transition('boss'); this.bossPhase = 'question'; this.bossQIdx = 0;
     this.bossAnswerLog = []; this.currentBoss = bossId;
     this._commit(); return;
-  }
-  if ([3,6,9].includes(this.week) && !this.powerEventsDone.has(this.week)) {
-    this.powerEventsDone.add(this.week);
-    this.powerEventOptions = this._buildPowerEventOptions();
-    this.transition('power_event'); this._commit(); return;
   }
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
@@ -579,48 +579,6 @@ export function _buildBossRewardPool() {
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   return pool.slice(0, 3);
-}
-
-// ═══════════════════════════════════════════════════════
-//  POWER EVENTS
-// ═══════════════════════════════════════════════════════
-
-export function claimPowerEvent(optionId) {
-  const opt = this.powerEventOptions.find(o => o.id === optionId);
-  if (!opt) return;
-  const {fx} = opt;
-  if (fx.permMult) this.permMult = fmt1((this.permMult||0) + fx.permMult);
-  if (fx.bo)       this.bo       = clamp(this.bo  + fx.bo,  0, 100);
-  if (fx.wb)       this.wb       = clamp(this.wb  + fx.wb,  0, 100);
-  if (fx.tox)      this.tox      = clamp(this.tox + fx.tox, 0, 100);
-  if (fx.coins)    this.coins    = Math.max(0, this.coins + fx.coins);
-  if (fx.upgrade)  this.pendingUpgrade = true;
-  if (fx.remove)   this.pendingRemove  = true;
-  if (fx.addCards) {
-    const tier = getUnlockedTier();
-    const eligible = shuffle(Object.values(DB).filter(c => (c.tier||0) <= tier));
-    for (let i = 0; i < fx.addCards && i < eligible.length; i++) {
-      const card = eligible[i];
-      const newCard = {...card, uid:`${card.id}_${nextUid()}`};
-      this.deck.splice(Math.floor(Math.random()*(this.deck.length+1)), 0, newCard);
-      this.addLog('ok', `> 📦 [Side Project] ${card.name} added to deck.`);
-    }
-  }
-  this.addLog('sy', `> 🏢 [POWER EVENT: ${opt.name}] ${opt.desc}`);
-  this.powerEventOptions = [];
-  this.shopItems = this._buildShopItems();
-  this.transition('shop'); this._commit();
-}
-
-export function _buildPowerEventOptions() {
-  const all = [
-    {id:'pe_promotion',   icon:'🏆', name:'PROMOTION',          desc:'+1.0 permanent Mult — costs +10 Burnout', fx:{permMult:1.0, bo:10}},
-    {id:'pe_sideproject', icon:'📦', name:'SIDE PROJECT',        desc:'Add 2 random cards to your deck for free', fx:{addCards:2}},
-    {id:'pe_training',    icon:'🎓', name:'CORPORATE TRAINING',  desc:'+20 Wellbeing, +5 CC, free card upgrade', fx:{wb:20, coins:5, upgrade:true}},
-    {id:'pe_restructure', icon:'🔄', name:'RESTRUCTURING',       desc:'+0.5 permanent Mult, −15% Tox, +3 CC', fx:{permMult:0.5, tox:-15, coins:3}},
-    {id:'pe_bonus',       icon:'💵', name:'PERFORMANCE BONUS',   desc:'+15 CC and a free card removal', fx:{coins:15, remove:true}},
-  ];
-  return shuffle([...all]).slice(0, 3);
 }
 
 // ═══════════════════════════════════════════════════════

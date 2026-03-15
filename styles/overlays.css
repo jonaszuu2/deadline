@@ -788,4 +788,39 @@
 .sm-scoring-mode #sc-score-block .sm-display{font-size:52px!important;min-width:130px}
 /* sc-deltas inside sm-bottom */
 .sm-scoring-mode .sc-deltas{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.sm-scoring-mode .sc-hint{display:block;text-align:center;margin-top:2px}
+.sm-scoring-mode .sc-hint{display:block;text-align:center;margin-top:2px}
+/* ══ PASSIVE SKILL TREE ══ */
+.tree-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;display:flex;align-items:center;justify-content:center}
+.tree-win{background:#1a1a1a;border:2px solid #444;box-shadow:0 0 30px #000;width:min(98vw,860px);max-height:92vh;display:flex;flex-direction:column}
+.tree-tbar{background:linear-gradient(90deg,#003300 0%,#004400 60%,#003300 100%);color:#70ff78;padding:4px 10px;font:bold 11px 'Courier New',monospace;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.tree-close{cursor:pointer;color:#fff;opacity:.7;font-size:14px;padding:0 4px}
+.tree-close:hover{opacity:1}
+.tree-body{display:flex;flex-direction:column;gap:8px;padding:8px;overflow-y:auto;flex:1}
+.tree-hint{font-size:10px;color:#888;text-align:center;padding:2px 0}
+.tree-svg{display:block;margin:0 auto;background:#111;border:1px solid #333;max-width:100%;overflow:visible}
+/* SVG node styles */
+.tree-line{stroke:#333;stroke-width:1.5}
+.tree-line.active{stroke:#70ff7888;stroke-width:2}
+.tree-node-name{font:bold 8px 'Courier New',monospace}
+.tree-node-icon{font:12px 'Courier New',monospace}
+.tree-cap-star{font:14px 'Courier New',monospace;fill:#ffdd44}
+.tree-cost{font:bold 8px 'Courier New',monospace;fill:#ffdd44}
+.tree-done{font:bold 9px 'Courier New',monospace;fill:#70ff78}
+.tree-node.reachable rect:hover{filter:brightness(1.4)}
+/* Node detail list */
+.tree-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;padding:4px 0}
+.tree-list-node{background:#111;border:1px solid #333;padding:6px 8px;display:flex;flex-direction:column;gap:3px}
+.tree-list-node.tree-list-unlocked{border-color:#70ff7855;background:#0a1a0a}
+.tree-list-node.tree-list-reachable{border-color:#ffdd4455}
+.tree-list-top{display:flex;gap:6px;align-items:center;font-size:9px}
+.tree-list-arch{font-weight:bold;font-size:9px;letter-spacing:.5px}
+.tree-list-type{color:#666;font-size:8px;text-transform:uppercase}
+.tree-list-name{font:bold 10px 'Courier New',monospace;line-height:1.3}
+.tree-list-desc{font-size:9px;color:#aaa;line-height:1.4}
+.tree-unlock-btn{margin-top:4px;background:#1a3300;border:1px solid #70ff78;color:#70ff78;font:bold 9px 'Courier New',monospace;padding:3px 8px;cursor:pointer;letter-spacing:.5px}
+.tree-unlock-btn:hover{background:#2a4400}
+/* PP badge in header */
+.pp-badge{font:bold 10px 'Courier New',monospace;color:#888;cursor:pointer;padding:3px 8px;border:1px solid #333;background:#111;text-align:center;user-select:none;letter-spacing:.5px}
+.pp-badge:hover{border-color:#70ff78;color:#70ff78}
+.pp-badge.pp-available{color:#70ff78;border-color:#70ff7888;background:#0a1a0a;animation:pp-pulse 2s ease-in-out infinite}
+@keyframes pp-pulse{0%,100%{box-shadow:0 0 4px #70ff7844}50%{box-shadow:0 0 10px #70ff7888}}

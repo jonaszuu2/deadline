@@ -32,13 +32,13 @@ export function computeAchievements(G, baseTotal, avgMult, chips) {
   if (G.totalTeammateWeeks >= 5)       add('🤝','Team Player','pos','5+ weeks with a teammate',100);
   else if (G.totalTeammateWeeks === 0) add('💀','Solo Operator','neu','No teammate used this run',0);
   // score milestones
-  if (baseTotal >= 6000)    add('💎','High Achiever','pos','Base score ≥ 6000',250);
-  else if (baseTotal < 500) add('📉','It Is What It Is','neg','Base score < 500',0);
+  if (baseTotal >= 30000)    add('💎','High Achiever','pos','Base score ≥ 30000',250);
+  else if (baseTotal < 2500) add('📉','It Is What It Is','neg','Base score < 2500',0);
   // multiplier
   if (avgMult >= 4.0)      add('🌀','Multiplier Master','pos','Avg Multiplier ≥ 4.0×',250);
   else if (avgMult >= 3.0) add('🔄','Efficiency Expert','pos','Avg Multiplier ≥ 3.0×',150);
   // chips
-  if (chips >= 3000)  add('💥','Chip Monster','pos','Total Chips ≥ 3000',150);
+  if (chips >= 15000)  add('💥','Chip Monster','pos','Total Chips ≥ 15000',150);
   // wellness path
   if ((G.wellnessWeeks || 0) >= 8) add('🌿','Wellness Champion','pos','8+ weeks with WB ≥ 70%',200);
   else if ((G.wellnessWeeks || 0) >= 5) add('❤','Healthy Habits','pos','5+ weeks with WB ≥ 70%',100);
@@ -49,7 +49,7 @@ export function calculateFinalScore(G) {
   const chips = G.totalRawChips;
   const avgMult = G.totalPlayCount > 0 ? G.totalMultSum / G.totalPlayCount : 1.0;
   const rawPts      = chips;
-  const multPts     = Math.floor(avgMult * 250);
+  const multPts     = Math.floor(avgMult * 1000);
   const wellnessPts = (G.wellnessWeeks || 0) * 150;
   const wbPts       = G.wb * 10;
   const boPts       = G.bo * (-25);
@@ -58,9 +58,8 @@ export function calculateFinalScore(G) {
   const baseTotal   = rawPts + multPts + wellnessPts + wbPts + boPts + toxPts + synPts;
   const achievements = computeAchievements(G, baseTotal, fmt1(avgMult), chips);
   const achPts       = achievements.reduce((sum, a) => sum + (a.pts || 0), 0);
-  const contractBonusPts = G.contractBonusPts || 0;
-  const total        = baseTotal + achPts + contractBonusPts;
-  return {chips, avgMult:fmt1(avgMult), weeksPlayed:G.week, rawPts, multPts, wellnessPts, wbPts, boPts, toxPts, synPts, achPts, contractBonusPts, achievements, total};
+  const total        = baseTotal + achPts;
+  return {chips, avgMult:fmt1(avgMult), weeksPlayed:G.week, rawPts, multPts, wellnessPts, wbPts, boPts, toxPts, synPts, achPts, achievements, total};
 }
 
 export function predictCareerTier(total) {

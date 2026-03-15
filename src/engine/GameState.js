@@ -12,10 +12,9 @@ const VALID_TRANSITIONS = {
   teammate_choice: ['play'],
   play:            ['scoring'],
   scoring:         ['play', 'result', 'review'],
-  result:          ['draft', 'boss', 'power_event', 'shop', 'review'],
-  draft:           ['boss', 'power_event', 'shop'],
+  result:          ['draft', 'boss', 'shop', 'review'],
+  draft:           ['boss', 'shop'],
   boss:            ['shop'],
-  power_event:     ['shop'],
   shop:            ['teammate_choice', 'upgrade_result'],
   upgrade_result:  ['shop'],
   review:          [],
@@ -68,7 +67,6 @@ export class GameState {
 
     // Class state
     this.playerClass = null; this.classBlueprint = null;
-    this.classTrack = 0; this.classTrackLevel = 0;
 
     // Economy state
     this.freeRemovalUsed = false;
@@ -83,15 +81,10 @@ export class GameState {
     this.discoveredCombos = new Set();
 
     // Power Progression
-    this.powerEventsDone = new Set(); this.powerEventOptions = [];
     this.justBreakthrough = false;
 
     // UI state
     this.overlaySort = 'name'; this._busy = false;
-
-    // Run contracts
-    this.runContracts = [];
-    this.contractBonusPts = 0;
 
     // Promotion run meta-state
     this.kpiMultiplier = 1.0;
@@ -100,17 +93,15 @@ export class GameState {
     this.legacyCard = null;
     this.previousRunScore = 0;
 
-    // Contract tracking flags
-    this.achievedBreakthrough = false;
-    this.achievedLv3 = false;
-    this.crunchPlayed = false;
-
     // Wellness tracking
     this.wellnessWeeks = 0;
 
     // Project Brief
     this.brief = null; this.briefOptions = []; this.briefProgress = 0;
     this.briefSideAchieved = false; this.wellnessViolatedBrief = false;
+
+    // Passive Skill Tree
+    this.pp = 0; this.unlockedNodes = new Set(); this.stratWeekStack = 0;
   }
 
   // ── Queries ──────────────────────────────────────────

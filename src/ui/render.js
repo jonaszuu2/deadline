@@ -10,6 +10,7 @@ import { initFinalReviewAnim, updateKpiBar, initScoringAnimation } from './anima
 import { _currentHandH, HAND_H_DEF, applyHandHeight } from './resize.js';
 import { ovGameOver, ovWin, ovFinalReview } from './overlays.js';
 import { BRIEFS_DB } from '../data/briefs.js';
+import { TREE_NODES } from '../data/passiveTree.js';
 
 export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80', SHOP:'#c8b8ff'};
 
@@ -33,7 +34,6 @@ const _phaseFlashLabels = {
   boss:            ()  => 'PERFORMANCE REVIEW',
   teammate_choice: ()  => 'STAFFING DECISION',
   brief_select:    ()  => 'PROJECT BRIEF',
-  power_event:     ()  => 'CORPORATE ANNOUNCEMENT',
 };
 
 function _showPhaseFlash(phase, week) {
@@ -50,7 +50,7 @@ function _showPhaseFlash(phase, week) {
 //  STATUS BAR
 // ═══════════════════════════════════════════════════════
 export function renderStatusBar(G) {
-  const phaseLbl = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS REVIEW', gameover:'GAME OVER', win:'WIN', review:'REVIEW', draft:'CARD DRAFT', teammate_choice:'STAFFING', targeted_draw:'TARGETED DRAW', power_event:'POWER EVENT', brief_select:'PROJECT BRIEF'};
+  const phaseLbl = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS REVIEW', gameover:'GAME OVER', win:'WIN', review:'REVIEW', draft:'CARD DRAFT', teammate_choice:'STAFFING', targeted_draw:'TARGETED DRAW', brief_select:'PROJECT BRIEF'};
   const boColor = G.bo >= 90 ? '#ff2020' : G.bo >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
   const boIcon  = G.bo >= 90 ? '🔥' : '🔥';
   const cells = [
@@ -110,10 +110,6 @@ export function render(G) {
   }
   if (G.phase === 'targeted_draw') {
     document.getElementById('win-body').innerHTML = renderTargetedDraw(G);
-    return;
-  }
-  if (G.phase === 'power_event') {
-    document.getElementById('win-body').innerHTML = renderPowerEvent(G);
     return;
   }
   if (G.phase === 'scoring') {
@@ -182,10 +178,6 @@ export function getBuildName(G) {
   const domPct = counts[dom] / total;
   const passiveIds = (G.passives||[]).map(p => p.itemId);
   const hasPerm = (G.permMult||0) >= 1.5;
-  const cs = (G.classTrackLevel||0);
-  if (G.playerClass === 'grinder' && cs >= 3) return '⚙ PRODUCTION MASTER';
-  if (G.playerClass === 'strategist' && cs >= 3) return '🎯 CRUNCH TACTICIAN';
-  if (G.playerClass === 'survivor' && cs >= 3) return '☣ UNKILLABLE';
   if (G.discoveredCombos?.has('combo_ergo') && counts.PRODUCTION >= 4) return '💻 THROUGHPUT ENGINE';
   if (G.discoveredCombos?.has('combo_zen')) return '🌿 ZEN OPERATOR';
   if (G.discoveredCombos?.has('combo_techLead')) return '📊 TECH LEAD';
@@ -262,6 +254,12 @@ export function renderHeader(G) {
         const tip = next ? `${liveSc} pts — need ${next.min} for T${next.tier}` : `${liveSc} pts — MAX TIER`;
         return `<div class="career-meter" style="color:${t.color}" title="${tip}">T${t.tier} ${esc(t.title)}</div>`;
       })()}
+      ${G.unlockedNodes ? (() => {
+        const pp = G.pp || 0;
+        const nodeCount = G.unlockedNodes.size || 0;
+        const ppCls = pp > 0 ? 'pp-badge pp-available' : 'pp-badge';
+        return `<div class="${ppCls}" onclick="openPassiveTree()" title="Open Skill Tree">🌿 <b>${pp} PP</b> · ${nodeCount} nodes · Skill Tree</div>`;
+      })() : ''}
       ${G.brief ? (() => {
         const b = BRIEFS_DB[G.brief];
         const prog = G.briefProgress || 0;
@@ -423,24 +421,6 @@ export function renderForecastPanel(G) {
     </details>`;
 }
 
-export function checkContractLive(c, G) {
-  switch(c.id) {
-    case 'no_fails':    return G.failedWeeks > 0 ? 'failed' : 'pending';
-    case 'wb_65':       return G.wb >= 65 ? 'done' : 'pending';
-    case 'tox_50':      return G.peakTox > 50 ? 'failed' : 'pending';
-    case 'bo_25':       return G.bo >= 25 ? 'failed' : 'pending';
-    case 'breakthrough':return G.achievedBreakthrough ? 'done' : 'pending';
-    case 'lv3_card':    return G.achievedLv3 ? 'done' : 'pending';
-    case 'combo_disc':  return (G.discoveredCombos?.size||0) > 0 ? 'done' : 'pending';
-    case 'class_t3':    return (G.classTrackLevel||0) >= 3 ? 'done' : 'pending';
-    case 'three_pass':  return (G.passives||[]).filter(p=>!p.isComp).length >= 3 ? 'done' : 'pending';
-    case 'big_deck':    return ([...(G.deck||[]),...(G.pile||[]),...(G.hand||[])].length) >= 14 ? 'done' : 'pending';
-    case 'perm_mult_2': return (G.permMult||0) >= 2.0 ? 'done' : 'pending';
-    case 'no_crunch':   return G.crunchPlayed ? 'failed' : 'pending';
-    default:            return 'pending';
-  }
-}
-
 export function renderRightPanel(G) {
   const allPerks = [
     ...(G.passives || []).filter(p => !p.isComp).map(p => ({icon: SHOP_DB[p.itemId]?.icon || '⚡', name: p.name, desc: p.passiveType + ' ×' + p.passiveVal})),
@@ -483,42 +463,10 @@ export function renderRightPanel(G) {
       ${snitch}
     </div>`;
   }
-  let classTrackHtml = '';
-  if (G.playerClass && G.classTrackLevel !== undefined) {
-    const cls = CLASS_DB[G.playerClass];
-    const thresholds = G.playerClass === 'survivor' ? [0,60,130,220,330,450] : [0,8,18,30,45,60];
-    const maxLevel = thresholds.length - 1;
-    const lvl = G.classTrackLevel;
-    const nextThresh = thresholds[lvl + 1] ?? thresholds[maxLevel];
-    const barPct = lvl >= maxLevel ? 100 : Math.round(((G.classTrack - thresholds[lvl]) / (nextThresh - thresholds[lvl])) * 100);
-    const pips = Array.from({length: maxLevel}, (_, i) =>
-      `<div class="ct-pip${i < lvl ? ' done' : i === lvl ? ' active' : ''}"></div>`
-    ).join('');
-    classTrackHtml = `<div class="rp-section-hdr">CLASS TRACK</div>
-    <div class="ct-wrap">
-      <div class="ct-name" style="color:${cls.color}">${cls.icon} ${cls.name} — Lvl ${lvl}</div>
-      <div class="ct-pips">${pips}</div>
-      <div class="ct-bar-bg"><div class="ct-bar-fill" style="width:${barPct}%;background:${cls.color}"></div></div>
-      <div class="ct-pts" style="color:var(--dim)">${G.classTrack} pts${lvl < maxLevel ? ` → ${nextThresh} for Lvl ${lvl+1}` : ' MAX'}</div>
-    </div>`;
-  }
-  let contractsHtml = '';
-  if (G.runContracts?.length) {
-    const rows = G.runContracts.map(c => {
-      const state = checkContractLive(c, G);
-      const statusIcon = state === 'done' ? '✓' : state === 'failed' ? '✗' : '○';
-      const cls = state === 'done' ? 'rc-done' : state === 'failed' ? 'rc-fail' : 'rc-pend';
-      return `<div class="rp-contract ${cls}">
-        <div class="rc-head"><span class="rc-ci">${c.icon}</span><span class="rc-si">${statusIcon}</span><span class="rc-pts">+${c.pts}</span></div>
-        <div class="rc-desc">${esc(c.desc)}</div>
-      </div>`;
-    }).join('');
-    contractsHtml = `<div class="rp-section-hdr">RUN CONTRACTS</div><div class="rp-contracts">${rows}</div>`;
-  }
   const forecastHtml = renderForecastPanel(G);
   const tabContents = {
-    build: `${classTrackHtml}<div class="rp-section-hdr">PERKS</div>${perksHtml}`,
-    team:  `${contractsHtml}<div class="rp-section-hdr">TEAMMATE</div>${tmHtml}`,
+    build: `<div class="rp-section-hdr">PERKS</div>${perksHtml}`,
+    team:  `<div class="rp-section-hdr">TEAMMATE</div>${tmHtml}`,
     stats: forecastHtml,
   };
   const tabBar = `<div class="rp-tabs">
@@ -914,37 +862,6 @@ export function renderTeammateChoice(G) {
   </div>`;
 }
 
-export function renderPowerEvent(G) {
-  const weekLabel = {3:'MID-QUARTER',6:'Q3 PERFORMANCE REVIEW',9:'YEAR-END PUSH'};
-  const optHtml = (G.powerEventOptions || []).map(opt => {
-    const fxBadges = [];
-    const {fx} = opt;
-    if (fx.permMult) fxBadges.push(`<span class="pe-fx-good">+${fx.permMult} perm Mult</span>`);
-    if (fx.bo)       fxBadges.push(`<span class="pe-fx-bad">+${fx.bo} Burnout</span>`);
-    if (fx.wb)       fxBadges.push(`<span class="pe-fx-good">+${fx.wb} WB</span>`);
-    if (fx.tox)      fxBadges.push(`<span class="pe-fx-good">${fx.tox}% Tox</span>`);
-    if (fx.coins)    fxBadges.push(`<span class="pe-fx-good">+${fx.coins} CC</span>`);
-    if (fx.upgrade)  fxBadges.push(`<span class="pe-fx-good">Free upgrade</span>`);
-    if (fx.remove)   fxBadges.push(`<span class="pe-fx-good">Free removal</span>`);
-    if (fx.addCards) fxBadges.push(`<span class="pe-fx-good">+${fx.addCards} free cards</span>`);
-    return `<div class="pe-option" onclick="G.claimPowerEvent('${opt.id}')">
-      <div class="pe-opt-icon">${opt.icon}</div>
-      <div class="pe-opt-name">${opt.name}</div>
-      <div class="pe-opt-desc">${esc(opt.desc)}</div>
-      <div class="pe-opt-fx">${fxBadges.join('')}</div>
-      <button class="pe-opt-btn">▶ CLAIM</button>
-    </div>`;
-  }).join('');
-  return `<div class="power-event-screen">
-    <div class="pe-header">
-      <div class="pe-eyebrow">CORPORATE ANNOUNCEMENT</div>
-      <div class="pe-title">⚡ ${weekLabel[G.week] || 'POWER EVENT'}</div>
-      <div class="pe-sub">Week ${G.week} milestone — choose your reward</div>
-    </div>
-    <div class="pe-options">${optHtml}</div>
-  </div>`;
-}
-
 export function renderBriefSelect(G) {
   const cardsHtml = G.briefOptions.map(id => {
     const b = BRIEFS_DB[id];
@@ -1315,6 +1232,111 @@ export function renderShop(G) {
     <div class="sh2-footer">
       <button class="sh2-skip-btn" onclick="G.skipShop()" ${G.purchasedThisShop ? 'disabled' : ''}>⏭ SKIP (+3 CC)</button>
       <button class="sh2-next-btn" onclick="G.startNextWeek()">${nextLabel}</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PASSIVE SKILL TREE MODAL
+// ═══════════════════════════════════════════════════════
+
+export function openPassiveTree() {
+  const existing = document.getElementById('tree-modal');
+  if (existing) { existing.remove(); return; }
+  const G = window.G; if (!G) return;
+  document.body.insertAdjacentHTML('beforeend', renderPassiveTreeModal(G));
+}
+
+export function renderPassiveTreeModal(G) {
+  const unlocked = G.unlockedNodes || new Set();
+  const pp = G.pp || 0;
+  const ARCH_CLR = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', RECOVERY:'#60ff80', CRUNCH:'#ff6030', HYBRID:'#ffdd44'};
+  const TYPE_ICON = {stat:'◆', synergy:'★', capstone:'✦'};
+
+  // Grid: 7 cols (0-6), 9 rows (1-8). Each cell is 90px wide, 80px tall.
+  const CELL_W = 90, CELL_H = 80, PAD = 10;
+  const COLS = 7, ROWS = 9;
+  const svgW = COLS * CELL_W + PAD * 2;
+  const svgH = ROWS * CELL_H + PAD * 2;
+
+  // Pre-compute which nodes are reachable (connected to any unlocked node)
+  const reachable = new Set();
+  for (const [id, node] of Object.entries(TREE_NODES)) {
+    if (unlocked.has(id)) continue;
+    const connectedToUnlocked = node.connects.some(c => unlocked.has(c))
+      || Object.values(TREE_NODES).some(n => n.connects.includes(id) && unlocked.has(n.id));
+    if (connectedToUnlocked) reachable.add(id);
+  }
+
+  const nodeX = n => PAD + n.x * CELL_W + CELL_W / 2;
+  const nodeY = n => PAD + (n.y - 1) * CELL_H + CELL_H / 2;
+
+  // Draw connection lines
+  const lineSet = new Set();
+  const lines = [];
+  for (const [id, node] of Object.entries(TREE_NODES)) {
+    for (const to of (node.connects || [])) {
+      const key = [id, to].sort().join('|');
+      if (lineSet.has(key)) continue;
+      lineSet.add(key);
+      const n2 = TREE_NODES[to]; if (!n2) continue;
+      const bothUnlocked = unlocked.has(id) && unlocked.has(to);
+      const cls = bothUnlocked ? 'tree-line active' : 'tree-line';
+      lines.push(`<line class="${cls}" x1="${nodeX(node)}" y1="${nodeY(node)}" x2="${nodeX(n2)}" y2="${nodeY(n2)}"/>`);
+    }
+  }
+
+  // Draw nodes
+  const nodes = Object.values(TREE_NODES).map(node => {
+    const nx = nodeX(node), ny = nodeY(node);
+    const isUnlocked = unlocked.has(node.id);
+    const isReachable = reachable.has(node.id);
+    const canAfford = pp >= node.cost;
+    const color = ARCH_CLR[node.arch] || '#aaa';
+    const stateCls = isUnlocked ? 'tree-node unlocked' : isReachable && canAfford ? 'tree-node reachable' : isReachable ? 'tree-node reachable locked' : 'tree-node unavail';
+    const onclick = !isUnlocked && isReachable ? `onclick="unlockTreeNode('${node.id}')"` : '';
+    const capMark = node.type === 'capstone' ? `<text class="tree-cap-star" x="${nx}" y="${ny - 26}" text-anchor="middle">✦</text>` : '';
+    const costBadge = !isUnlocked ? `<text class="tree-cost" x="${nx + 28}" y="${ny - 20}" text-anchor="middle">${node.cost}PP</text>` : `<text class="tree-done" x="${nx + 28}" y="${ny - 20}" text-anchor="middle">✓</text>`;
+    return `<g class="${stateCls}" ${onclick} style="cursor:${!isUnlocked && isReachable ? 'pointer' : 'default'}">
+      <rect x="${nx - 36}" y="${ny - 22}" width="72" height="44" rx="4" fill="${isUnlocked ? color + '33' : '#222'}" stroke="${isUnlocked ? color : isReachable ? color + '88' : '#444'}" stroke-width="${node.type === 'capstone' ? 2 : 1}"/>
+      ${capMark}
+      ${costBadge}
+      <text class="tree-node-icon" x="${nx}" y="${ny - 4}" text-anchor="middle" style="fill:${isUnlocked ? color : isReachable ? color + 'aa' : '#555'}">${TYPE_ICON[node.type] || '◆'}</text>
+      <text class="tree-node-name" x="${nx}" y="${ny + 12}" text-anchor="middle" style="fill:${isUnlocked ? '#fff' : isReachable ? '#ccc' : '#555'}">${esc(node.name.slice(0, 12))}</text>
+    </g>`;
+  }).join('');
+
+  // Node list for detail panel
+  const nodeList = Object.values(TREE_NODES).map(node => {
+    const isUnlocked = unlocked.has(node.id);
+    const isReachable = reachable.has(node.id);
+    const color = ARCH_CLR[node.arch] || '#aaa';
+    const stateLbl = isUnlocked ? `<span style="color:#70ff78">UNLOCKED</span>` : isReachable ? `<span style="color:#ffdd44">${node.cost} PP</span>` : `<span style="color:#555">locked</span>`;
+    const onclick = !isUnlocked && isReachable && pp >= node.cost ? `onclick="unlockTreeNode('${node.id}')"` : '';
+    const btnHtml = !isUnlocked && isReachable && pp >= node.cost ? `<button class="tree-unlock-btn" ${onclick}>Unlock (${node.cost} PP)</button>` : '';
+    return `<div class="tree-list-node${isUnlocked ? ' tree-list-unlocked' : isReachable ? ' tree-list-reachable' : ''}">
+      <div class="tree-list-top">
+        <span class="tree-list-arch" style="color:${color}">${node.arch}</span>
+        <span class="tree-list-type">${node.type}</span>
+        ${stateLbl}
+      </div>
+      <div class="tree-list-name" style="color:${isUnlocked ? color : isReachable ? '#ccc' : '#555'}">${esc(node.name)}</div>
+      <div class="tree-list-desc">${esc(node.short)}</div>
+      ${btnHtml}
+    </div>`;
+  }).join('');
+
+  return `<div id="tree-modal" class="tree-modal" onclick="if(event.target===this)this.remove()">
+    <div class="tree-win">
+      <div class="tree-tbar">🌿 PASSIVE SKILL TREE — <span style="color:#ffdd44">${pp} PP available</span> · ${unlocked.size} nodes unlocked <span class="tree-close" onclick="document.getElementById('tree-modal').remove()">✕</span></div>
+      <div class="tree-body">
+        <div class="tree-hint">Unlock nodes adjacent to your unlocked nodes. Earn PP by hitting weekly KPI targets.</div>
+        <svg class="tree-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
+          ${lines.join('')}
+          ${nodes}
+        </svg>
+        <div class="tree-list">${nodeList}</div>
+      </div>
     </div>
   </div>`;
 }
