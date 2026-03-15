@@ -102,6 +102,16 @@ export class GameState {
 
     // Passive Skill Tree
     this.pp = 0; this.unlockedNodes = new Set(); this.stratWeekStack = 0;
+
+    // Daily Context System
+    this.weekContexts = [];    // array of 5 context IDs [mon,tue,wed,thu,fri]
+    this.dayIndex = 0;         // 0=Mon … 4=Fri
+    this.pendingChoice = null; // context ID awaiting player choice, or null
+    this.activeContextMods = {};  // ctxMods passed to calcTurn this play
+    this.activeContextPre  = {};  // {preWbDelta, preToxDelta} applied before calcTurn
+    this.activeContextPost = {};  // {postCoins} applied after calcTurn
+    this.ctxMaxCards = null;      // override maxSel for current play
+    this.ctxBlockArch = null;     // archetype blocked for current play
   }
 
   // ── Queries ──────────────────────────────────────────
@@ -118,6 +128,7 @@ export class GameState {
   handLimit() { return HAND - (this.brief === 'hyper_growth' ? 1 : 0); }
   hasComp(id) { return this.competencies.includes(id); }
   maxSel() {
+    if (this.ctxMaxCards !== null) return this.ctxMaxCards;
     const base = MAX_SEL + ((this.hasComp('comp_bigpicture') || this.hasComp('comp_mule')) ? 1 : 0);
     return base + (this.tox >= 61 && this.tox < 91 ? 1 : 0);
   }

@@ -11,6 +11,7 @@ import { _currentHandH, HAND_H_DEF, applyHandHeight } from './resize.js';
 import { ovGameOver, ovWin, ovFinalReview } from './overlays.js';
 import { BRIEFS_DB } from '../data/briefs.js';
 import { TREE_NODES } from '../data/passiveTree.js';
+import { CONTEXTS_DB } from '../data/contexts.js';
 
 export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80', SHOP:'#c8b8ff'};
 
@@ -138,7 +139,10 @@ export function render(G) {
         <div id="top-row">
           ${renderEmployeeDashboard(wb, tox, bo, preview)}
           ${renderScoreMachine(preview, wscore, target, G)}
-          ${renderActions(G, preview)}
+          <div id="ctx-area">
+            ${renderContextStrip(G)}
+            ${G.pendingChoice ? renderContextChoice(G) : renderActions(G, preview)}
+          </div>
         </div>
         ${renderHand(hand, sel, preview, G.exhausted, G.passives, G)}
         <div id="hand-resize-handle" onmousedown="startHandResize(event)"></div>
@@ -564,6 +568,56 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
     <div class="cfx">${effects.join('')}${exhaust}</div>
     ${syns}${comboPos}
     ${crunchFreeBadge}${crunchFatigueBadge}${pctHtml}${playCountHint}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DAILY CONTEXT CALENDAR
+// ═══════════════════════════════════════════════════════
+
+const DAY_NAMES = ['MON','TUE','WED','THU','FRI'];
+
+export function renderContextStrip(G) {
+  if (!G.weekContexts?.length) return '';
+  const idx = G.dayIndex ?? 0;
+  const days = G.weekContexts.map((ctxId, i) => {
+    const ctx = CONTEXTS_DB[ctxId];
+    if (!ctx) return '';
+    const done    = i < idx;
+    const today   = i === idx;
+    const visible = i <= idx + 1; // today + tomorrow visible
+    let cls = 'ctx-day';
+    if (done)  cls += ' ctx-done';
+    if (today) cls += ' ctx-today';
+    if (!done && !today) cls += ' ctx-upcoming';
+    const label = visible
+      ? `<span class="ctx-day-icon">${ctx.icon}</span><span class="ctx-day-name-lbl">${esc(ctx.name)}</span>`
+      : `<span class="ctx-day-icon">?</span>`;
+    return `<div class="${cls}" title="${visible ? esc(ctx.desc) : '???'}">
+      <div class="ctx-day-hdr">${DAY_NAMES[i]}</div>
+      ${done ? '<div class="ctx-day-check">✓</div>' : label}
+    </div>`;
+  }).join('');
+
+  const todayCtx = CONTEXTS_DB[G.weekContexts[idx]];
+  const todayDesc = todayCtx ? `<div class="ctx-today-desc">${todayCtx.icon} <b>${esc(todayCtx.name)}</b> — ${esc(todayCtx.desc)}</div>` : '';
+
+  return `<div class="ctx-strip">${days}</div>${todayDesc}`;
+}
+
+export function renderContextChoice(G) {
+  if (!G.pendingChoice) return '';
+  const ctx = CONTEXTS_DB[G.pendingChoice];
+  if (!ctx?.isChoice) return '';
+  const btns = ctx.choices.map(c => `
+    <button class="btn ctx-choice-btn" onclick="G.resolveContextChoice('${c.id}')">
+      <div class="ctx-choice-label">${esc(c.label)}</div>
+      <div class="ctx-choice-detail">${esc(c.desc)}</div>
+    </button>`).join('');
+  return `<div class="ctx-choice-panel">
+    <div class="ctx-choice-hdr">${ctx.icon} ${esc(ctx.name)}</div>
+    <div class="ctx-choice-sub">${esc(ctx.desc)}</div>
+    <div class="ctx-choice-opts">${btns}</div>
   </div>`;
 }
 

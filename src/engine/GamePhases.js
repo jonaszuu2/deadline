@@ -13,6 +13,7 @@ import { SHOP_DB } from '../data/shop.js';
 import { DB } from '../data/cards.js';
 import { BRIEFS_DB, BRIEFS_LIST } from '../data/briefs.js';
 import { CLASS_START_NODES } from '../data/passiveTree.js';
+import { CONTEXTS_DB, CONTEXTS_MONDAY, CONTEXTS_FRIDAY, CONTEXTS_GENERAL } from '../data/contexts.js';
 import { ui } from './uiStore.js';
 
 // ═══════════════════════════════════════════════════════
@@ -60,6 +61,7 @@ export function start() {
   // Unlock class starting node for free
   const startNode = this.playerClass && CLASS_START_NODES[this.playerClass];
   if (startNode && !this.unlockedNodes.has(startNode)) this.unlockedNodes.add(startNode);
+  this._drawWeekContexts();
   this.drawUp();
   const yearLabel = this.promotionRun ? ` — YEAR ${this.promotionYear}` : '';
   const kpiLabel  = this.promotionRun ? ` [KPI ×${this.kpiMultiplier.toFixed(2)}]` : '';
@@ -193,6 +195,7 @@ export function skipShop() {
 
 export function startNextWeek() {
   this.week++; this.wscore = 0;
+  this._drawWeekContexts();
   this.playsMax = PLAYS + (this.hasComp('comp_mule') ? 1 : 0);
   this.plays = this.playsMax;
   this.discs = this.brief === 'restructure' ? 4 : DISCS;
@@ -631,6 +634,81 @@ export function claimTargetedDraw(uid) {
   this.transition('play');
   this.addLog('ch', `> 🎯 Targeted Draw: [${card.name}] pulled from deck.`);
   this.drawUp();
+  this._commit();
+}
+
+// ═══════════════════════════════════════════════════════
+//  DAILY CONTEXT SYSTEM
+// ═══════════════════════════════════════════════════════
+
+export function _drawWeekContexts() {
+  const mon = shuffle([...CONTEXTS_MONDAY])[0];
+  const fri = shuffle([...CONTEXTS_FRIDAY])[0];
+  // Fill Tue/Wed/Thu from general pool — max 1 choice event per week
+  const pool = shuffle([...CONTEXTS_GENERAL]);
+  const middle = [];
+  let choiceCount = 0;
+  for (const id of pool) {
+    if (middle.length >= 3) break;
+    const ctx = CONTEXTS_DB[id];
+    if (ctx.isChoice && choiceCount >= 1) continue;
+    middle.push(id);
+    if (ctx.isChoice) choiceCount++;
+  }
+  this.weekContexts = [mon, ...middle, fri];
+  this.dayIndex = 0;
+  this.pendingChoice = null;
+  this.activeContextMods = {};
+  this.activeContextPre  = {};
+  this.activeContextPost = {};
+  this.ctxMaxCards  = null;
+  this.ctxBlockArch = null;
+  this._setupDay(0);
+}
+
+export function _setupDay(idx) {
+  const ctxId = this.weekContexts?.[idx];
+  if (!ctxId) return;
+  const ctx = CONTEXTS_DB[ctxId];
+  if (!ctx) return;
+  // Reset per-day overrides
+  this.ctxMaxCards  = ctx.maxCardsPlay ?? null;
+  this.ctxBlockArch = null;
+  this.activeContextMods = {};
+  this.activeContextPre  = {};
+  this.activeContextPost = {};
+
+  if (ctx.isChoice) {
+    this.pendingChoice = ctxId;
+    this._commit();
+    return;
+  }
+  // Apply week-level effects immediately
+  if (ctx.weekDiscExtra) {
+    this.discs = Math.min(this.discs + ctx.weekDiscExtra, 7);
+    this.addLog('ok', `> 📋 [${ctx.name}] +${ctx.weekDiscExtra} Discard tej tury → ${this.discs}`);
+  }
+  // Store pre/post effects and ctxMods for playSelected to use
+  this.activeContextPre  = { preWbDelta: ctx.preWbDelta || 0, preToxDelta: ctx.preToxDelta || 0 };
+  this.activeContextPost = { postCoins: ctx.postCoins || 0 };
+  this.activeContextMods = ctx.ctxMods || {};
+  this.addLog('sy', `> 📋 [${ctx.name}] ${ctx.desc}`);
+}
+
+export function resolveContextChoice(choiceId) {
+  const ctxId = this.pendingChoice;
+  if (!ctxId) return;
+  const ctx = CONTEXTS_DB[ctxId];
+  if (!ctx?.isChoice) return;
+  const choice = ctx.choices.find(c => c.id === choiceId);
+  if (!choice) return;
+  this.pendingChoice = null;
+  this.ctxMaxCards   = choice.maxCardsPlay ?? (ctx.maxCardsPlay ?? null);
+  this.ctxBlockArch  = choice.blockArch ?? null;
+  this.activeContextPre  = { preWbDelta: choice.preWbDelta || 0, preToxDelta: choice.preToxDelta || 0 };
+  this.activeContextPost = { postCoins: choice.postCoins || 0 };
+  this.activeContextMods = choice.ctxMods || {};
+  this.addLog('sy', `> 📋 [${ctx.name}] → "${choice.label}" — ${choice.desc}`);
   this._commit();
 }
 

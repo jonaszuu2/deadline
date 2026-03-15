@@ -607,4 +607,53 @@
 .dr-syn-badge{font:bold 9px 'Courier New',monospace;color:#44ddff;margin-top:4px;
               padding:3px 6px;background:rgba(68,221,255,.08);
               border:1px solid rgba(68,221,255,.3);letter-spacing:.5px}
-
+
+/* ═══════════════════════════════════════════════════════
+   DAILY CONTEXT SYSTEM
+   ═══════════════════════════════════════════════════════ */
+#ctx-area{display:flex;flex-direction:column;gap:4px;min-width:180px;flex:1}
+
+/* Calendar strip */
+.ctx-strip{display:flex;gap:3px;justify-content:stretch}
+.ctx-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+         padding:4px 2px;
+         border:1px solid rgba(255,255,255,.12);background:rgba(0,0,20,.4);
+         font-size:8px;letter-spacing:1px;color:var(--dim);text-align:center;cursor:default}
+.ctx-day-hdr{font:bold 7px 'Courier New',monospace;letter-spacing:2px;color:var(--dim)}
+.ctx-day-icon{font-size:13px;line-height:1.1}
+.ctx-day-name-lbl{font:7px 'Courier New',monospace;color:#aaa;word-break:break-word;line-height:1.2;max-width:36px}
+.ctx-day-check{font-size:10px;color:#44aa66}
+
+/* Today */
+.ctx-day.ctx-today{border-color:rgba(255,220,60,.5);background:rgba(255,220,60,.06);
+                   box-shadow:0 0 6px rgba(255,220,60,.15)}
+.ctx-day.ctx-today .ctx-day-hdr{color:#ffdd44}
+.ctx-day.ctx-today .ctx-day-name-lbl{color:#ffdd44}
+
+/* Done */
+.ctx-day.ctx-done{opacity:.45;border-color:rgba(255,255,255,.05)}
+
+/* Upcoming (hidden) */
+.ctx-day.ctx-upcoming{opacity:.6}
+
+/* Today description bar */
+.ctx-today-desc{font:10px 'Courier New',monospace;color:#cccccc;
+                padding:4px 6px;
+                border-left:2px solid #ffdd44;background:rgba(255,220,60,.04);
+                line-height:1.4}
+.ctx-today-desc b{color:#ffdd44}
+
+/* Choice panel */
+.ctx-choice-panel{display:flex;flex-direction:column;gap:6px;
+                  padding:8px;border:1px solid rgba(255,180,60,.3);
+                  background:rgba(255,140,20,.05)}
+.ctx-choice-hdr{font:bold 11px 'Courier New',monospace;color:#ffcc44;letter-spacing:1px}
+.ctx-choice-sub{font:9px 'Courier New',monospace;color:var(--dim)}
+.ctx-choice-opts{display:flex;gap:6px}
+.ctx-choice-btn{flex:1;padding:7px 6px;cursor:pointer;text-align:left;
+                font:10px 'Courier New',monospace;
+                border:2px solid;border-color:var(--w95d) var(--w95l) var(--w95l) var(--w95d);
+                background:var(--surf);color:#fff}
+.ctx-choice-btn:hover{background:rgba(255,220,60,.08);border-color:rgba(255,220,60,.4)}
+.ctx-choice-label{font-weight:bold;margin-bottom:3px}
+.ctx-choice-detail{font-size:8px;color:#aaa}

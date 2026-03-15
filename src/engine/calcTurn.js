@@ -76,8 +76,8 @@ export function evalSyn(syn, acc, log, snap, gs) {
     acc.mult += unique * p.per;
   }
   if (type === 'MULT_PER_STAT') acc.mult += Math.floor((snap[p.stat] || 0) / p.div) * p.per;
-  if (type === 'SCALE_CHIPS')  acc.chips = Math.round(acc.chips * p.v);
-  if (type === 'SCALE_MULT')   acc.mult  = Number(fmt1(acc.mult * p.v));
+  if (type === 'SCALE_CHIPS') { if (acc.scaleLog) acc.scaleLog.push(`CHIPS ×${p.v}`); acc.chips = Math.round(acc.chips * p.v); }
+  if (type === 'SCALE_MULT')  { if (acc.scaleLog) acc.scaleLog.push(`MULT ×${p.v}`);  acc.mult  = Number(fmt1(acc.mult * p.v)); }
   return true;
 }
 
@@ -97,6 +97,7 @@ export function calcTurn(cards, ctx) {
     discardComboMult = 0, discardMultStack = 0, permMult = 0,
     brief = null, unlockedNodes = new Set(), stratWeekStack = 0,
     mode = 'preview',
+    ctxMods = {},
   } = ctx;
   const tree = id => unlockedNodes.has(id);
 
@@ -112,7 +113,7 @@ export function calcTurn(cards, ctx) {
   let weekCrunchCount   = ctx.weekCrunchCount   || 0;
   const newExhausted = new Set();
 
-  const acc = {chips: 0, mult: 1.0};
+  const acc = {chips: 0, mult: 1.0, scaleLog: []};
   const playLog = [], activeSynergies = new Set(), toxLevels = [];
   let toxGained = 0, gameOver = false, prodChips = 0;
 
@@ -139,6 +140,9 @@ export function calcTurn(cards, ctx) {
     acc.mult += permMult;
     lg('sy', `  ★ [Boss Bonus] +${fmt1(permMult)}× Permanent Mult`);
   }
+  // Context flat bonuses
+  if (ctxMods.extraMult)  { acc.mult  += ctxMods.extraMult;  lg('sy', `  📋 [Context] +${fmt1(ctxMods.extraMult)}× Mult`); }
+  if (ctxMods.extraChips) { acc.chips += ctxMods.extraChips; lg('ch', `  📋 [Context] +${ctxMods.extraChips} Chips`); }
   // s_cap: permanent Mult counted TWICE
   if (tree('s_cap') && permMult > 0) {
     acc.mult += permMult;
@@ -280,9 +284,18 @@ export function calcTurn(cards, ctx) {
       lg('mu', `  🌿 [CHAOS STRATEGY] Tox ${tox}% — +0.8 Mult`, true);
     }
 
+    // Context archetype modifiers
+    if (ctxMods.stratChipsMult && card.archetype === 'STRATEGY'  && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.stratChipsMult);
+    if (ctxMods.prodChipsMult  && card.archetype === 'PRODUCTION' && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.prodChipsMult);
+    if (ctxMods.crunchChipsMult && card.archetype === 'CRUNCH'   && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.crunchChipsMult);
+    if (ctxMods.stratMultMult  && card.archetype === 'STRATEGY'  && fx.mult  > 0) fx.mult  = fmt1(fx.mult  * ctxMods.stratMultMult);
+    if (ctxMods.stratExtraMult && card.archetype === 'STRATEGY')                   fx.mult  = fmt1((fx.mult || 0) + ctxMods.stratExtraMult);
+
     if (fx.chips) { acc.chips += fx.chips; lg('ch', `  [${card.name}] +${fx.chips} Chips`, true); }
     if (fx.chips && card.archetype === 'PRODUCTION') prodChips += fx.chips;
     if (fx.mult)  { acc.mult  += fx.mult;  lg('mu', `  [${card.name}] +${fx.mult.toFixed(2)} Mult`, true); }
+    // Context per-card mult
+    if (ctxMods.perCardMult) { acc.mult += ctxMods.perCardMult; }
 
     // Gary T1: +25 chips per card
     if (teammate === 'gary' && tmTier === 1) {
@@ -496,6 +509,31 @@ export function calcTurn(cards, ctx) {
       lg('sy', `  🔵 [PRODUCTION CHAIN] ${prodCardCount} PROD cards — +${chainBonus} Combo Chips (+${(prodCardCount-1)*10}%)`);
     }
 
+    // ── Context post-loop effects ─────────────────────
+    if (ctxMods.archComboMult) {
+      const types = new Set(cards.map(c => c.archetype)).size;
+      if (types >= ctxMods.archComboMult.minTypes) {
+        acc.mult += ctxMods.archComboMult.bonus;
+        lg('sy', `  📋 [Context] ${types} archetypy → +${ctxMods.archComboMult.bonus} Mult`);
+      }
+    }
+    if (ctxMods.sameArchBonus) {
+      const cnts = {}; for (const c of cards) cnts[c.archetype] = (cnts[c.archetype]||0)+1;
+      const maxSame = Math.max(...Object.values(cnts));
+      if (maxSame >= ctxMods.sameArchBonus.min) {
+        acc.mult += ctxMods.sameArchBonus.bonus;
+        lg('sy', `  📋 [Context] ${maxSame}× sam archetype → +${ctxMods.sameArchBonus.bonus} Mult`);
+      }
+    }
+    if (ctxMods.noStratMultPenalty && !cards.some(c => c.archetype === 'STRATEGY')) {
+      acc.mult += ctxMods.noStratMultPenalty;
+      lg('mu', `  📋 [Context] Brak STRATEGY — ${ctxMods.noStratMultPenalty} Mult`);
+    }
+    if (ctxMods.minCardsChipsBonus && cards.length >= ctxMods.minCardsChipsBonus.min) {
+      acc.chips += ctxMods.minCardsChipsBonus.chips;
+      lg('ch', `  📋 [Context] ${cards.length} karty → +${ctxMods.minCardsChipsBonus.chips} Chips`);
+    }
+
     // Toxicity Tier Transition announcement (real only)
     if (mode === 'real') {
       const tierBefore = ctx.tox >= 91 ? 4 : ctx.tox >= 61 ? 3 : ctx.tox >= 31 ? 2 : 1;
@@ -515,7 +553,15 @@ export function calcTurn(cards, ctx) {
     }
 
     const baseScore = Math.floor(acc.chips * acc.mult);
-    const score = comboMult > 1.0 ? Math.floor(baseScore * comboMult) : baseScore;
+    let score = comboMult > 1.0 ? Math.floor(baseScore * comboMult) : baseScore;
+    if (ctxMods.scoreMult && ctxMods.scoreMult !== 1.0) {
+      score = Math.floor(score * ctxMods.scoreMult);
+      if (mode === 'real') log.push({cls:'sc', t:`  📋 [Context] Score ×${ctxMods.scoreMult} → ${score}`});
+    }
+    if (ctxMods.singleCardScoreMult && cards.length === 1) {
+      score = Math.floor(score * ctxMods.singleCardScoreMult);
+      if (mode === 'real') log.push({cls:'sc', t:`  📋 [Context] 1 karta → Score ×${ctxMods.singleCardScoreMult} → ${score}`});
+    }
     if (mode === 'real') {
       const comboTag = comboMult > 1.0 ? ` × ${fmt1(comboMult)} COMBO` : '';
       log.push({cls:'sc', t:`  ▶ SCORE: ${acc.chips} × ${fmt1(acc.mult)}${comboTag} = ${score}`});
@@ -528,6 +574,7 @@ export function calcTurn(cards, ctx) {
     return {
       score, baseScore, wb: finalWb, tox: finalTox, bo: finalBo, gameOver: false,
       comboMult, chips: acc.chips, mult: fmt1(acc.mult),
+      scaleLog: acc.scaleLog,
       log, activeSynergies,
       firstCrunchUsed, weekCrunchCount, firstCardThisWeek, newExhausted,
       effLabel: eff.label,

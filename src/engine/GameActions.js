@@ -109,8 +109,24 @@ export function discardSelected() {
 
 export function playSelected() {
   if (this._busy || this.plays <= 0 || !this.sel.length || this.phase !== 'play') return;
+  if (this.pendingChoice) return; // must resolve context choice first
+
+  // Block archetype check
+  if (this.ctxBlockArch) {
+    const blocked = this.sel.map(uid => this.hand.find(c => c.uid === uid)).filter(Boolean);
+    if (blocked.some(c => c.archetype === this.ctxBlockArch)) {
+      this.addLog('ng', `> ⛔ [Context] ${this.ctxBlockArch} zablokowane dziś.`);
+      this._commit(); return;
+    }
+  }
+
   this._busy = true;
   const cards = this.sel.map(uid => this.hand.find(c => c.uid === uid)).filter(Boolean);
+
+  // Apply context pre-effects (WB/TOX delta before calcTurn)
+  const pre = this.activeContextPre || {};
+  if (pre.preWbDelta)  { this.wb  = clamp(this.wb  + pre.preWbDelta,  0, 100); this.addLog(pre.preWbDelta  > 0 ? 'wg' : 'wl', `> 📋 [Context] ${pre.preWbDelta > 0 ? '+' : ''}${pre.preWbDelta} WB → ${this.wb}%`); }
+  if (pre.preToxDelta) { this.tox = clamp(this.tox + pre.preToxDelta, 0, 100); this.addLog(pre.preToxDelta > 0 ? 'tg' : 'tl', `> 📋 [Context] ${pre.preToxDelta > 0 ? '+' : ''}${pre.preToxDelta}% TOX → ${this.tox}%`); }
   this.hand = this.hand.filter(c => !this.sel.includes(c.uid));
   this.pile.push(...cards); this.sel = []; this.plays--;
   if (cards.some(c => c.archetype === 'CRUNCH')) { this.weekCrunched = true; }
@@ -139,7 +155,7 @@ export function playSelected() {
     }
   }
 
-  const res = this.processTurn(cards);
+  const res = this.processTurn(cards, this.activeContextMods || {});
   const prevWscore = this.wscore;
   const prevWb    = this.wb;
   const prevPassed = this.wscore >= this.kpi();
@@ -203,10 +219,11 @@ export function playSelected() {
   // Compute scoring reveal intensity
   const cm = res.comboMult || 1.0;
   const comboLabel = (res.log.filter(e => e.cls === 'sy' && e.t.includes('COMBO')).pop()?.t.match(/\[([^\]]+)\]/) || [])[1] || null;
+  const hasScale = res.scaleLog?.length > 0;
   let intensity = 'normal';
-  if      (cm >= 2.0 || res.score >= 500) intensity = 'epic';
-  else if (cm >= 1.5 || res.score >= 300) intensity = 'great';
-  else if (cm >= 1.2 || res.score >= 150) intensity = 'good';
+  if      (hasScale || cm >= 2.0 || res.score >= 12000) intensity = 'epic';
+  else if (cm >= 1.5 || res.score >= 5000)  intensity = 'great';
+  else if (cm >= 1.2 || res.score >= 2000)  intensity = 'good';
 
   let nextPhase;
   if (res.gameOver) nextPhase = 'review';
@@ -220,6 +237,7 @@ export function playSelected() {
     prevWscore, pendingScore: res.score, pendingWscore: newWscore,
     pendingWb: res.wb, pendingTox: res.tox, pendingBo: res.bo,
     intensity, comboLabel,
+    scaleLabel: hasScale ? `⚡ ${res.scaleLog.join(' · ')}` : null,
     crossedKpi: !res.gameOver && !prevPassed && newWscore >= this.kpi(),
     activeSynergies: res.activeSynergies,
     playedCards: cards.map(c => ({ name: c.name, archetype: c.archetype })),
@@ -244,7 +262,18 @@ export function finishScoring() {
   ui.animateWscore(d.prevWscore, d.pendingWscore, d.intensity);
   if (d.pendingScore > 0) ui.showScorePopup(d.pendingScore, d.intensity, d.comboLabel);
   if (d.crossedKpi) ui.triggerKpiFlash();
-  if ((d.intensity === 'epic' || d.intensity === 'great') && d.comboLabel) ui.showComboAnnouncer(d.comboLabel);
+  const announceLabel = d.scaleLabel || d.comboLabel;
+  if ((d.intensity === 'epic' || d.intensity === 'great') && announceLabel) ui.showComboAnnouncer(announceLabel);
+  // Context post-effects (coins) + advance to next day
+  const post = this.activeContextPost || {};
+  if (post.postCoins) { this.coins += post.postCoins; this.addLog('ok', `> 📋 [Context] +${post.postCoins} CC → ${this.coins} CC`); }
+  this.activeContextMods = {}; this.activeContextPre = {}; this.activeContextPost = {};
+  this.ctxMaxCards = null; this.ctxBlockArch = null;
+  if (d.nextPhase !== 'review' && d.nextPhase !== 'result') {
+    this.dayIndex = Math.min((this.dayIndex || 0) + 1, 4);
+    this._setupDay(this.dayIndex);
+  }
+
   this._busy = false;
   if (d.nextPhase === 'review') { this.isTerminated = true; this.transition('review'); }
   else if (d.nextPhase === 'result') this.transition('result');
@@ -264,7 +293,7 @@ export function finishScoring() {
 //  TURN ENGINE WRAPPER
 // ═══════════════════════════════════════════════════════
 
-export function processTurn(cards) {
+export function processTurn(cards, ctxMods = {}) {
   this.updateTeammateBehavior();
   const result = calcTurn(cards, {
     wb: this.wb, tox: this.tox, bo: this.bo,
@@ -282,6 +311,7 @@ export function processTurn(cards) {
     brief:                   this.brief,
     unlockedNodes:           this.unlockedNodes || new Set(),
     stratWeekStack:          this.stratWeekStack || 0,
+    ctxMods,
     mode: 'real',
   });
   this.discardComboMult = 0;

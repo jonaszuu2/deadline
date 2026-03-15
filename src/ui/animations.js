@@ -29,7 +29,7 @@ export function showScorePopup(score, intensity = 'normal', comboLabel = null) {
   const pop  = document.createElement('div');
   const baseSizes = {normal: 32, good: 38, great: 48, epic: 60};
   const base = baseSizes[intensity] || 32;
-  const fsize = Math.min(base + 16, base + Math.floor(score / 80) * 2);
+  const fsize = Math.min(base + 16, base + Math.floor(score / 400) * 2);
   pop.className = `score-pop score-pop-${intensity}`;
   pop.style.fontSize = fsize + 'px';
   if (comboLabel && (intensity === 'great' || intensity === 'epic')) {
