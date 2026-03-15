@@ -4,7 +4,7 @@ export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // ═══════════════════════════════════════════════════════
 //  GAME CONSTANTS & KPI
 // ═══════════════════════════════════════════════════════
-export const KPI = [240, 360, 490, 640, 740, 860, 980, 1100, 1230, 1360];
+export const KPI = [240, 360, 490, 640, 740, 860, 1200, 1380, 1560, 1750];
 export const TOTAL_WEEKS = 10;
 export const PLAYS = 3;
 export const DISCS = 2;
@@ -87,11 +87,11 @@ export const CONTRACT_POOL = [
 //  UPGRADE TIER TABLE  (gambling roll on Performance Upgrade)
 // ═══════════════════════════════════════════════════════
 export const UPGRADE_TIERS = [
-  { id:'standard',    chips:30,  mult:0.2, weight:50, label:'STANDARD',    color:'#888888', msg:'A solid, if unremarkable, improvement.' },
-  { id:'improved',    chips:50,  mult:0.3, weight:25, label:'IMPROVED',    color:'#60c060', msg:'Better than expected. Nice.' },
-  { id:'excellent',   chips:70,  mult:0.5, weight:15, label:'EXCELLENT',   color:'#6090ff', msg:'Outstanding execution.' },
-  { id:'exceptional', chips:100, mult:0.7, weight: 8, label:'EXCEPTIONAL', color:'#c060ff', msg:'Exceptional performance. Noted.' },
-  { id:'legendary',   chips:150, mult:1.0, weight: 2, label:'LEGENDARY',   color:'#ffcc00', msg:'A once-in-a-career result.' },
+  { id:'standard',    chips:20,  mult:0.25, weight:50, label:'STANDARD',    color:'#888888', msg:'A solid, if unremarkable, improvement.' },
+  { id:'improved',    chips:35,  mult:0.40, weight:25, label:'IMPROVED',    color:'#60c060', msg:'Better than expected. Nice.' },
+  { id:'excellent',   chips:55,  mult:0.60, weight:15, label:'EXCELLENT',   color:'#6090ff', msg:'Outstanding execution.' },
+  { id:'exceptional', chips:80,  mult:0.85, weight: 8, label:'EXCEPTIONAL', color:'#c060ff', msg:'Exceptional performance. Noted.' },
+  { id:'legendary',   chips:120, mult:1.20, weight: 2, label:'LEGENDARY',   color:'#ffcc00', msg:'A once-in-a-career result.' },
 ];
 
 export const CAREER_DB = [

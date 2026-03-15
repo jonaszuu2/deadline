@@ -303,7 +303,7 @@ export function calcTurn(cards, ctx) {
     }
 
     // Toxic Atmosphere damage (deterministic: tier-based drain per card played)
-    if (tox > 50) {
+    if (tox > 35) {
       const drain = tox >= 90 ? 4 : tox >= 70 ? 2 : 1;
       wb = clamp(wb - drain, 0, 100);
       lg('dm', `  ☣ Toxic Atmosphere (${tox}%) −${drain} WB → ${wb}%`);
@@ -360,7 +360,7 @@ export function calcTurn(cards, ctx) {
     // PRODUCTION Combo Scaling: +10% Chips per extra PRODUCTION card
     const prodCardCount = cards.filter(c => c.archetype === 'PRODUCTION').length;
     if (prodCardCount >= 2 && prodChips > 0) {
-      const chainBonus = Math.round(prodChips * (prodCardCount - 1) * 0.10);
+      const chainBonus = Math.round(prodChips * (prodCardCount - 1) * 0.05);
       acc.chips += chainBonus;
       lg('sy', `  🔵 [PRODUCTION CHAIN] ${prodCardCount} PROD cards — +${chainBonus} Combo Chips (+${(prodCardCount-1)*10}%)`);
     }

@@ -70,8 +70,7 @@ export function discardSelected() {
   const gone = this.hand.filter(c => this.sel.includes(c.uid));
   this.hand = this.hand.filter(c => !this.sel.includes(c.uid));
   this.pile.push(...gone); this.sel = []; this.discs--;
-  const chipBonus = gone.length * 20; this.wscore += chipBonus;
-  let discardLog = `> Discarded ${gone.length} card(s) — +${chipBonus} Chips.`;
+  let discardLog = `> Discarded ${gone.length} card(s).`;
 
   // Batch Discard Combo: 2+ cards stacks Mult on next play
   if (gone.length >= 2) {
@@ -430,20 +429,43 @@ export function setOverlaySort(key) { this.overlaySort = key; this._commit(); }
 export function upgradeCard(uid) {
   const orig = [...this.deck, ...this.pile].find(c => c.uid === uid);
   if (!orig) return;
-  const fromChips = orig.fx.chips || 0;
-  const fromMult  = orig.fx.mult  || 0;
   const tier = _rollUpgradeTier();
-  const card = this._mutateCard(uid, c => ({
-    fx: {...c.fx, chips: fromChips + tier.chips, mult: Number(fmt1(fromMult + tier.mult))},
-    upgrades: (c.upgrades || 0) + 1,
-  }));
+  const arch = orig.archetype;
+
+  let updater, logDesc;
+  if (arch === 'PRODUCTION') {
+    updater = c => ({ fx: {...c.fx, chips: (c.fx.chips || 0) + tier.chips} });
+    logDesc = `+${tier.chips} Chips`;
+  } else if (arch === 'STRATEGY' || arch === 'CRUNCH') {
+    updater = c => ({ fx: {...c.fx, mult: Number(fmt1((c.fx.mult || 0) + tier.mult))} });
+    logDesc = `+${tier.mult} Mult`;
+  } else if (arch === 'RECOVERY') {
+    const wbBoost  = orig.fx.wb  > 0 ? Math.round(tier.chips / 4) : 0;
+    const toxBoost = orig.fx.tox < 0 ? -Math.round(tier.chips / 4) : 0;
+    updater = c => ({
+      fx: {
+        ...c.fx,
+        wb:  wbBoost  ? (c.fx.wb  || 0) + wbBoost  : c.fx.wb,
+        tox: toxBoost ? (c.fx.tox || 0) + toxBoost : c.fx.tox,
+      }
+    });
+    logDesc = wbBoost ? `+${wbBoost} WB heal` : `-${Math.abs(toxBoost)}% Tox cleanse`;
+  } else {
+    // SHOP cards — both stats
+    updater = c => ({
+      fx: {...c.fx, chips: (c.fx.chips || 0) + tier.chips, mult: Number(fmt1((c.fx.mult || 0) + tier.mult))}
+    });
+    logDesc = `+${tier.chips} Chips, +${tier.mult} Mult`;
+  }
+
+  const card = this._mutateCard(uid, c => ({...updater(c), upgrades: (c.upgrades || 0) + 1}));
   this.pendingUpgrade = false;
   this.upgradeResultCard = card;
-  this.upgradeResultFrom = { chips: fromChips, mult: fromMult };
+  this.upgradeResultFrom = { chips: orig.fx.chips || 0, mult: orig.fx.mult || 0 };
   this.upgradeResultTier = tier;
   this.upgradeSpinning = true;
   this.transition('upgrade_result');
-  this.addLog('ok', `> ⬆️ [${card.name}] upgraded (${tier.label}): +${tier.chips} Chips, +${tier.mult} Mult permanently.`);
+  this.addLog('ok', `> ⬆️ [${card.name}] upgraded (${tier.label}): ${logDesc} permanently.`);
   this._commit();
   ui.startUpgradeSpin(tier, () => this.stopUpgradeSpin());
 }

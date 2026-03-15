@@ -5,7 +5,7 @@ import { shuffle, nextUid, getUnlockedTier, isCardUnlocked, fmt1 } from './utils
 export const DECK_BLUEPRINT = {
   prod_001:3, prod_002:3, prod_005:2,
   strat_001:3, strat_002:2, strat_005:2,
-  crunch_001:2, crunch_004:2,
+  crunch_001:2, crunch_004:1,
   recov_001:2, recov_004:2,
   // tier 1
   prod_004:2, strat_006:1, crunch_002:1, crunch_005:1, recov_002:1, recov_006:1,
