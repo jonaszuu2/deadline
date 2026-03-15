@@ -24,17 +24,6 @@ export function getEffectiveFx(card, passives) {
       case 'CRUNCH_WB_HALVE':
         if (card.archetype === 'CRUNCH' && fx.wb < 0)
           fx.wb = Math.round(fx.wb * p.passiveVal); break;
-      case 'COMP_PROD_CHIPS_PCT':
-        if (card.archetype === 'PRODUCTION' && fx.chips > 0)
-          fx.chips = Math.round(fx.chips * (1 + p.passiveVal)); break;
-      case 'COMP_RECOVERY_CHIPS':
-        if (card.archetype === 'RECOVERY') fx.chips = (fx.chips || 0) + p.passiveVal; break;
-      case 'COMP_STRATEGY_BOOST':
-        if (card.archetype === 'STRATEGY') {
-          if (fx.chips > 0) fx.chips = Math.round(fx.chips * p.passiveVal);
-          if (fx.mult > 0) fx.mult = fmt1(fx.mult * p.passiveVal);
-          if (fx.wb > 0) fx.wb = Math.round(fx.wb * p.passiveVal);
-        } break;
     }
   }
   return fx;
@@ -93,18 +82,15 @@ export function getRiskLevel(wb, tox, bo) {
 // ═══════════════════════════════════════════════════════
 export function calcTurn(cards, ctx) {
   const {
-    passives = [], competencies = [], teammate = null,
-    discardComboMult = 0, discardMultStack = 0, permMult = 0,
-    brief = null, unlockedNodes = new Set(), stratWeekStack = 0,
+    passives = [], teammate = null,
+    discardComboMult = 0, permMult = 0,
     mode = 'preview',
     ctxMods = {},
   } = ctx;
-  const tree = id => unlockedNodes.has(id);
-
-  const hasComp = id => competencies.includes(id);
   const log = [];
   const lg = (cls, t, hidden = false) => {
     if (mode === 'real') log.push(hidden ? {cls, t, hidden: true} : {cls, t});
+    else if (mode === 'preview') log.push({cls, t});
   };
 
   let wb = ctx.wb, tox = ctx.tox, bo = ctx.bo;
@@ -117,24 +103,12 @@ export function calcTurn(cards, ctx) {
   const playLog = [], activeSynergies = new Set(), toxLevels = [];
   let toxGained = 0, gameOver = false, prodChips = 0;
 
-  if (mode === 'real') log.push({cls:'d', t:`── Play: ${cards.map(c => c.name).join(', ')} ──`});
+  log.push({cls:'d', t:`── Play: ${cards.map(c => c.name).join(', ')} ──`});
 
   // ── Pre-play bonuses ──────────────────────────────────
-  if (hasComp('comp_toxsponge')) {
-    const tb = Math.floor(tox / 20) * 0.5;
-    if (tb > 0) { acc.mult += tb; lg('sy', `  ⚙ [Toxicity Sponge] Tox ${tox}% → +${fmt1(tb)} Mult`); }
-  }
   if (discardComboMult > 0) {
     acc.mult += discardComboMult;
     lg('sy', `  ♻ [Batch Discard] Consuming +${fmt1(discardComboMult)}× stacked Mult`);
-  }
-  if (hasComp('comp_riskmitigator') && discardMultStack > 0) {
-    acc.mult += fmt1(discardMultStack);
-    lg('sy', `  ⚙ [Risk Mitigator] Consuming ${fmt1(discardMultStack)}× stacked Mult`);
-  }
-  if (hasComp('comp_laserfocus') && firstCardThisWeek) {
-    acc.mult += 1.0; firstCardThisWeek = false;
-    lg('sy', `  ⚙ [Laser Focus] First play of the week — +1.0 Mult`);
   }
   if (permMult > 0) {
     acc.mult += permMult;
@@ -143,27 +117,6 @@ export function calcTurn(cards, ctx) {
   // Context flat bonuses
   if (ctxMods.extraMult)  { acc.mult  += ctxMods.extraMult;  lg('sy', `  📋 [Context] +${fmt1(ctxMods.extraMult)}× Mult`); }
   if (ctxMods.extraChips) { acc.chips += ctxMods.extraChips; lg('ch', `  📋 [Context] +${ctxMods.extraChips} Chips`); }
-  // s_cap: permanent Mult counted TWICE
-  if (tree('s_cap') && permMult > 0) {
-    acc.mult += permMult;
-    lg('sy', `  🌿 [LEVERAGE] Permanent Mult doubled: +${fmt1(permMult)}× extra`);
-  }
-  // s_stack: cumulative STRATEGY-plays-this-week bonus
-  if (stratWeekStack > 0) {
-    const stackBonus = fmt1(stratWeekStack * 0.1);
-    acc.mult += Number(stackBonus);
-    lg('sy', `  🌿 [MOMENTUM BUILD] ${stratWeekStack} STRATEGY this week +${stackBonus}× Mult`);
-  }
-  // r_glow: WB ≥ 80% at turn start → +0.2 Mult
-  if (tree('r_glow') && wb >= 80) {
-    acc.mult += 0.2;
-    lg('sy', `  🌿 [PEAK PERFORMANCE] WB ${wb}% ≥ 80% — +0.2 Mult`);
-  }
-  // c_cap: every 10% TOX above 30% → +0.15 Mult
-  if (tree('c_cap') && tox > 30) {
-    const cCapBonus = fmt1(Math.floor((tox - 30) / 10) * 0.15);
-    if (cCapBonus > 0) { acc.mult += Number(cCapBonus); lg('sy', `  🌿 [PRESSURE COOKER] Tox ${tox}% — +${cCapBonus}× Mult`); }
-  }
 
   // TOX_TO_CHIPS passive: +passiveVal Chips per 10% Tox above 30%
   for (const p of passives) {
@@ -215,74 +168,6 @@ export function calcTurn(cards, ctx) {
     const rec  = {id: card.id, arch: card.archetype, uid: card.uid, snap};
     const fx   = {...getEffectiveFx(card, passives)};
 
-    // Charming Networker: first CRUNCH free
-    const isCrunchFree = card.archetype === 'CRUNCH' && hasComp('comp_networker') && !firstCrunchUsed;
-    if (isCrunchFree) {
-      firstCrunchUsed = true;
-      if (fx.tox > 0) fx.tox = 0;
-      if (fx.wb < 0)  fx.wb  = 0;
-      lg('sy', `  ⚙ [Charming Networker] First CRUNCH this week — Tox & WB cost waived!`);
-    }
-
-    // Brief modifiers applied to fx before scoring
-    if (brief === 'cost_reduction' && card.archetype === 'CRUNCH' && !isCrunchFree) {
-      if (fx.chips > 0) { fx.chips = Math.round(fx.chips * 1.4); }
-      if (fx.wb < 0) fx.wb = Math.round(fx.wb * 2);
-    }
-    if (brief === 'hyper_growth' && card.archetype === 'PRODUCTION' && fx.chips > 0) {
-      fx.chips = Math.round(fx.chips * 1.5);
-    }
-
-    // ── Passive Tree per-card modifiers ──
-    // p_chips: +150 Chips to every PRODUCTION card
-    if (tree('p_chips') && card.archetype === 'PRODUCTION') {
-      fx.chips = (fx.chips || 0) + 150;
-    }
-    // c_chips: CRUNCH cards +50% Chips
-    if (tree('c_chips') && card.archetype === 'CRUNCH' && fx.chips > 0) {
-      fx.chips = Math.round(fx.chips * 1.5);
-    }
-    // r_heal: RECOVERY cards heal +60% more WB
-    if (tree('r_heal') && card.archetype === 'RECOVERY' && fx.wb > 0) {
-      fx.wb = Math.round(fx.wb * 1.6);
-    }
-    // r_tox: RECOVERY playing → extra -6% TOX reduction
-    if (tree('r_tox') && card.archetype === 'RECOVERY' && fx.tox < 0) {
-      fx.tox = fx.tox - 6;
-    }
-    // r_shield: WB damage (wb cost) reduced by 30%
-    if (tree('r_shield') && fx.wb < 0) {
-      fx.wb = Math.round(fx.wb * 0.7);
-    }
-    // h_pr: RECOVERY + PRODUCTION in same play → WB heal doubled
-    if (tree('h_pr') && card.archetype === 'RECOVERY' && fx.wb > 0) {
-      const hasProd = cards.some(c => c.archetype === 'PRODUCTION');
-      if (hasProd) fx.wb = Math.round(fx.wb * 2);
-    }
-    // h_rc: WB < 50% → CRUNCH cards +500 Chips
-    if (tree('h_rc') && card.archetype === 'CRUNCH' && wb < 50) {
-      fx.chips = (fx.chips || 0) + 500;
-    }
-    // c_clean: CRUNCH + PRODUCTION in same play → CRUNCH no TOX
-    if (tree('c_clean') && card.archetype === 'CRUNCH' && !isCrunchFree) {
-      const hasProd = cards.some(c => c.archetype === 'PRODUCTION');
-      if (hasProd && fx.tox > 0) { fx.tox = 0; lg('tl', `  🌿 [CALCULATED RISK] CRUNCH+PROD — TOX waived`, true); }
-    }
-    // c_rage: TOX > 50% → CRUNCH Mult contribution doubled
-    if (tree('c_rage') && card.archetype === 'CRUNCH' && tox > 50 && fx.mult > 0) {
-      fx.mult = fmt1(fx.mult * 2);
-      lg('mu', `  🌿 [TOXIC FUEL] Tox ${tox}% — CRUNCH Mult ×2: ${fx.mult}`, true);
-    }
-    // s_first: first STRATEGY card in turn — its Mult contribution doubled
-    if (tree('s_first') && card.archetype === 'STRATEGY' && playLog.filter(r => r.arch === 'STRATEGY').length === 0 && fx.mult > 0) {
-      fx.mult = fmt1(fx.mult * 2);
-      lg('mu', `  🌿 [FIRST MOVER] First STRATEGY — Mult ×2: ${fx.mult}`, true);
-    }
-    // h_sc: STRATEGY when TOX > 40% → +0.8 Mult per STRATEGY card
-    if (tree('h_sc') && card.archetype === 'STRATEGY' && tox > 40) {
-      acc.mult += 0.8;
-      lg('mu', `  🌿 [CHAOS STRATEGY] Tox ${tox}% — +0.8 Mult`, true);
-    }
 
     // Context archetype modifiers
     if (ctxMods.stratChipsMult && card.archetype === 'STRATEGY'  && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.stratChipsMult);
@@ -350,14 +235,14 @@ export function calcTurn(cards, ctx) {
     }
 
     // Tox cap: max +40 per turn (Balance Guard #1)
-    if (fx.tox > 0 && !isCrunchFree) {
+    if (fx.tox > 0) {
       const cap = Math.max(0, 40 - toxGained);
       const atox = Math.min(fx.tox, cap);
       tox = clamp(tox + atox, 0, 100); toxGained += atox;
       if (atox < fx.tox) lg('tl', `  [${card.name}] +${atox}% Tox (${fx.tox - atox}% absorbed by cap) → ${tox}%`, true);
       else               lg('tg', `  [${card.name}] +${atox}% Toxicity → ${tox}%`, true);
     }
-    if (fx.wb < 0 && !isCrunchFree) { wb = clamp(wb + fx.wb, 0, 100); lg('wl', `  [${card.name}] ${fx.wb} Wellbeing → ${wb}%`, true); }
+    if (fx.wb < 0) { wb = clamp(wb + fx.wb, 0, 100); lg('wl', `  [${card.name}] ${fx.wb} Wellbeing → ${wb}%`, true); }
     if (fx.tox < 0)                  { tox = clamp(tox + fx.tox, 0, 100); lg('tl', `  [${card.name}] ${fx.tox}% Toxicity → ${tox}%`, true); }
     if (fx.tox < 0 && teammate === 'priya' && tmTier === 1 && card.archetype === 'RECOVERY') {
       tox = clamp(tox - 10, 0, 100);
@@ -411,10 +296,7 @@ export function calcTurn(cards, ctx) {
 
     // Toxic Atmosphere damage (deterministic: tier-based drain per card played)
     if (tox > 35) {
-      let drain = tox >= 90 ? 4 : tox >= 70 ? 2 : 1;
-      // r_shield: atmospheric drain reduced 30% | c_resist: reduced 40%
-      if (tree('r_shield')) drain = Math.max(0, Math.round(drain * 0.7));
-      if (tree('c_resist')) drain = Math.max(0, Math.round(drain * 0.6));
+      const drain = tox >= 90 ? 4 : tox >= 70 ? 2 : 1;
       wb = clamp(wb - drain, 0, 100);
       lg('dm', `  ☣ Toxic Atmosphere (${tox}%) −${drain} WB → ${wb}%`);
       if (wb === 0) {
@@ -425,11 +307,6 @@ export function calcTurn(cards, ctx) {
       toxLevels.push(tox);
     }
 
-    // r_cap: WB cannot drop below 20%
-    if (tree('r_cap') && wb < 20) {
-      wb = 20;
-      lg('wg', `  🌿 [BURNOUT IMMUNITY] WB floor 20% enforced`, true);
-    }
     playLog.push(rec);
     if (gameOver) break;
   }
@@ -448,14 +325,6 @@ export function calcTurn(cards, ctx) {
       }
     }
 
-    // Balanced Employee: triple arch → tox reset
-    if (hasComp('comp_balanced')) {
-      const archs = new Set(cards.map(c => c.archetype));
-      if (archs.has('PRODUCTION') && archs.has('STRATEGY') && archs.has('CRUNCH')) {
-        tox = 0; lg('tl', `  ⚙ [Balanced Employee] All three archetypes played — Toxicity reset to 0!`);
-      }
-    }
-
     // Archetype Combo Bonuses → ComboMult (multiplicative)
     const archCounts = {};
     for (const c of cards) archCounts[c.archetype] = (archCounts[c.archetype] || 0) + 1;
@@ -470,35 +339,6 @@ export function calcTurn(cards, ctx) {
           lg('sy', `  💚 [DEEP RESET] Triple RECOVERY! -30% Tox | +15 WB | ×1.2 ComboMult`);
         }
       }
-    }
-
-    // ── Passive Tree post-loop effects ────────────────────
-    const treeArchs = new Set(cards.map(c => c.archetype));
-    const treeProdCards = cards.filter(c => c.archetype === 'PRODUCTION');
-    const treeStratCards = cards.filter(c => c.archetype === 'STRATEGY');
-    // p_chain: pure PRODUCTION turn → Chips ×1.25
-    if (tree('p_chain') && treeProdCards.length > 0 && treeArchs.size === 1 && treeArchs.has('PRODUCTION')) {
-      const bonus = Math.round(acc.chips * 0.25);
-      acc.chips += bonus;
-      lg('ch', `  🌿 [ASSEMBLY LINE] Pure PRODUCTION — +${bonus} Chips (×1.25)`);
-    }
-    // p_engine: each PRODUCTION card gives other PRODs +75 Chips
-    if (tree('p_engine') && treeProdCards.length >= 2) {
-      const n = treeProdCards.length;
-      const engineBonus = n * (n - 1) * 75;
-      acc.chips += engineBonus;
-      lg('ch', `  🌿 [FLOW STATE] ${n} PRODUCTION cards — +${engineBonus} Chips`);
-    }
-    // s_flow: STRATEGY with no PRODUCTION → +0.6 extra Mult per STRATEGY
-    if (tree('s_flow') && treeStratCards.length > 0 && !treeArchs.has('PRODUCTION')) {
-      const flowBonus = fmt1(treeStratCards.length * 0.6);
-      acc.mult += Number(flowBonus);
-      lg('mu', `  🌿 [PURE EXECUTION] No PROD — +${flowBonus}× Mult`);
-    }
-    // h_ps: PRODUCTION + STRATEGY together → +2.0 Mult
-    if (tree('h_ps') && treeArchs.has('PRODUCTION') && treeArchs.has('STRATEGY')) {
-      acc.mult += 2.0;
-      lg('mu', `  🌿 [SYNERGY SPRINT] PROD+STRAT — +2.0 Mult`);
     }
 
     // PRODUCTION Combo Scaling: +10% Chips per extra PRODUCTION card
@@ -556,16 +396,14 @@ export function calcTurn(cards, ctx) {
     let score = comboMult > 1.0 ? Math.floor(baseScore * comboMult) : baseScore;
     if (ctxMods.scoreMult && ctxMods.scoreMult !== 1.0) {
       score = Math.floor(score * ctxMods.scoreMult);
-      if (mode === 'real') log.push({cls:'sc', t:`  📋 [Context] Score ×${ctxMods.scoreMult} → ${score}`});
+      lg('sc', `  📋 [Context] Score ×${ctxMods.scoreMult} → ${score}`);
     }
     if (ctxMods.singleCardScoreMult && cards.length === 1) {
       score = Math.floor(score * ctxMods.singleCardScoreMult);
-      if (mode === 'real') log.push({cls:'sc', t:`  📋 [Context] 1 karta → Score ×${ctxMods.singleCardScoreMult} → ${score}`});
+      lg('sc', `  📋 [Context] 1 karta → Score ×${ctxMods.singleCardScoreMult} → ${score}`);
     }
-    if (mode === 'real') {
-      const comboTag = comboMult > 1.0 ? ` × ${fmt1(comboMult)} COMBO` : '';
-      log.push({cls:'sc', t:`  ▶ SCORE: ${acc.chips} × ${fmt1(acc.mult)}${comboTag} = ${score}`});
-    }
+    const comboTag = comboMult > 1.0 ? ` × ${fmt1(comboMult)} COMBO` : '';
+    lg('sc', `  ▶ SCORE: ${acc.chips} × ${fmt1(acc.mult)}${comboTag} = ${score}`);
 
     const finalWb = Math.round(wb), finalTox = Math.round(tox), finalBo = Math.round(bo);
     const expectedToxDmg = toxLevels.reduce((s, t) => s + Math.round(TOX_DMG * (t / 100)), 0);
@@ -601,19 +439,15 @@ export function simulateTurn(cards, G) {
   if (!cards.length) return null;
   return calcTurn(cards, {
     wb: G.wb, tox: G.tox, bo: G.bo, week: G.week || 1, plays: G.plays,
-    passives:           G.passives    || [],
-    competencies:       G.competencies || [],
-    teammate:               G.teammate,
+    passives:                G.passives || [],
+    teammate:                G.teammate,
     consecutiveSameTeammate: G.consecutiveSameTeammate || 0,
-    discardComboMult:   G.discardComboMult  || 0,
-    discardMultStack:   G.discardMultStack  || 0,
-    firstCardThisWeek:  G.firstCardThisWeek !== undefined ? G.firstCardThisWeek : true,
-    firstCrunchUsed:    G.firstCrunchUsed  || false,
-    weekCrunchCount:    G.weekCrunchCount   || 0,
-    permMult:           G.permMult || 0,
-    brief:              G.brief || null,
-    unlockedNodes:      G.unlockedNodes || new Set(),
-    stratWeekStack:     G.stratWeekStack || 0,
+    discardComboMult:        G.discardComboMult || 0,
+    firstCardThisWeek:       G.firstCardThisWeek !== undefined ? G.firstCardThisWeek : true,
+    firstCrunchUsed:         G.firstCrunchUsed || false,
+    weekCrunchCount:         G.weekCrunchCount || 0,
+    permMult:                G.permMult || 0,
+    ctxMods:                 G.activeContextMods || {},
     mode: 'preview',
   });
 }

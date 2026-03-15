@@ -7,9 +7,8 @@
 import { clamp, UPGRADE_TIERS } from '../data/constants.js';
 import { fmt1, shuffle, nextUid } from './utils.js';
 import { calcTurn } from './calcTurn.js';
-import { COMP_DB, TEAMMATES_DB } from '../data/content.js';
+import { TEAMMATES_DB } from '../data/content.js';
 import { DB } from '../data/cards.js';
-import { TREE_NODES } from '../data/passiveTree.js';
 import { ui } from './uiStore.js';
 
 // ── Local helper: weighted random upgrade tier roll ──
@@ -79,26 +78,6 @@ export function discardSelected() {
     this.discardComboMult = fmt1(this.discardComboMult + Number(comboBonus));
     discardLog += ` ♻ Batch Discard: +${comboBonus}× Mult stacked (${this.discardComboMult}× ready).`;
   }
-  // Risk Mitigator: additional mult stack
-  if (this.hasComp('comp_riskmitigator')) {
-    const bonus = gone.length * COMP_DB.comp_riskmitigator.passiveVal;
-    this.discardMultStack = fmt1(this.discardMultStack + bonus);
-    discardLog += ` 🗑️ Risk Mitigator: +${fmt1(bonus)} Mult (total ${this.discardMultStack}×).`;
-  }
-  // Brief: restructure — +3% Tox per card discarded
-  if (this.brief === 'restructure') {
-    const toxGain = gone.length * 3;
-    this.tox = clamp(this.tox + toxGain, 0, 100);
-    discardLog += ` 🔄 [RESTRUCTURE] +${toxGain}% Tox.`;
-    this.briefProgress += gone.length;
-    if (this.briefProgress >= 30 && !this.briefSideAchieved) {
-      this.briefSideAchieved = true;
-      this.pendingUpgrade = true;
-      this.addLog('ch', discardLog);
-      this.addLog('sy', '> 🔄 [RESTRUCTURE] 30 discards — Free Performance Upgrade unlocked!');
-      this.drawUp(); this._commit(); return;
-    }
-  }
   this.addLog('ch', discardLog);
   this.drawUp(); this._commit();
 }
@@ -131,16 +110,7 @@ export function playSelected() {
   this.pile.push(...cards); this.sel = []; this.plays--;
   if (cards.some(c => c.archetype === 'CRUNCH')) { this.weekCrunched = true; }
   for (const card of cards) {
-    if (card.exhaust) {
-      // p_cap: PRODUCTION cards never exhaust
-      if (card.archetype === 'PRODUCTION' && this.unlockedNodes?.has('p_cap')) continue;
-      this.exhausted.add(card.uid);
-    }
-  }
-  // s_stack: track STRATEGY plays this week
-  if (this.unlockedNodes?.has('s_stack')) {
-    const stratCount = cards.filter(c => c.archetype === 'STRATEGY').length;
-    if (stratCount > 0) this.stratWeekStack = (this.stratWeekStack || 0) + stratCount;
+    if (card.exhaust) this.exhausted.add(card.uid);
   }
 
   // Gary penalty: "presents" cards before scoring (tier-aware)
@@ -175,40 +145,6 @@ export function playSelected() {
       const stars = '★'.repeat(c.level);
       const desc = c.level === 1 ? '+200 Chips base' : c.level === 2 ? '+0.2 Mult base' : '+250 Chips +0.1 Mult base';
       this.addLog('sy', `> ${stars} [${c.name}] LEVEL ${c.level}! ${desc}`);
-    }
-  }
-
-  // Brief: digital_transformation
-  if (this.brief === 'digital_transformation') {
-    const stratCards = cards.filter(c => c.archetype === 'STRATEGY');
-    for (const c of stratCards) {
-      c.fx = {...c.fx, chips: (c.fx.chips || 0) + 25};
-      this.briefProgress++;
-    }
-    if (stratCards.length > 0) {
-      this.addLog('sy', `> 💻 [DIGITAL TRANSFORMATION] ${stratCards.length} STRATEGY card(s) +25 Chips. (${this.briefProgress}/20)`);
-      if (this.briefProgress >= 20 && !this.briefSideAchieved) {
-        this.briefSideAchieved = true;
-        this.permMult = fmt1(this.permMult + 1.0);
-        this.addLog('sy', `> 💻 [DIGITAL TRANSFORMATION] 20 STRATEGY plays — +1.0 permanent Mult → ${this.permMult}×!`);
-      }
-    }
-  }
-
-  // Brief: hyper_growth
-  if (this.brief === 'hyper_growth') {
-    const prodCount = cards.filter(c => c.archetype === 'PRODUCTION').length;
-    if (prodCount > 0) {
-      this.briefProgress += prodCount;
-      if (this.briefProgress >= 40 && !this.briefSideAchieved) {
-        this.briefSideAchieved = true;
-        const allCards = [...this.deck, ...this.pile, ...this.hand];
-        let count = 0;
-        for (const c of allCards) {
-          if (c.archetype === 'PRODUCTION') { c.fx = {...c.fx, chips: (c.fx.chips || 0) + 250}; count++; }
-        }
-        this.addLog('sy', `> 🚀 [HYPER-GROWTH] 40 PRODUCTION plays — +250 Chips to all ${count} PRODUCTION cards!`);
-      }
     }
   }
 
@@ -299,23 +235,17 @@ export function processTurn(cards, ctxMods = {}) {
     wb: this.wb, tox: this.tox, bo: this.bo,
     week: this.week, plays: this.plays,
     passives:                this.passives,
-    competencies:            this.competencies,
     teammate:                this.teammate,
     consecutiveSameTeammate: this.consecutiveSameTeammate,
     discardComboMult:        this.discardComboMult,
-    discardMultStack:        this.discardMultStack,
     firstCardThisWeek:       this.firstCardThisWeek,
     firstCrunchUsed:         this.firstCrunchUsed,
     weekCrunchCount:         this.weekCrunchCount,
     permMult:                this.permMult,
-    brief:                   this.brief,
-    unlockedNodes:           this.unlockedNodes || new Set(),
-    stratWeekStack:          this.stratWeekStack || 0,
     ctxMods,
     mode: 'real',
   });
   this.discardComboMult = 0;
-  if (this.hasComp('comp_riskmitigator') && this.discardMultStack > 0) this.discardMultStack = 0;
   this.firstCrunchUsed   = result.firstCrunchUsed;
   this.weekCrunchCount   = result.weekCrunchCount;
   this.firstCardThisWeek = result.firstCardThisWeek;
@@ -516,32 +446,3 @@ export function holdCard(uid) {
   this._commit();
 }
 
-// ═══════════════════════════════════════════════════════
-//  PASSIVE SKILL TREE
-// ═══════════════════════════════════════════════════════
-
-export function unlockTreeNode(nodeId) {
-  const node = TREE_NODES[nodeId];
-  if (!node) return;
-  if (this.unlockedNodes.has(nodeId)) return;
-  if (this.pp < node.cost) {
-    this.addLog('ng', `> ⚠ [SKILL TREE] Need ${node.cost} PP, have ${this.pp}`);
-    this._commit(); return;
-  }
-  // Must be adjacent to an already-unlocked node (or be the first unlock)
-  const isConnected = this.unlockedNodes.size === 0 || node.connects.some(id => this.unlockedNodes.has(id))
-    || Object.values(TREE_NODES).some(n => n.connects.includes(nodeId) && this.unlockedNodes.has(n.id));
-  if (!isConnected) {
-    this.addLog('ng', `> ⚠ [SKILL TREE] Not connected to any unlocked node`);
-    this._commit(); return;
-  }
-  this.pp -= node.cost;
-  this.unlockedNodes.add(nodeId);
-  this.addLog('sy', `> 🌿 [SKILL TREE] Unlocked: ${node.name} — ${node.short}`);
-  // Immediate one-time effects
-  if (nodeId === 's_mult') {
-    this.permMult = fmt1((this.permMult || 0) + 0.3);
-    this.addLog('sy', `> 🌿 +0.3 permanent Mult → ${this.permMult}×`);
-  }
-  this._commit();
-}

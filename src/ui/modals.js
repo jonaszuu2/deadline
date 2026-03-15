@@ -1,7 +1,7 @@
 import { TOTAL_WEEKS } from '../data/constants.js';
 import { esc } from '../engine/utils.js';
 import { DB } from '../data/cards.js';
-import { CLASS_DB, TEAMMATES_DB } from '../data/content.js';
+import { TEAMMATES_DB } from '../data/content.js';
 import { getStatEffect } from '../engine/scoring.js';
 
 export function openHelp() {
@@ -43,41 +43,11 @@ export function openHelp() {
 }
 
 export function showClassScreen() {
-  document.getElementById('class-ov')?.remove();
-  const classes = Object.values(CLASS_DB);
-  const cardsHtml = classes.map(cls => {
-    const archCounts = {};
-    for (const [id, n] of Object.entries(cls.deck)) {
-      const card = DB[id]; if (card) archCounts[card.archetype] = (archCounts[card.archetype] || 0) + n;
-    }
-    const deckTags = ['PRODUCTION','STRATEGY','CRUNCH','RECOVERY']
-      .filter(a => archCounts[a])
-      .map(a => `<span class="cls-deck-tag ${a}">${archCounts[a]}× ${a}</span>`)
-      .join('');
-    const passivesHtml = cls.passiveDescs.map(d => `<div class="cls-passive">⚡ ${esc(d)}</div>`).join('');
-    return `<div class="cls-card" onclick="selectClass('${cls.id}')" style="--cls-color:${cls.color}">
-      <div class="cls-icon">${cls.icon}</div>
-      <div class="cls-name" style="color:${cls.color}">${esc(cls.name)}</div>
-      <div class="cls-tagline">"${esc(cls.tagline)}"</div>
-      <div class="cls-desc">${esc(cls.desc)}</div>
-      <div class="cls-passives">${passivesHtml}</div>
-      <div class="cls-deck-tags">${deckTags}</div>
-      <button class="cls-pick-btn" style="border-color:${cls.color};color:${cls.color}">▶ Choose</button>
-    </div>`;
-  }).join('');
-  document.body.insertAdjacentHTML('beforeend', `<div id="class-ov" class="class-ov">
-    <div class="class-win">
-      <div class="class-tbar">📋 DEADLINE™ — Department Assignment</div>
-      <div class="class-body">
-        <div class="class-intro">HR has assigned you to a department. Choose your <b>Corporate Identity</b>. This defines your starting deck and permanent abilities for the entire career.</div>
-        <div class="class-cards">${cardsHtml}</div>
-      </div>
-    </div>
-  </div>`);
+  // No-op: class selection removed. Game starts directly.
 }
 
-export function selectClass(classId) {
-  window.G.startWithClass(classId);
+export function selectClass() {
+  window.G.startRun();
 }
 
 export function showTeammateModal(G) {

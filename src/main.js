@@ -1,7 +1,7 @@
 import { Game, _setUIFunctions } from './game.js';
-import { render, zoomIn, zoomOut, setRpTab, openPassiveTree } from './ui/render.js';
+import { render, zoomIn, zoomOut } from './ui/render.js';
 import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, startUpgradeSpin } from './ui/animations.js';
-import { showClassScreen, selectClass, dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
+import { dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
 import { showStartupScreen, dismissStartup, showHowToPlay, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial, checkFirstShopTutorial, _advanceShopTutorial, _skipShopTutorial, showContextualTip, resetCtxTips, showGuideTip } from './ui/tutorial.js';
 import { aprCopyRun } from './share.js';
@@ -17,7 +17,6 @@ _setUIFunctions({
   showWbDamage,
   showComboAnnouncer,
   triggerKpiFlash,
-  showClassScreen,
   checkFirstShopTutorial,
   showContextualTip,
   resetCtxTips,
@@ -40,7 +39,6 @@ setInterval(updateClock, 1000);
 // ═══════════════════════════════════════════════════════
 //  EXPOSE GLOBALS (required by inline onclick handlers)
 // ═══════════════════════════════════════════════════════
-window.selectClass          = selectClass;
 window.dismissTeammateModal = dismissTeammateModal;
 window.dismissStartup       = dismissStartup;
 window.showHowToPlay        = showHowToPlay;
@@ -55,10 +53,6 @@ window.aprCopyRun           = aprCopyRun;
 window._advanceIntroTutorial = _advanceIntroTutorial;
 window._skipIntroTutorial   = _skipIntroTutorial;
 window.openHelp             = openHelp;
-window.chooseBrief          = (id) => window.G.chooseBrief(id);
-window.setRpTab             = setRpTab;
-window.openPassiveTree      = openPassiveTree;
-window.unlockTreeNode       = (id) => { window.G.unlockTreeNode(id); const m = document.getElementById('tree-modal'); if (m) { m.remove(); openPassiveTree(); } };
 
 // ═══════════════════════════════════════════════════════
 //  BOOT

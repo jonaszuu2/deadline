@@ -1,5 +1,5 @@
 import { TUTORIAL_DB } from '../data/content.js';
-import { showTeammateModal, showClassScreen } from './modals.js';
+import { showTeammateModal } from './modals.js';
 
 export function showStartupScreen() {
   const ov = document.createElement('div');
@@ -23,14 +23,14 @@ export function dismissStartup() {
   const ov = document.getElementById('startup-screen');
   if (!ov) return;
   ov.classList.add('fade-out');
-  ov.addEventListener('animationend', () => { ov.remove(); showClassScreen(); }, {once: true});
+  ov.addEventListener('animationend', () => { ov.remove(); window.G.startRun(); }, {once: true});
 }
 
 export function showHowToPlay() {
   const ov = document.getElementById('startup-screen');
   if (!ov) return;
   ov.classList.add('fade-out');
-  ov.addEventListener('animationend', () => { ov.remove(); _showIntroTutorial(() => showClassScreen()); }, {once: true});
+  ov.addEventListener('animationend', () => { ov.remove(); _showIntroTutorial(() => window.G.startRun()); }, {once: true});
 }
 
 export const INTRO_SLIDES = [

@@ -8,7 +8,6 @@ import { ui } from './uiStore.js';
 
 // ── Valid phase transitions (warning-only guard) ──────
 const VALID_TRANSITIONS = {
-  brief_select:    ['teammate_choice'],
   teammate_choice: ['play'],
   play:            ['scoring'],
   scoring:         ['play', 'result', 'review'],
@@ -31,8 +30,8 @@ export class GameState {
     this.sel = []; this.log = []; this.lastScore = null; this.weekCrunched = false; this.weekCrunchCount = 0;
     this.consecutiveFails = 0; this.kpiMult = 1.0; this.supportInjected = false; this.firstDraw = true;
 
-    // Competency state
-    this.competencies = []; this.discardMultStack = 0; this.discardComboMult = 0;
+    // Discard/crunch state
+    this.discardComboMult = 0;
     this.firstCrunchUsed = false; this.firstCardThisWeek = true;
 
     // Teammate state
@@ -65,9 +64,6 @@ export class GameState {
     // Draft state
     this.draftPool = []; this.pendingDraftCard = null;
 
-    // Class state
-    this.playerClass = null; this.classBlueprint = null;
-
     // Economy state
     this.freeRemovalUsed = false;
 
@@ -96,13 +92,6 @@ export class GameState {
     // Wellness tracking
     this.wellnessWeeks = 0;
 
-    // Project Brief
-    this.brief = null; this.briefOptions = []; this.briefProgress = 0;
-    this.briefSideAchieved = false; this.wellnessViolatedBrief = false;
-
-    // Passive Skill Tree
-    this.pp = 0; this.unlockedNodes = new Set(); this.stratWeekStack = 0;
-
     // Daily Context System
     this.weekContexts = [];    // array of 5 context IDs [mon,tue,wed,thu,fri]
     this.dayIndex = 0;         // 0=Mon … 4=Fri
@@ -121,16 +110,13 @@ export class GameState {
     const benMult = this.teammate === 'ben'
       ? (this.getTeammateTier() === 1 ? 0.88 : this.getTeammateTier() === 3 ? 0.75 : 0.92)
       : 1.0;
-    const briefMult = this.brief === 'scale_or_fail' ? 0.85 : 1.0;
-    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier * briefMult);
+    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier);
   }
 
-  handLimit() { return HAND - (this.brief === 'hyper_growth' ? 1 : 0); }
-  hasComp(id) { return this.competencies.includes(id); }
+  handLimit() { return HAND; }
   maxSel() {
     if (this.ctxMaxCards !== null) return this.ctxMaxCards;
-    const base = MAX_SEL + ((this.hasComp('comp_bigpicture') || this.hasComp('comp_mule')) ? 1 : 0);
-    return base + (this.tox >= 61 && this.tox < 91 ? 1 : 0);
+    return MAX_SEL + (this.tox >= 61 && this.tox < 91 ? 1 : 0);
   }
   deckSize() { return this.deck.length + this.hand.length + this.pile.length; }
 

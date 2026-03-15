@@ -5,14 +5,12 @@
 // ═══════════════════════════════════════════════════════
 import { PLAYS, DISCS, TOTAL_WEEKS, clamp, FAIL_BO } from '../data/constants.js';
 import { nextUid, shuffle, fmt1, getUnlockedTier, setUnlockedTier } from './utils.js';
-import { makeDeck, makeClassDeck, pickShopItems } from './deck.js';
+import { makeDeck, pickShopItems } from './deck.js';
 import { calculateFinalScore } from './scoring.js';
-import { CLASS_DB, COMP_DB, TEAMMATES_DB } from '../data/content.js';
+import { TEAMMATES_DB } from '../data/content.js';
 import { BOSS_DB } from '../data/boss.js';
 import { SHOP_DB } from '../data/shop.js';
 import { DB } from '../data/cards.js';
-import { BRIEFS_DB, BRIEFS_LIST } from '../data/briefs.js';
-import { CLASS_START_NODES } from '../data/passiveTree.js';
 import { CONTEXTS_DB, CONTEXTS_MONDAY, CONTEXTS_FRIDAY, CONTEXTS_GENERAL } from '../data/contexts.js';
 import { ui } from './uiStore.js';
 
@@ -20,47 +18,20 @@ import { ui } from './uiStore.js';
 //  RUN SETUP
 // ═══════════════════════════════════════════════════════
 
-export function startWithClass(classId) {
-  const cls = CLASS_DB[classId];
-  if (!cls) return;
-  this.playerClass = classId;
-  this.classBlueprint = cls.deck;
-  this.competencies = cls.passiveIds;
-  const simplePassiveTypes = ['COMP_PROD_CHIPS_PCT', 'COMP_RECOVERY_CHIPS', 'COMP_STRATEGY_BOOST'];
-  for (const id of cls.passiveIds) {
-    const c = COMP_DB[id];
-    if (c && simplePassiveTypes.includes(c.passiveType)) {
-      this.passives.push({itemId:id, name:c.name, passiveType:c.passiveType, passiveVal:c.passiveVal, isComp:true});
-    }
-  }
-  // Remove class select overlay from DOM (UI side effect — unavoidable here)
+export function startRun() {
+  // Remove class select overlay from DOM
   const ov = document.getElementById('class-ov'); if (ov) ov.remove();
-  this.playsMax = PLAYS + (this.hasComp('comp_mule') ? 1 : 0);
-  this.briefOptions = shuffle([...BRIEFS_LIST]).slice(0, 3).map(b => b.id);
-  this.transition('brief_select');
-  this._commit();
-}
-
-export function chooseBrief(briefId) {
-  const brief = BRIEFS_DB[briefId];
-  if (!brief) return;
-  this.brief = briefId;
-  if (briefId === 'restructure') this.discs = 4;
-  this.addLog('sy', `> 📋 [PROJECT BRIEF] ${brief.name} — ${brief.effect}`);
   this.start();
 }
 
 export function start() {
-  this.playsMax = PLAYS + (this.hasComp('comp_mule') ? 1 : 0);
+  this.playsMax = PLAYS;
   this.plays = this.playsMax;
-  this.deck = this.classBlueprint ? makeClassDeck(this.classBlueprint) : makeDeck();
+  this.deck = makeDeck();
   if (this.legacyCard) {
     const at = Math.floor(Math.random() * (this.deck.length + 1));
     this.deck.splice(at, 0, this.legacyCard);
   }
-  // Unlock class starting node for free
-  const startNode = this.playerClass && CLASS_START_NODES[this.playerClass];
-  if (startNode && !this.unlockedNodes.has(startNode)) this.unlockedNodes.add(startNode);
   this._drawWeekContexts();
   this.drawUp();
   const yearLabel = this.promotionRun ? ` — YEAR ${this.promotionYear}` : '';
@@ -196,9 +167,9 @@ export function skipShop() {
 export function startNextWeek() {
   this.week++; this.wscore = 0;
   this._drawWeekContexts();
-  this.playsMax = PLAYS + (this.hasComp('comp_mule') ? 1 : 0);
+  this.playsMax = PLAYS;
   this.plays = this.playsMax;
-  this.discs = this.brief === 'restructure' ? 4 : DISCS;
+  this.discs = DISCS;
   // Toxicity Tier 3: Toxic Culture — -1 Discard
   if (this.tox >= 61 && this.tox < 91) {
     this.discs = Math.max(0, this.discs - 1);
@@ -209,17 +180,6 @@ export function startNextWeek() {
   this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
   this.archetypeMilestonesHit = new Set(); this.pressureReleaseUsed = false;
   this.firstCardThisWeek = true; this.firstCrunchUsed = false;
-  this.stratWeekStack = 0;
-  // p_plays: +1 Play per week from skill tree
-  if (this.unlockedNodes?.has('p_plays')) {
-    this.plays += 1; this.playsMax += 1;
-    this.addLog('ok', `> 🌿 [OVERTIME APPROVED] +1 Play this week (${this.plays} total)`);
-  }
-  // Office Sunshine: +WB at week start
-  if (this.hasComp('comp_sunshine')) {
-    this.wb = clamp(this.wb + COMP_DB.comp_sunshine.passiveVal, 0, 100);
-    this.addLog('wg', `> ☀ [Office Sunshine] Start of week — +${COMP_DB.comp_sunshine.passiveVal} Wellbeing → ${this.wb}%`);
-  }
   // Boss extra play reward
   if (this.bossExtraPlay > 0) {
     this.plays += this.bossExtraPlay; this.playsMax += this.bossExtraPlay;
@@ -233,17 +193,7 @@ export function startNextWeek() {
     this.heldCards = [];
   }
   this.drawUp();
-  // Brief: side objective failure warning at week 10
-  if (this.week === 10 && this.brief && !this.briefSideAchieved) {
-    this.kpiMult = parseFloat((this.kpiMult * 1.20).toFixed(3));
-    this.addLog('ng', `> 📋 [BRIEF PENALTY] Side objective not completed — Week 10 KPI +20% → ${this.kpi()}`);
-  }
   this.addLog('d', `> Week ${this.week}/${TOTAL_WEEKS}. KPI target: ${this.kpi()}`);
-  // Brief reminder log at week start
-  if (this.brief && this.week > 1) {
-    const b = BRIEFS_DB[this.brief];
-    if (b) this.addLog('sy', `> 📋 [BRIEF] ${b.name}: ${b.effect}`);
-  }
   this.prepareTeammateChoice();
 }
 
@@ -255,24 +205,6 @@ export function _processEndOfWeekStats() {
   const passed = this.wscore >= this.kpi();
   this.weekHistory.push({ week: this.week, passed, score: this.wscore });
   if (this.wb >= 70) { this.wellnessWeeks++; this.addLog('wg', `> ❤ Wellness streak — WB ${this.wb}% ≥ 70% (${this.wellnessWeeks} wk)`); }
-  // Brief: wellness_initiative
-  if (this.brief === 'wellness_initiative') {
-    if (this.wb >= 70) {
-      this.permMult = fmt1((this.permMult || 0) + 0.3);
-      this.addLog('sy', `> 🧘 [WELLNESS INITIATIVE] WB ≥ 70% — +0.3 permanent Mult → ${this.permMult}×`);
-    }
-    if (this.wb < 40) this.wellnessViolatedBrief = true;
-  }
-  // Brief: cost_reduction
-  if (this.brief === 'cost_reduction' && this.tox < 30) {
-    this.briefProgress++;
-    this.addLog('sy', `> ✂️ [COST REDUCTION] Clean week (Tox ${this.tox}%) — ${this.briefProgress}/5`);
-    if (this.briefProgress >= 5 && !this.briefSideAchieved) {
-      this.briefSideAchieved = true;
-      this.pendingRemove = true;
-      this.addLog('sy', '> ✂️ [COST REDUCTION] 5 low-tox weeks — Free card removal!');
-    }
-  }
   this.purchasedThisShop = false;
   this.peakTox = Math.max(this.peakTox, this.tox);
   // Chronic Toxicity → Burnout bleed
@@ -284,7 +216,7 @@ export function _processEndOfWeekStats() {
   }
   if (!passed) {
     this.failedWeeks++;
-    const failBo = this.brief === 'scale_or_fail' ? 30 : FAIL_BO;
+    const failBo = FAIL_BO;
     this.bo = clamp(this.bo + failBo, 0, 100);
     this.addLog('bo', `> Week ${this.week} FAILED (${this.failedWeeks}/3) — +${failBo} Burnout → ${this.bo}%`);
     if (this.failedWeeks === 1) setTimeout(() => ui.showContextualTip?.('kpi_fail'), 400);
@@ -307,17 +239,6 @@ export function _processEndOfWeekStats() {
     const bonusLabel = overPct >= 1.3 ? ' 🏆 Overperformance bonus!' : overPct >= 1.1 ? ' ⭐ Good work!' : '';
     if (!this.weekCrunched) { this.tox = clamp(this.tox - 5, 0, 100); this.addLog('tl', '> Clean week bonus — -5% Toxicity.'); }
     this.addLog('ok', `> Week ${this.week} PASSED! +${passReward} CC → ${this.coins} CC${bonusLabel}`);
-    // Skill Tree: +1 PP per KPI pass
-    this.pp = (this.pp || 0) + 1;
-    this.addLog('sy', `> 🌿 +1 Passive Point earned (total: ${this.pp} PP) — open Skill Tree to spend`);
-    // center node: all 4 archetypes played this week → +0.3 perm Mult
-    if (this.unlockedNodes?.has('center')) {
-      const w = this.weekArchetypes || {};
-      if (w.PRODUCTION > 0 && w.STRATEGY > 0 && w.CRUNCH > 0 && w.RECOVERY > 0) {
-        this.permMult = fmt1((this.permMult || 0) + 0.3);
-        this.addLog('sy', `> 🌿 [CROSS-FUNCTIONAL] All 4 archetypes this week — +0.3 perm Mult → ${this.permMult}×`);
-      }
-    }
     if (this.wscore >= this.kpi() * 2) {
       this.permMult = fmt1((this.permMult || 0) + 0.5);
       this.justBreakthrough = true;
@@ -364,17 +285,6 @@ export function checkGameEndConditions(passed) {
 }
 
 export function checkRunUnlocks() {
-  // Brief end-of-run side objectives
-  if (this.brief === 'wellness_initiative' && !this.wellnessViolatedBrief && !this.briefSideAchieved) {
-    this.briefSideAchieved = true;
-    this.permMult = fmt1((this.permMult || 0) + 2.0);
-    this.addLog('sy', `> 🧘 [WELLNESS INITIATIVE] Perfect wellness run — +2.0 permanent Mult → ${this.permMult}×!`);
-  }
-  if (this.brief === 'scale_or_fail' && this.failedWeeks === 0 && !this.briefSideAchieved) {
-    this.briefSideAchieved = true;
-    this.permMult = fmt1((this.permMult || 0) + 3.0);
-    this.addLog('sy', `> ⚡ [SCALE OR FAIL] Perfect run — zero fails — +3.0 permanent Mult → ${this.permMult}×!`);
-  }
   // Card tier unlocks
   const s = calculateFinalScore(this);
   const cur = getUnlockedTier();
@@ -427,31 +337,13 @@ export function _openShopAfterDraft() {
 
 export function _buildCardDraftPool() {
   const tier = getUnlockedTier();
-  const eligible = Object.values(DB).filter(c => (c.tier || 0) <= tier);
-  const classArch = {grinder:['PRODUCTION'], strategist:['STRATEGY','CRUNCH'], survivor:['RECOVERY']};
-  const preferred = this.playerClass ? classArch[this.playerClass] || [] : [];
-  const briefArchMap = {
-    digital_transformation:'STRATEGY', cost_reduction:'CRUNCH',
-    wellness_initiative:'RECOVERY',    hyper_growth:'PRODUCTION',
-  };
-  const briefArch = this.brief ? briefArchMap[this.brief] : null;
-  const preferredCards = preferred.length ? shuffle(eligible.filter(c => preferred.includes(c.archetype))) : [];
-  const briefCards     = briefArch ? shuffle(eligible.filter(c => c.archetype === briefArch)) : [];
-  const otherCards     = shuffle(eligible.filter(c => !preferred.includes(c.archetype) && c.archetype !== briefArch));
+  const eligible = shuffle(Object.values(DB).filter(c => (c.tier || 0) <= tier));
   const pool = []; const seen = new Set();
-  // Slots 1-2: class preferred
-  const classWant = preferred.length ? [preferredCards, preferredCards] : [otherCards, otherCards];
-  for (const src of classWant) {
-    for (const c of src) { if (!seen.has(c.id)) { pool.push({...c}); seen.add(c.id); break; } }
-    if (pool.length >= 2) break;
+  for (const c of eligible) {
+    if (pool.length >= 4) break;
+    if (!seen.has(c.id)) { pool.push({...c}); seen.add(c.id); }
   }
-  // Slot 3: brief-aligned (or other)
-  const briefSrc = briefCards.length ? briefCards : otherCards;
-  for (const c of briefSrc) { if (!seen.has(c.id)) { pool.push({...c}); seen.add(c.id); break; } }
-  // Slot 4: any eligible
-  for (const c of shuffle(eligible)) { if (!seen.has(c.id) && pool.length < 4) { pool.push({...c}); seen.add(c.id); } }
   // Synergy metadata: flag cards whose archetype would enable an ARCH_COUNT condition
-  // on a card already in the player's deck
   const allDeckCards = [...this.deck, ...this.hand, ...this.pile];
   const archSynergyMap = {};
   for (const dc of allDeckCards) {
@@ -521,13 +413,7 @@ export function startRemoval() {
 
 export function _buildShopItems() {
   const ownedIds = this.passives.map(p => p.itemId);
-  const items = pickShopItems(ownedIds);
-  const classItemMap = {grinder:'sh_grinder_perk', strategist:'sh_strategist_perk', survivor:'sh_survivor_perk'};
-  const classItem = this.playerClass && classItemMap[this.playerClass];
-  if (classItem && !ownedIds.includes(classItem) && !items.includes(classItem)) {
-    items.push(classItem);
-  }
-  return items;
+  return pickShopItems(ownedIds);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -720,7 +606,7 @@ export function restart() {
   ui.resetCtxTips?.();
   const g = new this.constructor();
   window.G = g;
-  ui.showClassScreen();
+  g.startRun();
 }
 
 export function acceptPromotion() {
@@ -735,5 +621,5 @@ export function acceptPromotion() {
   g.previousRunScore = (this.previousRunScore || 0) + s.total;
   g.legacyCard = legacy;
   window.G = g;
-  ui.showClassScreen();
+  g.startRun();
 }

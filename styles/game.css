@@ -33,18 +33,29 @@
 .hc-kpi-fill.pass{background:linear-gradient(90deg,#116633,#22cc66,#88ffcc);
                   box-shadow:0 0 12px rgba(80,255,160,.9);
                   transition:width .4s cubic-bezier(.34,1.56,.64,1)}
-.hr{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.hr{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.hr-row1{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.hr-row2{font:9px 'Courier New',monospace;color:var(--dim);white-space:nowrap;
+         overflow:hidden;text-overflow:ellipsis;max-width:220px;text-align:right}
+.hr-row2 b{color:#fff;font-weight:bold}
 .coins-row{font-size:13px;color:#ffdd44;font-weight:bold;letter-spacing:1px}
-.plbl{font-size:11px;letter-spacing:1px;color:#9090c0}
-.pips{display:flex;gap:4px}
-.pip{width:13px;height:13px;border-radius:50%;background:#4a4aff;border:1px solid #3a3a8a}
+.plbl{display:none}
+.pips{display:flex;gap:3px}
+.pip{width:11px;height:11px;border-radius:50%;background:#4a4aff;border:1px solid #3a3a8a}
 .pip.used{background:#121230;border-color:#1c1c40}
 .disc-lbl{font-size:11px;color:#9090c0}
-.build-name{font-size:9px;color:#ffdd44;letter-spacing:1px;margin-top:3px;opacity:0.85;
-            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px}
-.career-meter{font:bold 8px 'Courier New',monospace;margin-top:2px;letter-spacing:.5px;
-              white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;
-              opacity:0.9;padding:1px 4px;border:1px solid rgba(255,255,255,.1)}
+.build-name{display:none}
+.career-meter{display:none}
+/* Compact brief badge in header */
+.brief-badge-compact{display:flex;align-items:center;gap:5px;padding:2px 6px;
+                     border:1px solid rgba(255,255,255,.15);background:rgba(0,0,20,.3);
+                     font:bold 9px 'Courier New',monospace;max-width:220px;margin-top:1px}
+.bbc-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.bbc-prog{flex-shrink:0;display:flex;align-items:center;gap:3px;font-weight:normal;color:var(--dim)}
+.bbc-bar{width:36px;height:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);position:relative;flex-shrink:0}
+.bbc-bar-fill{position:absolute;top:0;left:0;height:100%}
+/* PP badge in header — inherits .pp-badge from overlays.css, just trim padding */
+#hdr .pp-badge{padding:1px 5px;font-size:9px;margin-top:1px}
 
 /* Stats */
 #stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;flex-shrink:0}
@@ -194,19 +205,18 @@
 .sb-sfc.tox-risk{background:repeating-linear-gradient(45deg,rgba(255,60,60,.12) 0,rgba(255,60,60,.12) 3px,transparent 3px,transparent 7px)}
 .sb-val{font:bold 10px 'Courier New',monospace;min-width:32px;text-align:right;color:#fff}
 .sb-delta{font-size:8px;margin-left:2px}
-/* ══ TOP ROW (dashboard + score machine, stacked vertically) ══ */
-#top-row{display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
-/* Employee Dashboard — horizontal strip */
+/* ══ TOP ROW — horizontal: [stats | score | context] ══ */
+#top-row{display:flex;flex-direction:row;flex-shrink:0;overflow:hidden;align-items:stretch}
+/* Employee Dashboard — vertical stats column */
 #employee-dashboard{
-  width:100%;flex-shrink:0;display:flex;flex-direction:row;gap:0;
+  width:190px;flex-shrink:0;display:flex;flex-direction:column;gap:0;
   background:var(--surf);
-  border-bottom:1px solid var(--border);
   border:2px solid;border-color:var(--w95d) var(--w95l) var(--w95l) var(--w95d);
   padding:0}
 .ed-title{display:none}
-.ed-stat{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:6px 10px;
-         border-right:1px solid var(--border);overflow:hidden}
-.ed-stat:last-child{border-right:none}
+.ed-stat{flex:none;min-width:0;display:flex;align-items:center;gap:6px;padding:5px 8px;
+         border-right:none;overflow:hidden}
+.ed-stat+.ed-stat{border-top:1px solid var(--border)}
 .ed-icon{font-size:18px;flex-shrink:0;width:22px;text-align:center;line-height:1}
 .ed-info{flex:1;min-width:0}
 .ed-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
@@ -254,11 +264,11 @@
 .stt-status{font:bold 10px 'Tahoma',sans-serif;margin-bottom:2px}
 .stt-desc{font:10px 'Tahoma',sans-serif;color:#333;line-height:1.45}
 
-/* Score machine */
-#score-machine{flex-shrink:0;display:flex;flex-direction:column;align-items:center;
-               padding:10px 12px 7px;
+/* Score machine — fills remaining horizontal space */
+#score-machine{flex:1;min-width:0;display:flex;flex-direction:column;
+               align-items:center;justify-content:center;
+               padding:8px 12px 6px;
                background:linear-gradient(180deg,#141424 0%,#0a0a18 100%);
-               border-bottom:1px solid var(--border);
                border:2px solid;border-color:var(--w95l) var(--w95dd) var(--w95dd) var(--w95l);
                box-shadow:inset 0 0 30px rgba(0,0,0,.75)}
 .sm-led-strip{display:flex;gap:5px;margin-bottom:8px}
@@ -611,7 +621,16 @@
 /* ═══════════════════════════════════════════════════════
    DAILY CONTEXT SYSTEM
    ═══════════════════════════════════════════════════════ */
-#ctx-area{display:flex;flex-direction:column;gap:4px;min-width:180px;flex:1}
+/* Context strip — right column of top-row */
+#ctx-strip-col{width:170px;flex-shrink:0;display:flex;flex-direction:column;gap:4px;
+               padding:5px 5px;overflow:hidden;
+               background:var(--surf);
+               border:2px solid;border-color:var(--w95d) var(--w95l) var(--w95l) var(--w95d)}
+/* Hide name labels inside ctx boxes — description shown below strip */
+.ctx-day-name-lbl{display:none}
+/* Action row — full width below top-row */
+#action-row{flex-shrink:0}
+#action-row #actions{border-top:none}
 
 /* Calendar strip */
 .ctx-strip{display:flex;gap:3px;justify-content:stretch}
@@ -637,10 +656,10 @@
 .ctx-day.ctx-upcoming{opacity:.6}
 
 /* Today description bar */
-.ctx-today-desc{font:10px 'Courier New',monospace;color:#cccccc;
-                padding:4px 6px;
+.ctx-today-desc{font:9px 'Courier New',monospace;color:#cccccc;
+                padding:3px 4px;
                 border-left:2px solid #ffdd44;background:rgba(255,220,60,.04);
-                line-height:1.4}
+                line-height:1.4;word-break:break-word;overflow-wrap:break-word}
 .ctx-today-desc b{color:#ffdd44}
 
 /* Choice panel */
