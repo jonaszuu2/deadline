@@ -114,6 +114,11 @@ export function render(G) {
     document.getElementById('win-body').innerHTML = renderShop(G);
     return;
   }
+  // Desk item offer can appear during result phase
+  if (G.deskItemOffer && G.deskItemOffer.length && G.phase === 'result') {
+    document.getElementById('win-body').innerHTML = renderDeskItemOffer(G);
+    return;
+  }
   const {week, wb, tox, bo, wscore, plays, discs, phase, hand, sel, log, lastScore, playsMax} = G;
   const target   = G.kpi();
   const selCards = sel.map(uid => hand.find(c => c.uid === uid)).filter(Boolean);
@@ -420,16 +425,33 @@ export function renderRightPanel(G) {
     </div>`;
   }
 
-  // DESK — placeholder for future Desk Items
-  const deskHtml = `<div class="rp-section-hdr">DESK</div>
-    <div class="rp-empty" style="color:#888;font-size:10px;text-align:center;padding:20px 8px">
-      Coming soon — Desk Items
-    </div>`;
+  // DESK — active desk items
+  const deskItems = G.deskItems || [];
+  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
+  let deskHtml = `<div class="rp-section-hdr" style="margin-top:8px">DESK <span style="color:var(--dim);font-size:9px">(${deskItems.length}/4)</span></div>`;
+  if (!deskItems.length) {
+    deskHtml += `<div class="rp-empty" style="color:#888;font-size:10px;text-align:center;padding:10px 4px">No desk items yet.<br>Earn one by ending a week with WB ≥75%.</div>`;
+  } else {
+    deskHtml += `<div class="rp-desk-grid">${deskItems.map(d => {
+      const col = rarityColors[d.rarity] || '#aaa';
+      const isResig = d.id === 'resignation_letter';
+      const usedBadge = isResig && G.resignationLetterUsed ? `<div class="rp-desk-used">USED</div>` : '';
+      const activeBtn = isResig && !G.resignationLetterUsed && (G.phase === 'play' || G.phase === 'result')
+        ? `<button class="rp-desk-use-btn" onclick="useResignationLetter()" title="${esc(d.desc)}">USE</button>` : '';
+      return `<div class="rp-desk-item${isResig && G.resignationLetterUsed ? ' rp-desk-item-used' : ''}" title="${esc(d.name)}: ${esc(d.desc)}&#10;${esc(d.flavor)}">
+        <div class="rp-desk-icon">${d.icon}</div>
+        <div class="rp-desk-name" style="color:${col}">${esc(d.name)}</div>
+        <div class="rp-desk-rarity" style="color:${col}">${d.rarity}</div>
+        ${usedBadge}${activeBtn}
+      </div>`;
+    }).join('')}</div>`;
+  }
 
   return `<div id="right-panel">
     <div class="rp-section-hdr">PERKS</div>${perksHtml}
     <div class="rp-section-hdr" style="margin-top:8px">TEAMMATE</div>${tmHtml}
     ${deskHtml}
+    ${renderForecastPanel(G)}
   </div>`;
 }
 
@@ -1116,6 +1138,42 @@ export function renderUpgradeResult(G) {
   </div>`;
 }
 
+export function renderDeskItemOffer(G) {
+  const offer = G.deskItemOffer || [];
+  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
+  const rarityOrder  = {COMMON:0, UNCOMMON:1, RARE:2, LEGENDARY:3};
+  const source = G._deskOfferSource || 'Wellness Reward';
+  const cardsHtml = offer.map(d => {
+    const col = rarityColors[d.rarity] || '#aaa';
+    const isActive = d.active ? `<div class="desk-offer-active">[ACTIVE ITEM]</div>` : '';
+    return `<div class="desk-offer-card" onclick="claimDeskItem('${d.id}')">
+      <div class="desk-offer-rarity" style="color:${col}">${d.rarity}</div>
+      <div class="desk-offer-icon">${d.icon}</div>
+      <div class="desk-offer-name" style="color:${col}">${esc(d.name)}</div>
+      ${isActive}
+      <div class="desk-offer-desc">${esc(d.desc)}</div>
+      <div class="desk-offer-flavor">"${esc(d.flavor)}"</div>
+      <button class="desk-offer-btn">＋ Place on Desk</button>
+    </div>`;
+  }).join('');
+  const currentDesk = (G.deskItems || []).map(d => {
+    const col = rarityColors[d.rarity] || '#aaa';
+    return `<span class="desk-cur-item" title="${esc(d.desc)}">${d.icon} <span style="color:${col}">${esc(d.name)}</span></span>`;
+  }).join('');
+  const deskStatus = `<div class="desk-offer-current">CURRENT DESK (${(G.deskItems||[]).length}/4): ${currentDesk || '<span style="color:var(--dim)">empty</span>'}</div>`;
+  return `<div class="draft-screen">
+    <div class="dr-header">
+      <div class="dr-title">🗂️ DESK ITEM — ${esc(source)}</div>
+      <div class="dr-sub">Choose 1 item to place on your desk. Active effects last until the run ends.</div>
+      ${deskStatus}
+    </div>
+    <div class="desk-offer-grid">${cardsHtml}</div>
+    <div class="dr-skip-row">
+      <button class="dr-skip-btn" onclick="skipDeskOffer()">✕ Skip — keep desk lean</button>
+    </div>
+  </div>`;
+}
+
 export function renderShop(G) {
   if (G.pendingUpgrade) {
     const allCards = [...G.deck, ...G.pile];
@@ -1151,13 +1209,31 @@ export function renderShop(G) {
       <div class="dr-skip-row"><button class="dr-skip-btn" onclick="G.cancelAction()">✕ Cancel</button></div>
     </div>`;
   }
+  // Desk item offer takes priority — show picker
+  if (G.deskItemOffer && G.deskItemOffer.length) {
+    return renderDeskItemOffer(G);
+  }
+
   const {week, coins, shopItems, wscore, passives} = G;
   const passed = wscore >= G.kpi();
   const wbColor = G.wb >= 70 ? '#70ff78' : G.wb >= 40 ? '#ffdd44' : '#ff7070';
   const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
   const boColor = G.bo >= 90 ? '#ff2020' : G.bo >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
+  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
   const cardsHtml = shopItems.map(id => {
+    // Special desk item shop slot
+    if (id === 'shop_desk_item') {
+      const canAfford = coins >= 5;
+      return `<div class="sh2-card sh2-desk-slot${canAfford ? ' sh2-buyable' : ''}" ${canAfford ? "onclick=\"G.buyItem('shop_desk_item')\"" : ''}>
+        <div class="sh2-type">DESK ITEM</div>
+        <div class="sh2-icon">🗂️</div>
+        <div class="sh2-name">Mystery Desk Item</div>
+        <div class="sh2-desc">Pick 1 of 3 random Common/Uncommon desk items for your office desk.</div>
+        <button class="sh2-buy-btn${canAfford ? '' : ' sh2-cant'}" ${canAfford ? '' : 'disabled'} onclick="event.stopPropagation();G.buyItem('shop_desk_item')">${canAfford ? 'BUY — 5 CC' : '5 CC — INSUFFICIENT'}</button>
+      </div>`;
+    }
     const item = SHOP_DB[id];
+    if (!item) return '';
     const isOwned = item.unique && passives.some(p => p.itemId === id);
     const canAfford = coins >= item.cost;
     let btnExtra = '', btnLabel, disabled = '';

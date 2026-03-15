@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════
 import { PLAYS, DISCS, TOTAL_WEEKS, clamp, FAIL_BO } from '../data/constants.js';
 import { nextUid, shuffle, fmt1, getUnlockedTier, setUnlockedTier } from './utils.js';
+import { DESK_ITEMS_BY_RARITY, DESK_ITEMS_LIST } from '../data/deskItems.js';
 import { makeDeck, pickShopItems } from './deck.js';
 import { calculateFinalScore } from './scoring.js';
 import { TEAMMATES_DB } from '../data/content.js';
@@ -265,6 +266,13 @@ export function _processEndOfWeekStats() {
     this.wb = clamp(this.wb + bonus, 0, 100);
     this.addLog('wg', `> ✅ [Professional] Niska toksyczność (${this.tox}%) → +${bonus} Wellbeing → ${this.wb}%`);
   }
+  // ── Desk Item end-of-week effects ─────────────────────
+  this._processDeskItemWeekEnd(passed);
+  // ── Desk Item offer: WB ≥75% (always, pass or fail) ──
+  if (this.wb >= 75 && (this.deskItems || []).length < 4) {
+    this.deskItemOffer = this._buildDeskItemOffer(['COMMON', 'UNCOMMON']);
+    this.addLog('ok', `> 🌟 [Wellness Reward] WB ${this.wb}% ≥ 75% — choose a Desk Item!`);
+  }
   return true;
 }
 
@@ -369,6 +377,19 @@ export function _buildCardDraftPool() {
 // ═══════════════════════════════════════════════════════
 
 export function buyItem(itemId) {
+  // Desk item shop slot
+  if (itemId === 'shop_desk_item') {
+    const cost = 5;
+    if (this.coins < cost) return;
+    const offer = this._buildDeskItemOffer(['COMMON', 'UNCOMMON']);
+    if (!offer || !offer.length) return;
+    this.coins -= cost;
+    this.purchasedThisShop = true;
+    this.deskItemOffer = offer;
+    this.shopItems = this.shopItems.filter(id => id !== 'shop_desk_item');
+    this.addLog('ok', `> 🗂️ Desk Item — choose from 3 options. (-5 CC → ${this.coins} CC)`);
+    this._commit(); return;
+  }
   const item = SHOP_DB[itemId]; if (!item || this.coins < item.cost) return;
   this.coins -= item.cost;
   this.purchasedThisShop = true;
@@ -413,7 +434,12 @@ export function startRemoval() {
 
 export function _buildShopItems() {
   const ownedIds = this.passives.map(p => p.itemId);
-  return pickShopItems(ownedIds);
+  const items = pickShopItems(ownedIds);
+  // Add a desk item slot if desk isn't full
+  if ((this.deskItems || []).length < 4) {
+    items.push('shop_desk_item');
+  }
+  return items;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -454,6 +480,21 @@ export function advanceBoss() {
 }
 
 export function claimBossReward(rewardId) {
+  // Special case: boss desk item offer
+  if (rewardId === 'boss_desk_item') {
+    const offer = this._buildDeskItemOfferRare();
+    if (offer && offer.length && (this.deskItems || []).length < 4) {
+      this.deskItemOffer = offer;
+      this.addLog('ok', `> 🎁 Boss Reward: Rare Desk Item — choose one!`);
+    }
+    this.bossEncountersDone.add(this.week);
+    this.bossChosenRewards.push(rewardId);
+    this.shopItems = this._buildShopItems();
+    this.transition('shop'); this._commit();
+    if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
+    ui.checkFirstShopTutorial?.();
+    return;
+  }
   const reward = this.bossRewardPool.find(r => r.id === rewardId);
   if (!reward) return;
   if (reward.type === 'STAT_BOOST') {
@@ -504,7 +545,20 @@ export function _buildBossRewardPool() {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, 3);
+  const rewards = pool.slice(0, 2);
+  // Add desk item option if desk isn't full
+  if ((this.deskItems || []).length < 4) {
+    rewards.push({
+      id: 'boss_desk_item',
+      type: 'DESK_ITEM',
+      icon: '🗂️',
+      label: 'Rare Desk Item',
+      desc: 'Pick 1 of 3 Rare/Legendary office items for your desk.',
+    });
+  } else if (rewards.length < 3) {
+    rewards.push(pool[2]);
+  }
+  return rewards;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -601,6 +655,54 @@ export function resolveContextChoice(choiceId) {
 // ═══════════════════════════════════════════════════════
 //  RUN END
 // ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+//  DESK ITEMS
+// ═══════════════════════════════════════════════════════
+
+export function _processDeskItemWeekEnd(passed) {
+  const desk = id => (this.deskItems || []).some(d => d.id === id);
+  // whiteboard: all 4 archetypes used ≥1×
+  if (desk('whiteboard')) {
+    const wa = this.weekArchetypes || {};
+    const allFour = ['PRODUCTION','STRATEGY','CRUNCH','RECOVERY'].every(a => (wa[a] || 0) >= 1);
+    if (allFour) {
+      this.permMult = fmt1((this.permMult || 0) + 0.3);
+      this.addLog('sy', `> 🖊️ [Whiteboard] All 4 archetypes used this week — +0.3 perm Mult → ${this.permMult}×`);
+    }
+  }
+  // nameplate: pass → +5 coins
+  if (desk('nameplate') && passed) {
+    this.coins += 5;
+    this.addLog('ok', `> 🪪 [Nameplate] KPI passed — +5 CC → ${this.coins} CC`);
+  }
+  // company_mug: pass → +0.1 perm mult
+  if (desk('company_mug') && passed) {
+    this.permMult = fmt1((this.permMult || 0) + 0.1);
+    this.addLog('sy', `> 🏆 [Company Mug] KPI passed — +0.1 perm Mult → ${this.permMult}×`);
+  }
+  // mouse_pad: tox ≤ 10 → +0.5 perm mult
+  if (desk('mouse_pad') && this.tox <= 10) {
+    this.permMult = fmt1((this.permMult || 0) + 0.5);
+    this.addLog('sy', `> 🖱️ [Mouse Pad] Clean week (Tox ${this.tox}%) — +0.5 perm Mult → ${this.permMult}×`);
+  }
+}
+
+export function _buildDeskItemOffer(rarities = ['COMMON', 'UNCOMMON']) {
+  const ownedIds = new Set((this.deskItems || []).map(d => d.id));
+  const pool = DESK_ITEMS_LIST.filter(d => rarities.includes(d.rarity) && !ownedIds.has(d.id));
+  if (!pool.length) return null;
+  const shuffled = shuffle([...pool]);
+  return shuffled.slice(0, Math.min(3, shuffled.length));
+}
+
+export function _buildDeskItemOfferRare() {
+  const ownedIds = new Set((this.deskItems || []).map(d => d.id));
+  const pool = DESK_ITEMS_LIST.filter(d => ['RARE','LEGENDARY'].includes(d.rarity) && !ownedIds.has(d.id));
+  if (!pool.length) return this._buildDeskItemOffer(['UNCOMMON', 'RARE']);
+  const shuffled = shuffle([...pool]);
+  return shuffled.slice(0, Math.min(3, shuffled.length));
+}
 
 export function restart() {
   ui.resetCtxTips?.();

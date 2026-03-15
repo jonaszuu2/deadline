@@ -44,26 +44,14 @@ describe('calcTurn — scoring formula', () => {
   });
 });
 
-describe('calcTurn — brief modifiers', () => {
-  it('cost_reduction: CRUNCH chips ×1.4', () => {
-    const res = calcTurn([card('CRUNCH', { chips: 100 })], { ...base, brief: 'cost_reduction' });
-    expect(res.chips).toBe(140);
+describe('calcTurn — no-brief baseline (brief system removed)', () => {
+  it('CRUNCH chips are unmodified without passives', () => {
+    const res = calcTurn([card('CRUNCH', { chips: 100 })], base);
+    expect(res.chips).toBe(100);
   });
 
-  it('cost_reduction: CRUNCH wb cost doubled', () => {
-    // wb: -10 → -20 under cost_reduction
-    const res = calcTurn([card('CRUNCH', { chips: 50, wb: -10 })], { ...base, wb: 100, brief: 'cost_reduction' });
-    expect(res.wb).toBe(80);
-  });
-
-  it('hyper_growth: PRODUCTION chips ×1.5', () => {
-    const res = calcTurn([card('PRODUCTION', { chips: 100 })], { ...base, brief: 'hyper_growth' });
-    expect(res.chips).toBe(150);
-  });
-
-  it('non-matching brief does not affect chips', () => {
-    // wellness_initiative has no chip modifiers
-    const res = calcTurn([card('PRODUCTION', { chips: 100 })], { ...base, brief: 'wellness_initiative' });
+  it('PRODUCTION chips are unmodified without passives', () => {
+    const res = calcTurn([card('PRODUCTION', { chips: 100 })], base);
     expect(res.chips).toBe(100);
   });
 });
@@ -90,10 +78,10 @@ describe('calcTurn — combo multipliers', () => {
       card('PRODUCTION', { chips: 30 }),
     ];
     const res = calcTurn(cards, base);
-    // PRODUCTION CHAIN adds +10% chips per extra card: 90 + round(90 * 2 * 0.1) = 108
-    // score = floor(108 * 1.3) = 140
+    // PRODUCTION CHAIN adds +5% chips per extra card: 90 + round(90 * 2 * 0.05) = 90 + 9 = 99
+    // score = floor(99 * 1.3) = 128
     expect(res.comboMult).toBe(1.3);
-    expect(res.score).toBe(Math.floor(108 * 1.3));
+    expect(res.score).toBe(Math.floor(99 * 1.3));
   });
 
   it('triple CRUNCH gives 1.4× combo mult', () => {

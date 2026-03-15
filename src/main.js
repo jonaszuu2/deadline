@@ -54,6 +54,11 @@ window._advanceIntroTutorial = _advanceIntroTutorial;
 window._skipIntroTutorial   = _skipIntroTutorial;
 window.openHelp             = openHelp;
 
+// Desk Item actions (called from inline onclick handlers)
+window.claimDeskItem    = (id) => window.G.claimDeskItem(id);
+window.skipDeskOffer    = ()   => window.G.skipDeskOffer();
+window.useResignationLetter = () => window.G.useResignationLetter();
+
 // ═══════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════

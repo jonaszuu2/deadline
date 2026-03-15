@@ -86,7 +86,11 @@ export function calcTurn(cards, ctx) {
     discardComboMult = 0, permMult = 0,
     mode = 'preview',
     ctxMods = {},
+    deskItems = [],
+    handSize = 0,
+    totalPlayCount = 0,
   } = ctx;
+  const desk = id => deskItems.some(it => it.id === id);
   const log = [];
   const lg = (cls, t, hidden = false) => {
     if (mode === 'real') log.push(hidden ? {cls, t, hidden: true} : {cls, t});
@@ -117,6 +121,62 @@ export function calcTurn(cards, ctx) {
   // Context flat bonuses
   if (ctxMods.extraMult)  { acc.mult  += ctxMods.extraMult;  lg('sy', `  📋 [Context] +${fmt1(ctxMods.extraMult)}× Mult`); }
   if (ctxMods.extraChips) { acc.chips += ctxMods.extraChips; lg('ch', `  📋 [Context] +${ctxMods.extraChips} Chips`); }
+
+  // ── Desk Item pre-play effects ────────────────────────
+  if (desk('desk_fan') && tox >= 50) {
+    tox = clamp(tox - 3, 0, 100);
+    lg('tl', `  🌀 [Desk Fan] Cooling down — -3% Tox → ${tox}%`);
+  }
+  if (desk('stress_ball') && wb < 40) {
+    acc.mult += 0.5;
+    lg('mu', `  🔴 [Stress Ball] Hanging on — WB ${wb}% < 40%: +0.5 Mult`);
+  }
+  if (desk('action_figure') && wb < 50) {
+    acc.mult += 0.3;
+    lg('mu', `  🧸 [Action Figure] Low WB motivation — +0.3 Mult`);
+  }
+  if (desk('coffee_mug') && firstCardThisWeek) {
+    acc.chips += 50;
+    lg('ch', `  ☕ [Coffee Mug] First play this week — +50 Chips`);
+  }
+  if (desk('paper_clip') && handSize > 0) {
+    const bonus = handSize * 5;
+    acc.chips += bonus;
+    lg('ch', `  📎 [Paper Clip] ${handSize} cards in hand — +${bonus} Chips`);
+  }
+  if (desk('stapler') && cards.length === 2) {
+    acc.chips += 30;
+    lg('ch', `  🔩 [Stapler] Exactly 2 cards — +30 Chips`);
+  }
+  if (desk('sticky_notes') && cards.length > 2) {
+    const extra = (cards.length - 2) * 20;
+    acc.chips += extra;
+    lg('ch', `  🟨 [Sticky Notes] ${cards.length} cards — +${extra} Chips`);
+  }
+  if (desk('inbox_tray') && cards.length >= 3) {
+    acc.mult += 0.3;
+    lg('mu', `  📥 [Inbox Tray] 3+ cards — +0.3 Mult`);
+  }
+  // Org Chart: +0.2 Mult per unique archetype in combo
+  if (desk('org_chart')) {
+    const unique = new Set(cards.map(c => c.archetype)).size;
+    if (unique > 0) {
+      const orgBonus = unique * 0.2;
+      acc.mult += orgBonus;
+      lg('mu', `  🗺️ [Org Chart] ${unique} unique archetype${unique > 1 ? 's' : ''} — +${fmt1(orgBonus)} Mult`);
+    }
+  }
+  // Cactus: bonus chips per card based on tox
+  if (desk('cactus')) {
+    const cactusPer = tox >= 90 ? 120 : tox >= 60 ? 50 : 0;
+    if (cactusPer > 0) {
+      const cactusBonus = cactusPer * cards.length;
+      acc.chips += cactusBonus;
+      lg('ch', `  🌵 [Cactus] Tox ${tox}% — +${cactusPer}×${cards.length} = +${cactusBonus} Chips`);
+    }
+  }
+  // Hourglass: last play of week → Chips ×1.5 (applied after card loop)
+  // Golden Mug: every 5th total play → Chips ×2 (applied after card loop)
 
   // TOX_TO_CHIPS passive: +passiveVal Chips per 10% Tox above 30%
   for (const p of passives) {
@@ -168,6 +228,27 @@ export function calcTurn(cards, ctx) {
     const rec  = {id: card.id, arch: card.archetype, uid: card.uid, snap};
     const fx   = {...getEffectiveFx(card, passives)};
 
+
+    // Desk Item: fidget_spinner — CRUNCH tox cost -5
+    if (desk('fidget_spinner') && card.archetype === 'CRUNCH' && fx.tox > 0) {
+      fx.tox = Math.max(0, fx.tox - 5);
+    }
+    // Desk Item: desk_lamp — STRATEGY +15 Chips
+    if (desk('desk_lamp') && card.archetype === 'STRATEGY') {
+      fx.chips = (fx.chips || 0) + 15;
+    }
+    // Desk Item: calendar — PRODUCTION +[week] Chips
+    if (desk('calendar') && card.archetype === 'PRODUCTION') {
+      fx.chips = (fx.chips || 0) + (ctx.week || 1);
+    }
+    // Desk Item: whitenoise_machine — RECOVERY +0.2 Mult
+    if (desk('whitenoise_machine') && card.archetype === 'RECOVERY') {
+      fx.mult = Number(fmt1((fx.mult || 0) + 0.2));
+    }
+    // Desk Item: red_stapler — first play + first card PRODUCTION: +100 Chips
+    if (desk('red_stapler') && firstCardThisWeek && playLog.length === 0 && card.archetype === 'PRODUCTION') {
+      fx.chips = (fx.chips || 0) + 100;
+    }
 
     // Context archetype modifiers
     if (ctxMods.stratChipsMult && card.archetype === 'STRATEGY'  && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.stratChipsMult);
@@ -272,7 +353,11 @@ export function calcTurn(cards, ctx) {
     // Crunch Fatigue: 2nd+ CRUNCH costs extra Tox
     if (card.archetype === 'CRUNCH') {
       if (weekCrunchCount > 0) {
-        const fatigueTox = weekCrunchCount * 12;
+        let fatigueTox = weekCrunchCount * 12;
+        if (desk('rubber_band_ball')) {
+          fatigueTox = Math.round(fatigueTox / 2);
+          lg('tl', `  🟠 [Rubber Band Ball] Crunch fatigue halved — ${weekCrunchCount * 12} → ${fatigueTox}% Tox`);
+        }
         tox = clamp(tox + fatigueTox, 0, 100);
         lg('tg', `  ⚠ [Crunch Fatigue] ${weekCrunchCount}× overload this week — +${fatigueTox}% Tox → ${tox}%`);
       }
@@ -310,6 +395,16 @@ export function calcTurn(cards, ctx) {
     playLog.push(rec);
     if (gameOver) break;
   }
+
+  // ── Desk Item post-loop effects ───────────────────────
+  // rubber_duck: solo play → Chips ×2
+  if (desk('rubber_duck') && cards.length === 1 && !gameOver) {
+    const before = acc.chips;
+    acc.chips = Math.round(acc.chips * 2);
+    lg('ch', `  🦆 [Rubber Duck] Solo play — Chips ×2: ${before} → ${acc.chips}`);
+  }
+  // rubber_band_ball: halve crunch fatigue tox on 2nd+ CRUNCH (already paid above)
+  // (handled inline per-card above via fx.tox, fatigue handled below)
 
   // ── Post-loop ─────────────────────────────────────────
   if (!gameOver) {
@@ -402,6 +497,18 @@ export function calcTurn(cards, ctx) {
       score = Math.floor(score * ctxMods.singleCardScoreMult);
       lg('sc', `  📋 [Context] 1 karta → Score ×${ctxMods.singleCardScoreMult} → ${score}`);
     }
+    // Desk Item: hourglass — last play of week → Chips ×1.5
+    if (desk('hourglass') && ctx.plays === 1) {
+      const hbefore = score;
+      score = Math.floor(score * 1.5);
+      lg('sc', `  ⏳ [Hourglass] Last play of week — Score ×1.5: ${hbefore} → ${score}`);
+    }
+    // Desk Item: golden_mug — every 5th play (totalPlayCount is BEFORE this play)
+    if (desk('golden_mug') && (totalPlayCount + 1) % 5 === 0) {
+      const gbefore = score;
+      score = score * 2;
+      lg('sc', `  🥇 [Golden Mug] Play #${totalPlayCount + 1} — every 5th play: Score ×2: ${gbefore} → ${score}`);
+    }
     const comboTag = comboMult > 1.0 ? ` × ${fmt1(comboMult)} COMBO` : '';
     lg('sc', `  ▶ SCORE: ${acc.chips} × ${fmt1(acc.mult)}${comboTag} = ${score}`);
 
@@ -448,6 +555,9 @@ export function simulateTurn(cards, G) {
     weekCrunchCount:         G.weekCrunchCount || 0,
     permMult:                G.permMult || 0,
     ctxMods:                 G.activeContextMods || {},
+    deskItems:               G.deskItems || [],
+    handSize:                G.hand ? G.hand.length - cards.length : 0,
+    totalPlayCount:          G.totalPlayCount || 0,
     mode: 'preview',
   });
 }

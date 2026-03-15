@@ -76,6 +76,11 @@ export class GameState {
     // Build Identity
     this.discoveredCombos = new Set();
 
+    // Desk Items
+    this.deskItems = [];           // up to 4 active desk items
+    this.deskItemOffer = null;     // [{item, source}] offer pending player choice
+    this.resignationLetterUsed = false;
+
     // Power Progression
     this.justBreakthrough = false;
 

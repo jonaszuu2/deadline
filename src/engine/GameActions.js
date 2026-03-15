@@ -106,6 +106,7 @@ export function playSelected() {
   const pre = this.activeContextPre || {};
   if (pre.preWbDelta)  { this.wb  = clamp(this.wb  + pre.preWbDelta,  0, 100); this.addLog(pre.preWbDelta  > 0 ? 'wg' : 'wl', `> 📋 [Context] ${pre.preWbDelta > 0 ? '+' : ''}${pre.preWbDelta} WB → ${this.wb}%`); }
   if (pre.preToxDelta) { this.tox = clamp(this.tox + pre.preToxDelta, 0, 100); this.addLog(pre.preToxDelta > 0 ? 'tg' : 'tl', `> 📋 [Context] ${pre.preToxDelta > 0 ? '+' : ''}${pre.preToxDelta}% TOX → ${this.tox}%`); }
+  const handSizeBeforePlay = this.hand.length - cards.length; // cards already removed below
   this.hand = this.hand.filter(c => !this.sel.includes(c.uid));
   this.pile.push(...cards); this.sel = []; this.plays--;
   if (cards.some(c => c.archetype === 'CRUNCH')) { this.weekCrunched = true; }
@@ -125,7 +126,7 @@ export function playSelected() {
     }
   }
 
-  const res = this.processTurn(cards, this.activeContextMods || {});
+  const res = this.processTurn(cards, this.activeContextMods || {}, handSizeBeforePlay);
   const prevWscore = this.wscore;
   const prevWb    = this.wb;
   const prevPassed = this.wscore >= this.kpi();
@@ -229,7 +230,7 @@ export function finishScoring() {
 //  TURN ENGINE WRAPPER
 // ═══════════════════════════════════════════════════════
 
-export function processTurn(cards, ctxMods = {}) {
+export function processTurn(cards, ctxMods = {}, handSizeBeforePlay = 0) {
   this.updateTeammateBehavior();
   const result = calcTurn(cards, {
     wb: this.wb, tox: this.tox, bo: this.bo,
@@ -243,6 +244,9 @@ export function processTurn(cards, ctxMods = {}) {
     weekCrunchCount:         this.weekCrunchCount,
     permMult:                this.permMult,
     ctxMods,
+    deskItems:               this.deskItems || [],
+    handSize:                handSizeBeforePlay,
+    totalPlayCount:          this.totalPlayCount || 0,
     mode: 'real',
   });
   this.discardComboMult = 0;
@@ -255,6 +259,12 @@ export function processTurn(cards, ctxMods = {}) {
     this.totalRawChips += result.chips;
     this.totalMultSum  += result.mult;
     this.totalPlayCount++;
+    // Desk Item: broken_printer — 0 Chips play → +6 Coins, -10 Tox
+    if ((this.deskItems || []).some(d => d.id === 'broken_printer') && result.chips === 0 && result.score === 0) {
+      this.coins += 6;
+      this.tox = clamp(this.tox - 10, 0, 100);
+      this.addLog('ok', `> 🖨️ [Broken Printer] Zero chips play — +6 CC → ${this.coins} CC, -10% Tox → ${this.tox}%`);
+    }
   }
   return result;
 }
@@ -323,6 +333,42 @@ export function _checkPassiveCombos() {
 // ═══════════════════════════════════════════════════════
 //  UTILITY ACTIONS
 // ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════
+//  DESK ITEM ACTIONS
+// ═══════════════════════════════════════════════════════
+
+export function claimDeskItem(itemId) {
+  if (!this.deskItemOffer) return;
+  const found = this.deskItemOffer.find(d => d.id === itemId);
+  if (!found) return;
+  this.deskItemOffer = null;
+  if ((this.deskItems || []).length >= 4) {
+    this.addLog('ng', `> ⚠ Desk is full (4/4) — could not add ${found.name}.`);
+    this._commit(); return;
+  }
+  this.deskItems = [...(this.deskItems || []), found];
+  this.addLog('ok', `> 🗂️ [Desk] ${found.icon} ${found.name} placed on your desk.`);
+  this._commit();
+}
+
+export function skipDeskOffer() {
+  this.deskItemOffer = null;
+  this.addLog('i', '> [Desk Offer] Passed on the item.');
+  this._commit();
+}
+
+export function useResignationLetter() {
+  if (this.resignationLetterUsed) return;
+  if (!(this.deskItems || []).some(d => d.id === 'resignation_letter')) return;
+  if (this.phase !== 'play' && this.phase !== 'result') return;
+  this.resignationLetterUsed = true;
+  const needed = Math.max(0, this.kpi() - this.wscore);
+  this.wscore = this.kpi();
+  this.addLog('ok', `> 📄 [Resignation Letter] Auto-PASS activated — +${needed} Score → ${this.wscore} (KPI met)`);
+  if (this.phase === 'play') this.transition('result');
+  this._commit();
+}
 
 export function bankRemainingPlays() {
   if (this.plays <= 0 || this.phase !== 'result') return;
