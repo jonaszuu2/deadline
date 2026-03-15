@@ -302,21 +302,15 @@ export function calcTurn(cards, ctx) {
       lg('ng', `  ☣ [Meltdown] ${card.name} wypalona (auto-exhaust)`);
     }
 
-    // Toxic Atmosphere damage
+    // Toxic Atmosphere damage (deterministic: tier-based drain per card played)
     if (tox > 50) {
-      if (mode === 'real') {
-        const roll = rnd100();
-        if (roll < tox) {
-          wb = clamp(wb - TOX_DMG, 0, 100);
-          lg('dm', `  ☣ TOXIC ATMOSPHERE! -${TOX_DMG} WB (roll ${roll} < ${tox}%) → ${wb}%`);
-          if (wb === 0) {
-            bo = clamp(bo + TOX_DMG, 0, 100);
-            lg('bo', `  🔥 OVERFLOW → +${TOX_DMG} Burnout → ${bo}%`);
-            if (bo >= 100) { gameOver = true; lg('dm', `  !! BURNOUT 100% — GAME OVER !!`); }
-          }
-        } else {
-          lg('d', `  ☣ Toxic check: survived (roll ${roll} ≥ ${tox}%)`, true);
-        }
+      const drain = tox >= 90 ? 4 : tox >= 70 ? 2 : 1;
+      wb = clamp(wb - drain, 0, 100);
+      lg('dm', `  ☣ Toxic Atmosphere (${tox}%) −${drain} WB → ${wb}%`);
+      if (wb === 0) {
+        bo = clamp(bo + drain, 0, 100);
+        lg('bo', `  🔥 OVERFLOW → +${drain} Burnout → ${bo}%`);
+        if (mode === 'real' && bo >= 100) { gameOver = true; lg('dm', `  !! BURNOUT 100% — GAME OVER !!`); }
       }
       toxLevels.push(tox);
     }
