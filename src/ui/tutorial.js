@@ -41,28 +41,28 @@ export const INTRO_SLIDES = [
       + '<div class="tut-cmi strat"><div class="tut-cmi-arch">STRATEGY</div><div class="tut-cmi-val it-mult">+0.5 Mult</div></div>'
       + '</div>'
       + '<div class="tut-formula-line">100 Chips &times; 1.5 = <strong>150 pts ✓</strong></div>'
-      + '<div class="tut-formula-line dim">tylko PRODUCTION: 100 &times; 1.0 = <span style="color:#888">100 pts</span></div>'
+      + '<div class="tut-formula-line dim">PRODUCTION only: 100 &times; 1.0 = <span style="color:#888">100 pts</span></div>'
       + '</div>'
-      + '<p>PRODUCTION karty dają <b>Chips</b>. STRATEGY dają <b>Mult</b>. Samo jedno nie wystarczy &mdash; <b>miksuj archetypy</b> żeby mnożyć wynik.</p>',
-    btn: 'Rozumiem →',
+      + '<p>PRODUCTION cards give <b>Chips</b>. STRATEGY cards give <b>Mult</b>. Neither alone is enough &mdash; <b>mix archetypes</b> to multiply your score.</p>',
+    btn: 'Got it →',
   },
   {
     icon: '☣️', step: 2,
-    title: 'TOKSYCZNOŚĆ DRENUJE WELLBEING',
+    title: 'TOXICITY DRAINS WELLBEING',
     content: '<div class="tut-scene">'
       + '<div class="tut-stat-pair">'
       + '<div class="tut-bar-row"><span class="tut-bl tox">☣ TOX</span><div class="tut-btrack"><div class="tut-bfill tox-fill" style="width:55%"></div></div><span class="tut-bval warn">55%</span></div>'
-      + '<div class="tut-drain-note">↓ każda karta: &minus;2 WB</div>'
+      + '<div class="tut-drain-note">↓ every card played: &minus;2 WB</div>'
       + '<div class="tut-bar-row"><span class="tut-bl wb">❤ WB</span><div class="tut-btrack"><div class="tut-bfill wb-fill" style="width:38%"></div></div><span class="tut-bval warn">38%</span></div>'
-      + '<div class="tut-drain-note">↓ WB = 0 → Burnout rośnie</div>'
+      + '<div class="tut-drain-note">↓ WB = 0 → Burnout rises</div>'
       + '<div class="tut-bar-row"><span class="tut-bl bo">🔥 BO</span><div class="tut-btrack"><div class="tut-bfill bo-fill" style="width:70%"></div></div><span class="tut-bval crit">70% ⚠</span></div>'
       + '</div></div>'
-      + '<p><b>TOX &gt;35%</b> → biuro truje każdą zagraną kartę. WB spada karta po karcie. <b>Burnout 100%</b> = koniec gry &mdash; i nigdy się nie resetuje.</p>',
-    btn: 'Dalej →',
+      + '<p><b>TOX &gt;35%</b> → the office poisons every card you play. WB drops card by card. <b>Burnout 100%</b> = immediate game over &mdash; and it never resets.</p>',
+    btn: 'Next →',
   },
   {
     icon: '⬆️', step: 3,
-    title: 'UPGRADE ZALEŻY OD ARCHETYPU',
+    title: 'UPGRADES ARE ARCHETYPE-SPECIFIC',
     content: '<div class="tut-scene">'
       + '<div class="tut-upgrade-rows">'
       + '<div class="tut-uprow"><div class="tut-cmi prod sm"><span class="tut-cmi-arch">PRODUCTION</span></div><span class="tut-arr">→</span><span class="tut-upval it-chip">+Chips</span></div>'
@@ -70,31 +70,31 @@ export const INTRO_SLIDES = [
       + '<div class="tut-uprow"><div class="tut-cmi crunch sm"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-arr">→</span><span class="tut-upval it-mult">+Mult</span></div>'
       + '<div class="tut-uprow"><div class="tut-cmi recov sm"><span class="tut-cmi-arch">RECOVERY</span></div><span class="tut-arr">→</span><span class="tut-upval it-wb">+Healing</span></div>'
       + '</div></div>'
-      + '<p>Performance Upgrade w sklepie wzmacnia kartę <b>inaczej zależnie od archetypu</b>. Żeby mieć dużo Chips i dużo Mult &mdash; trzymaj oba typy i upgraduj oba.</p>',
-    btn: 'Dalej →',
+      + '<p>Performance Upgrade in the shop boosts a card <b>based on its archetype</b>. To get high Chips AND high Mult &mdash; keep both card types and upgrade both.</p>',
+    btn: 'Next →',
   },
   {
     icon: '♻️', step: 4,
-    title: 'DISCARD = NARZĘDZIE',
+    title: 'DISCARD IS A TOOL',
     content: '<div class="tut-scene">'
       + '<div class="tut-hand-swap">'
-      + '<div class="tut-hrow bad"><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-bad-label">&#10007; słaba ręka</span></div>'
-      + '<div class="tut-swap-arrow">↓ DISCARD 2 kart (bez tracenia Play)</div>'
-      + '<div class="tut-hrow good"><div class="tut-cmi prod xs"><span class="tut-cmi-arch">PROD</span></div><div class="tut-cmi strat xs"><span class="tut-cmi-arch">STRAT</span></div><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-good-label">&#10003; miksowana</span></div>'
+      + '<div class="tut-hrow bad"><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-bad-label">&#10007; bad hand</span></div>'
+      + '<div class="tut-swap-arrow">↓ DISCARD 2 cards (no Play spent)</div>'
+      + '<div class="tut-hrow good"><div class="tut-cmi prod xs"><span class="tut-cmi-arch">PROD</span></div><div class="tut-cmi strat xs"><span class="tut-cmi-arch">STRAT</span></div><div class="tut-cmi crunch xs"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-good-label">&#10003; mixed hand</span></div>'
       + '</div></div>'
-      + '<p>Masz <b>2 Discards</b> na tydzień &mdash; wymieniasz karty bez tracenia Play. <b>Nie ma złych rąk</b>, są tylko nieużyte Discardy.</p>',
-    btn: 'Dalej →',
+      + '<p>You have <b>2 Discards</b> per week &mdash; swap unwanted cards without spending a Play. <b>There are no bad hands</b>, only unused Discards.</p>',
+    btn: 'Next →',
   },
   {
     icon: '⚙️', step: 5,
-    title: 'WYBIERZ SWOJĄ KLASĘ',
+    title: 'CHOOSE YOUR CLASS',
     content: '<div class="tut-class-preview">'
-      + '<div class="tut-cls-row"><span class="tut-cls-ico">⚙️</span><div><b>Grinder</b> &mdash; silnik PRODUCTION, więcej Plays per tydzień</div></div>'
-      + '<div class="tut-cls-row"><span class="tut-cls-ico">🎯</span><div><b>Strategist</b> &mdash; wysoki pułap Mult, STRATEGY + CRUNCH</div></div>'
-      + '<div class="tut-cls-row"><span class="tut-cls-ico">☣️</span><div><b>Survivor</b> &mdash; RECOVERY heavy, przeżywa chaos toksycznego biura</div></div>'
+      + '<div class="tut-cls-row"><span class="tut-cls-ico">⚙️</span><div><b>Grinder</b> &mdash; PRODUCTION engine, extra Plays per week</div></div>'
+      + '<div class="tut-cls-row"><span class="tut-cls-ico">🎯</span><div><b>Strategist</b> &mdash; high Mult ceiling, STRATEGY + CRUNCH deck</div></div>'
+      + '<div class="tut-cls-row"><span class="tut-cls-ico">☣️</span><div><b>Survivor</b> &mdash; RECOVERY heavy, thrives in toxic chaos</div></div>'
       + '</div>'
-      + '<p style="margin-top:10px">Każda klasa ma <b>inną talię startową</b> i pasywne bonusy. Styl gry wynika z klasy &mdash; wybierz ten, który najbardziej przemawia.</p>',
-    btn: '▶ Wybieram klasę',
+      + '<p style="margin-top:10px">Each class has a <b>different starting deck</b> and passive bonuses. Your class defines your playstyle &mdash; pick the one that speaks to you.</p>',
+    btn: '▶ Choose My Class',
   },
 ];
 
@@ -122,7 +122,7 @@ export function _renderIntroSlide(idx) {
     + '<div class="tut-text it-content">' + slide.content + '</div></div>'
     + '<div class="tut-footer"><div class="tut-progress">' + dots + '</div>'
     + '<div class="tut-btns">'
-    + '<button class="tut-skip" onclick="_skipIntroTutorial()">Pomiń tutorial</button>'
+    + '<button class="tut-skip" onclick="_skipIntroTutorial()">Skip tutorial</button>'
     + '<button class="w95-btn" onclick="_advanceIntroTutorial()">' + slide.btn + '</button>'
     + '</div></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
@@ -220,23 +220,23 @@ export function showContextualTip(type) {
   const tips = {
     tox_damage: {
       title:'☣ TOXIC ATMOSPHERE',
-      text:'TOX &gt;35% &mdash; każda zagrana karta drenaży WB. Zagraj <b>RECOVERY</b> lub kup <b>Espresso Shot</b> w sklepie żeby obniżyć toksyczność.',
+      text:'TOX &gt;35% — every card you play drains WB. Play <b>RECOVERY</b> cards or buy <b>Espresso Shot</b> in the shop to lower toxicity.',
     },
     low_wb: {
-      title:'❤ NISKI WELLBEING',
-      text:'WB &lt;60% &mdash; Chips są zredukowane (×0.85 lub gorzej). Zagraj <b>RECOVERY</b> zanim dalej scoreujesz &mdash; niski WB sabotuje wynik.',
+      title:'❤ LOW WELLBEING',
+      text:'WB &lt;60% — Chips output is penalised (×0.85 or worse). Play <b>RECOVERY</b> cards before your next play — low WB sabotages your score.',
     },
     first_synergy: {
-      title:'★ SYNERGY!',
-      text:'Combo bonus właśnie odpalił! Sprawdź log po lewej. Buduj zagrania wokół wyzwalania synergii &mdash; to główne źródło dużych Mult.',
+      title:'★ SYNERGY TRIGGERED',
+      text:'A combo bonus just fired! Check the log on the left. Build plays around triggering synergies — they are the main source of big Mult.',
     },
     bo_rising: {
-      title:'🔥 BURNOUT ROŚNIE',
-      text:'BO &gt;50% &mdash; Mult z kart zredukowany o 20%. BO nigdy nie resetuje. Jeśli WB spada do 0 zamiast overflow do BO &mdash; game over.',
+      title:'🔥 BURNOUT RISING',
+      text:'BO &gt;50% — Mult from all cards reduced by 20%. Burnout never resets. If WB hits 0, overflow goes to BO — reach 100% and the run ends.',
     },
     kpi_early: {
-      title:'✓ KPI OSIĄGNIĘTE',
-      text:'Przekroczyłeś target przed końcem Plays! Możesz grać dalej żeby zdobyć więcej punktów &mdash; wyższy score pomaga w bonusach końca runa.',
+      title:'✓ KPI TARGET HIT',
+      text:'You crossed the weekly target with Plays remaining! You can keep playing for a higher score — it counts toward your end-of-run ranking.',
     },
   };
   const tip = tips[type]; if (!tip) return;
@@ -266,18 +266,18 @@ export function showContextualTip(type) {
 const GUIDE_TIP_DATA = {
   first_hand: {
     anchor: '#hand', pos: 'above',
-    title: '▶ ZACZNIJ TUTAJ',
-    text: 'Kliknij kartę żeby ją wybrać (maks 3). Potem <b>SUBMIT PLAY</b>. Score Machine nad kartami pokazuje podgląd przed zagraniem.',
+    title: '▶ START HERE',
+    text: 'Click a card to select it (up to 3). Then hit <b>SUBMIT PLAY</b>. The Score Machine above shows a live preview before you commit.',
   },
   score_formula: {
     anchor: '#score-machine', pos: 'above',
     title: '🎯 CHIPS × MULT = SCORE',
-    text: '<b>PRODUCTION</b> → Chips. <b>STRATEGY</b> → Mult. 100 Chips × 1.0 = 100. 100 Chips × 2.0 = 200. Miksuj archetypy.',
+    text: '<b>PRODUCTION</b> → Chips. <b>STRATEGY</b> → Mult. 100 × 1.0 = 100. 100 × 2.0 = 200. Mix archetypes for maximum output.',
   },
   kpi_hit: {
     anchor: '#hdr', pos: 'below',
-    title: '✓ KPI OSIĄGNIĘTE!',
-    text: 'Przekroczyłeś target tygodniowy. Możesz grać dalej żeby zdobyć wyższy score — albo poczekaj aż skończą się Plays.',
+    title: '✓ KPI TARGET HIT',
+    text: 'You cleared the weekly target! You can keep playing for a higher score, or wait for your Plays to run out.',
   },
 };
 
@@ -298,7 +298,7 @@ export function showGuideTip(type) {
   el.className = 'guide-tip guide-tip-' + data.pos;
   el.innerHTML = '<div class="guide-tip-tbar">' + data.title + '</div>'
     + '<div class="guide-tip-body">' + data.text + '</div>'
-    + '<div class="guide-tip-foot">Kliknij żeby zamknąć</div>';
+    + '<div class="guide-tip-foot">Click to dismiss</div>';
 
   const dismiss = () => {
     anchor?.classList.remove('guide-anchor-glow');
