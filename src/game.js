@@ -7,6 +7,7 @@ import { CLASS_DB, COMP_DB, TEAMMATES_DB } from './data/content.js';
 import { BOSS_DB } from './data/boss.js';
 import { SHOP_DB } from './data/shop.js';
 import { DB } from './data/cards.js';
+import { BRIEFS_DB, BRIEFS_LIST } from './data/briefs.js';
 
 // UI functions resolved lazily at runtime to avoid circular dependency issues.
 // These are set by main.js after all modules have loaded.
@@ -104,6 +105,9 @@ export class Game {
     this.crunchPlayed = false;
     // Recovery path: weeks ending with WB ≥ 70%
     this.wellnessWeeks = 0;
+    // Project Brief
+    this.brief = null; this.briefOptions = []; this.briefProgress = 0;
+    this.briefSideAchieved = false; this.wellnessViolatedBrief = false;
   }
 
   getTeammateTier() { return this.tox >= 81 ? 3 : this.tox >= 31 ? 2 : 1; }
@@ -125,8 +129,10 @@ export class Game {
     const benMult = this.teammate === 'ben'
       ? (this.getTeammateTier() === 1 ? 0.88 : this.getTeammateTier() === 3 ? 0.75 : 0.92)
       : 1.0;
-    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier);
+    const briefMult = this.brief === 'scale_or_fail' ? 0.85 : 1.0;
+    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier * briefMult);
   }
+  handLimit() { return HAND - (this.brief === 'hyper_growth' ? 1 : 0); }
   hasComp(id) { return this.competencies.includes(id); }
   maxSel()  {
     const base = MAX_SEL + ((this.hasComp('comp_bigpicture') || this.hasComp('comp_mule')) ? 1 : 0);
@@ -226,6 +232,18 @@ export class Game {
     }
     const ov = document.getElementById('class-ov'); if (ov) ov.remove();
     this.playsMax = PLAYS + (this.hasComp('comp_mule') ? 1 : 0);
+    // Show brief selection before starting
+    this.briefOptions = shuffle([...BRIEFS_LIST]).slice(0, 3).map(b => b.id);
+    this.phase = 'brief_select';
+    this._commit();
+  }
+
+  chooseBrief(briefId) {
+    const brief = BRIEFS_DB[briefId];
+    if (!brief) return;
+    this.brief = briefId;
+    if (briefId === 'restructure') this.discs = 4;
+    this.addLog('sy', `> 📋 [PROJECT BRIEF] ${brief.name} — ${brief.effect}`);
     this.start();
   }
 
@@ -265,7 +283,7 @@ export class Game {
         }
       }
     }
-    while (this.hand.length < HAND) {
+    while (this.hand.length < this.handLimit()) {
       if (!this.deck.length) {
         if (!this.pile.length) break;
         const fresh = this.pile.filter(c => !this.exhausted.has(c.uid));
@@ -303,6 +321,20 @@ export class Game {
       const bonus = gone.length * COMP_DB.comp_riskmitigator.passiveVal;
       this.discardMultStack = fmt1(this.discardMultStack + bonus);
       discardLog += ` 🗑️ Risk Mitigator: +${fmt1(bonus)} Mult (total ${this.discardMultStack}×).`;
+    }
+    // Brief: restructure — +3% Tox per card discarded; track toward side objective
+    if (this.brief === 'restructure') {
+      const toxGain = gone.length * 3;
+      this.tox = clamp(this.tox + toxGain, 0, 100);
+      discardLog += ` 🔄 [RESTRUCTURE] +${toxGain}% Tox.`;
+      this.briefProgress += gone.length;
+      if (this.briefProgress >= 30 && !this.briefSideAchieved) {
+        this.briefSideAchieved = true;
+        this.pendingUpgrade = true;
+        this.addLog('ch', discardLog);
+        this.addLog('sy', '> 🔄 [RESTRUCTURE] 30 discards — Free Performance Upgrade unlocked!');
+        this.drawUp(); this._commit(); return;
+      }
     }
     this.addLog('ch', discardLog);
     this.drawUp(); this._commit();
@@ -346,6 +378,38 @@ export class Game {
         const stars = '★'.repeat(c.level);
         const desc = c.level === 1 ? '+40 Chips base' : c.level === 2 ? '+0.2 Mult base' : '+50 Chips +0.1 Mult base';
         this.addLog('sy', `> ${stars} [${c.name}] LEVEL ${c.level}! ${desc}`);
+      }
+    }
+    // Brief: digital_transformation — each STRATEGY played gains +5 Chips permanently
+    if (this.brief === 'digital_transformation') {
+      const stratCards = cards.filter(c => c.archetype === 'STRATEGY');
+      for (const c of stratCards) {
+        c.fx = {...c.fx, chips: (c.fx.chips || 0) + 5};
+        this.briefProgress++;
+      }
+      if (stratCards.length > 0) {
+        this.addLog('sy', `> 💻 [DIGITAL TRANSFORMATION] ${stratCards.length} STRATEGY card(s) +5 Chips. (${this.briefProgress}/20)`);
+        if (this.briefProgress >= 20 && !this.briefSideAchieved) {
+          this.briefSideAchieved = true;
+          this.permMult = fmt1(this.permMult + 1.0);
+          this.addLog('sy', `> 💻 [DIGITAL TRANSFORMATION] 20 STRATEGY plays — +1.0 permanent Mult → ${this.permMult}×!`);
+        }
+      }
+    }
+    // Brief: hyper_growth — track PRODUCTION plays for side objective
+    if (this.brief === 'hyper_growth') {
+      const prodCount = cards.filter(c => c.archetype === 'PRODUCTION').length;
+      if (prodCount > 0) {
+        this.briefProgress += prodCount;
+        if (this.briefProgress >= 40 && !this.briefSideAchieved) {
+          this.briefSideAchieved = true;
+          const allCards = [...this.deck, ...this.pile, ...this.hand];
+          let count = 0;
+          for (const c of allCards) {
+            if (c.archetype === 'PRODUCTION') { c.fx = {...c.fx, chips: (c.fx.chips || 0) + 50}; count++; }
+          }
+          this.addLog('sy', `> 🚀 [HYPER-GROWTH] 40 PRODUCTION plays — +50 Chips to all ${count} PRODUCTION cards!`);
+        }
       }
     }
     for (const c of cards) this.weekArchetypes[c.archetype] = (this.weekArchetypes[c.archetype] || 0) + 1;
@@ -521,6 +585,7 @@ export class Game {
       firstCrunchUsed:   this.firstCrunchUsed,
       weekCrunchCount:   this.weekCrunchCount,
       permMult:          this.permMult,
+      brief:             this.brief,
       mode: 'real',
     });
     // Apply mutable flags back from result
@@ -639,6 +704,17 @@ export class Game {
   }
 
   checkRunUnlocks() {
+    // Brief end-of-run side objectives
+    if (this.brief === 'wellness_initiative' && !this.wellnessViolatedBrief && !this.briefSideAchieved) {
+      this.briefSideAchieved = true;
+      this.permMult = fmt1((this.permMult || 0) + 2.0);
+      this.addLog('sy', `> 🧘 [WELLNESS INITIATIVE] Perfect wellness run — +2.0 permanent Mult → ${this.permMult}×!`);
+    }
+    if (this.brief === 'scale_or_fail' && this.failedWeeks === 0 && !this.briefSideAchieved) {
+      this.briefSideAchieved = true;
+      this.permMult = fmt1((this.permMult || 0) + 3.0);
+      this.addLog('sy', `> ⚡ [SCALE OR FAIL] Perfect run — zero fails — +3.0 permanent Mult → ${this.permMult}×!`);
+    }
     // Evaluate run contracts
     let bonusPts = 0;
     for (const c of this.runContracts) {
@@ -671,6 +747,24 @@ export class Game {
     const passed = this.wscore >= this.kpi();
     this.weekHistory.push({ week: this.week, passed, score: this.wscore });
     if (this.wb >= 70) { this.wellnessWeeks++; this.addLog('wg', `> ❤ Wellness streak — WB ${this.wb}% ≥ 70% (${this.wellnessWeeks} wk)`); }
+    // Brief: wellness_initiative — +0.3 perm Mult for each week ≥70% WB
+    if (this.brief === 'wellness_initiative') {
+      if (this.wb >= 70) {
+        this.permMult = fmt1((this.permMult || 0) + 0.3);
+        this.addLog('sy', `> 🧘 [WELLNESS INITIATIVE] WB ≥ 70% — +0.3 permanent Mult → ${this.permMult}×`);
+      }
+      if (this.wb < 40) this.wellnessViolatedBrief = true;
+    }
+    // Brief: cost_reduction — track weeks with Tox < 30
+    if (this.brief === 'cost_reduction' && this.tox < 30) {
+      this.briefProgress++;
+      this.addLog('sy', `> ✂️ [COST REDUCTION] Clean week (Tox ${this.tox}%) — ${this.briefProgress}/5`);
+      if (this.briefProgress >= 5 && !this.briefSideAchieved) {
+        this.briefSideAchieved = true;
+        this.pendingRemove = true;
+        this.addLog('sy', '> ✂️ [COST REDUCTION] 5 low-tox weeks — Free card removal!');
+      }
+    }
     this.purchasedThisShop = false;
     this.peakTox = Math.max(this.peakTox, this.tox);
     // ── Chronic Toxicity → Burnout bleed ──
@@ -681,8 +775,9 @@ export class Game {
     }
     if (!passed) {
       this.failedWeeks++;
-      this.bo = clamp(this.bo + FAIL_BO, 0, 100);
-      this.addLog('bo', `> Week ${this.week} FAILED (${this.failedWeeks}/3) — +${FAIL_BO} Burnout → ${this.bo}%`);
+      const failBo = this.brief === 'scale_or_fail' ? 30 : FAIL_BO;
+      this.bo = clamp(this.bo + failBo, 0, 100);
+      this.addLog('bo', `> Week ${this.week} FAILED (${this.failedWeeks}/3) — +${failBo} Burnout → ${this.bo}%`);
       if (this.checkGameEndConditions(passed)) return false;
       const pct = this.wscore / this.kpi();
       const failReward = 2 + Math.floor(pct * 5);
@@ -1072,7 +1167,7 @@ export class Game {
     // update plays based on Mule competency
     this.playsMax = PLAYS + (this.hasComp('comp_mule') ? 1 : 0);
     this.plays = this.playsMax;
-    this.discs = DISCS;
+    this.discs = this.brief === 'restructure' ? 4 : DISCS;
     // ── Toxicity Tier 3: Toxic Culture — -1 Discard ──
     if (this.tox >= 61 && this.tox < 91) {
       this.discs = Math.max(0, this.discs - 1);

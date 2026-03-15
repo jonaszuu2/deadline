@@ -1,3 +1,32 @@
+/* ══ PROJECT BRIEF SELECT ══ */
+.brief-select-screen{display:flex;flex-direction:column;align-items:center;padding:20px 12px;gap:12px;min-height:100%}
+.brief-select-title{font-size:18px;font-weight:bold;letter-spacing:2px;color:#e0e0e0;text-align:center}
+.brief-select-sub{font-size:11px;color:var(--dim);text-align:center;max-width:600px}
+.brief-select-cards{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:stretch}
+.brief-card{
+  width:200px;min-height:280px;background:var(--win-bg);border:2px solid var(--bc,#888);
+  padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;
+  transition:box-shadow .15s,transform .1s;box-shadow:0 0 8px color-mix(in srgb,var(--bc) 30%,transparent);
+  position:relative}
+.brief-card:hover{box-shadow:0 0 16px var(--bc,#888);transform:translateY(-2px)}
+.brief-card-icon{font-size:28px;text-align:center}
+.brief-card-name{font-size:11px;font-weight:bold;letter-spacing:1px;text-align:center;line-height:1.3}
+.brief-card-tagline{font-size:10px;color:var(--dim);text-align:center;font-style:italic}
+.brief-card-sep{height:1px;background:var(--bc,#888);opacity:.4;margin:4px 0}
+.brief-card-effect{font-size:10px;color:#d0d0d0;line-height:1.5;flex:1}
+.brief-card-side{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);padding:8px;margin-top:4px;font-size:9px;line-height:1.5;display:flex;flex-direction:column;gap:2px}
+.brief-side-label{color:var(--dim);font-size:8px;letter-spacing:1px}
+.brief-side-obj{color:#c0c0c0}
+.brief-side-rw{color:#ffdd44}
+.brief-pick-btn{margin-top:8px;padding:5px 0;background:transparent;border:1px solid;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:inherit;font-weight:bold}
+.brief-pick-btn:hover{filter:brightness(1.3)}
+
+/* ══ BRIEF BADGE (in header) ══ */
+.brief-badge{
+  font-size:9px;letter-spacing:.5px;padding:3px 7px;border:1px solid var(--bc,#888);
+  color:var(--bc,#ccc);background:color-mix(in srgb,var(--bc) 10%,transparent);
+  cursor:default;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+
 /* ══ STARTUP SCREEN ══ */
 #startup-screen{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;
   display:flex;align-items:center;justify-content:center;

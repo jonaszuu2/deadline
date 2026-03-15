@@ -9,6 +9,7 @@ import { esc, fmt1 } from '../engine/utils.js';
 import { initFinalReviewAnim, updateKpiBar, initScoringAnimation } from './animations.js';
 import { _currentHandH, HAND_H_DEF, applyHandHeight } from './resize.js';
 import { ovGameOver, ovWin, ovFinalReview } from './overlays.js';
+import { BRIEFS_DB } from '../data/briefs.js';
 
 export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80', SHOP:'#c8b8ff'};
 
@@ -16,7 +17,7 @@ export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#f
 //  STATUS BAR
 // ═══════════════════════════════════════════════════════
 export function renderStatusBar(G) {
-  const phaseLbl = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS REVIEW', gameover:'GAME OVER', win:'WIN', review:'REVIEW', draft:'CARD DRAFT', teammate_choice:'STAFFING', targeted_draw:'TARGETED DRAW', power_event:'POWER EVENT'};
+  const phaseLbl = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS REVIEW', gameover:'GAME OVER', win:'WIN', review:'REVIEW', draft:'CARD DRAFT', teammate_choice:'STAFFING', targeted_draw:'TARGETED DRAW', power_event:'POWER EVENT', brief_select:'PROJECT BRIEF'};
   const boColor = G.bo >= 90 ? '#ff2020' : G.bo >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
   const boIcon  = G.bo >= 90 ? '🔥' : '🔥';
   const cells = [
@@ -57,6 +58,10 @@ export function render(G) {
   const win = document.getElementById('win');
   if (win) win.classList.toggle('tox-atmos', G.tox >= 70);
 
+  if (G.phase === 'brief_select') {
+    document.getElementById('win-body').innerHTML = renderBriefSelect(G);
+    return;
+  }
   if (G.phase === 'teammate_choice') {
     document.getElementById('win-body').innerHTML = renderTeammateChoice(G);
     return;
@@ -223,6 +228,14 @@ export function renderHeader(G) {
         const tip = next ? `${liveSc} pts — need ${next.min} for T${next.tier}` : `${liveSc} pts — MAX TIER`;
         return `<div class="career-meter" style="color:${t.color}" title="${tip}">T${t.tier} ${esc(t.title)}</div>`;
       })()}
+      ${G.brief ? (() => {
+        const b = BRIEFS_DB[G.brief];
+        const prog = G.briefProgress || 0;
+        const done = G.briefSideAchieved;
+        const target = b.sideTarget;
+        const progStr = target ? ` ${Math.min(prog, target)}/${target}` : '';
+        return `<div class="brief-badge" style="--bc:${b.color}" title="${b.effect}&#10;Side: ${b.sideObjective}&#10;Reward: ${b.sideReward}">${b.icon} ${b.name}${progStr}${done ? ' ✓' : ''}</div>`;
+      })() : ''}
     </div>
   </div>`;
 }
@@ -890,6 +903,31 @@ export function renderPowerEvent(G) {
       <div class="pe-sub">Week ${G.week} milestone — choose your reward</div>
     </div>
     <div class="pe-options">${optHtml}</div>
+  </div>`;
+}
+
+export function renderBriefSelect(G) {
+  const cardsHtml = G.briefOptions.map(id => {
+    const b = BRIEFS_DB[id];
+    if (!b) return '';
+    return `<div class="brief-card" onclick="chooseBrief('${b.id}')" style="--bc:${b.color}">
+      <div class="brief-card-icon">${b.icon}</div>
+      <div class="brief-card-name" style="color:${b.color}">${esc(b.name)}</div>
+      <div class="brief-card-tagline">${esc(b.tagline)}</div>
+      <div class="brief-card-sep"></div>
+      <div class="brief-card-effect">${esc(b.effect)}</div>
+      <div class="brief-card-side">
+        <span class="brief-side-label">SIDE OBJECTIVE</span>
+        <span class="brief-side-obj">${esc(b.sideObjective)}</span>
+        <span class="brief-side-rw">▶ ${esc(b.sideReward)}</span>
+      </div>
+      <button class="brief-pick-btn" style="border-color:${b.color};color:${b.color}">▶ ACCEPT BRIEF</button>
+    </div>`;
+  }).join('');
+  return `<div class="brief-select-screen">
+    <div class="brief-select-title">📋 PROJECT BRIEF ASSIGNMENT</div>
+    <div class="brief-select-sub">HR has assigned you to a strategic initiative. Select your mandate for this run.</div>
+    <div class="brief-select-cards">${cardsHtml}</div>
   </div>`;
 }
 

@@ -90,6 +90,7 @@ export function calcTurn(cards, ctx) {
   const {
     passives = [], competencies = [], teammate = null,
     discardComboMult = 0, discardMultStack = 0, permMult = 0,
+    brief = null,
     mode = 'preview',
   } = ctx;
 
@@ -184,6 +185,14 @@ export function calcTurn(cards, ctx) {
       lg('sy', `  ⚙ [Charming Networker] First CRUNCH this week — Tox & WB cost waived!`);
     }
 
+    // Brief modifiers applied to fx before scoring
+    if (brief === 'cost_reduction' && card.archetype === 'CRUNCH' && !isCrunchFree) {
+      if (fx.chips > 0) { fx.chips = Math.round(fx.chips * 1.4); }
+      if (fx.wb < 0) fx.wb = Math.round(fx.wb * 2);
+    }
+    if (brief === 'hyper_growth' && card.archetype === 'PRODUCTION' && fx.chips > 0) {
+      fx.chips = Math.round(fx.chips * 1.5);
+    }
     if (fx.chips) { acc.chips += fx.chips; lg('ch', `  [${card.name}] +${fx.chips} Chips`, true); }
     if (fx.chips && card.archetype === 'PRODUCTION') prodChips += fx.chips;
     if (fx.mult)  { acc.mult  += fx.mult;  lg('mu', `  [${card.name}] +${fx.mult.toFixed(2)} Mult`, true); }
@@ -430,6 +439,7 @@ export function simulateTurn(cards, G) {
     firstCrunchUsed:    G.firstCrunchUsed  || false,
     weekCrunchCount:    G.weekCrunchCount   || 0,
     permMult:           G.permMult || 0,
+    brief:              G.brief || null,
     mode: 'preview',
   });
 }

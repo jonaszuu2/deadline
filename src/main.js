@@ -53,6 +53,7 @@ window.aprCopyRun           = aprCopyRun;
 window._advanceIntroTutorial = _advanceIntroTutorial;
 window._skipIntroTutorial   = _skipIntroTutorial;
 window.openHelp             = openHelp;
+window.chooseBrief          = (id) => window.G.chooseBrief(id);
 
 // ═══════════════════════════════════════════════════════
 //  BOOT
