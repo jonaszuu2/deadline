@@ -48,8 +48,8 @@ export function pickShopItems(ownedIds) {
     if (id === 'sh_shredder') return false;
     if (id === 'sh_upgrade')  return false;
     const item = SHOP_DB[id];
+    if (item.type === 'ADD_CARD') return false;
     if (item.unique && ownedIds.includes(id)) return false;
-    if (item.type === 'ADD_CARD' && item.tier !== undefined && item.tier > tier) return false;
     return true;
   });
   return shuffle(avail).slice(0, 3);

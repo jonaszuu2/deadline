@@ -320,6 +320,13 @@ export function _processEndOfWeekStats() {
       this.justBreakthrough = true;
       this.addLog('sy', `> 💥 BREAKTHROUGH! Score ${this.wscore} ≥ 2× KPI — +0.5 permanent Mult → ${this.permMult}×`);
     }
+    // SCALE_ON_KPI passive: each KPI pass → +0.3 perm Mult
+    for (const p of this.passives) {
+      if (p.passiveType === 'SCALE_ON_KPI') {
+        this.permMult = fmt1((this.permMult || 0) + p.passiveVal);
+        this.addLog('sy', `> 📈 [${p.name}] KPI passed — +${p.passiveVal} perm Mult → ${this.permMult}×`);
+      }
+    }
     if (this.checkGameEndConditions(passed)) return false;
   }
   for (const p of this.passives) {
@@ -420,15 +427,45 @@ export function _buildCardDraftPool() {
   const eligible = Object.values(DB).filter(c => (c.tier || 0) <= tier);
   const classArch = {grinder:['PRODUCTION'], strategist:['STRATEGY','CRUNCH'], survivor:['RECOVERY']};
   const preferred = this.playerClass ? classArch[this.playerClass] || [] : [];
+  const briefArchMap = {
+    digital_transformation:'STRATEGY', cost_reduction:'CRUNCH',
+    wellness_initiative:'RECOVERY',    hyper_growth:'PRODUCTION',
+  };
+  const briefArch = this.brief ? briefArchMap[this.brief] : null;
   const preferredCards = preferred.length ? shuffle(eligible.filter(c => preferred.includes(c.archetype))) : [];
-  const otherCards     = shuffle(eligible.filter(c => !preferred.includes(c.archetype)));
+  const briefCards     = briefArch ? shuffle(eligible.filter(c => c.archetype === briefArch)) : [];
+  const otherCards     = shuffle(eligible.filter(c => !preferred.includes(c.archetype) && c.archetype !== briefArch));
   const pool = []; const seen = new Set();
-  const want = preferred.length ? [preferredCards, preferredCards, otherCards] : [otherCards, otherCards, otherCards];
-  for (const src of want) {
-    for (const c of src) { if (!seen.has(c.id)) { pool.push(c); seen.add(c.id); break; } }
-    if (pool.length >= 3) break;
+  // Slots 1-2: class preferred
+  const classWant = preferred.length ? [preferredCards, preferredCards] : [otherCards, otherCards];
+  for (const src of classWant) {
+    for (const c of src) { if (!seen.has(c.id)) { pool.push({...c}); seen.add(c.id); break; } }
+    if (pool.length >= 2) break;
   }
-  for (const c of shuffle(eligible)) { if (!seen.has(c.id) && pool.length < 3) { pool.push(c); seen.add(c.id); } }
+  // Slot 3: brief-aligned (or other)
+  const briefSrc = briefCards.length ? briefCards : otherCards;
+  for (const c of briefSrc) { if (!seen.has(c.id)) { pool.push({...c}); seen.add(c.id); break; } }
+  // Slot 4: any eligible
+  for (const c of shuffle(eligible)) { if (!seen.has(c.id) && pool.length < 4) { pool.push({...c}); seen.add(c.id); } }
+  // Synergy metadata: flag cards whose archetype would enable an ARCH_COUNT condition
+  // on a card already in the player's deck
+  const allDeckCards = [...this.deck, ...this.hand, ...this.pile];
+  const archSynergyMap = {};
+  for (const dc of allDeckCards) {
+    for (const syn of dc.synergies || []) {
+      for (const cond of syn.conds || []) {
+        if (cond.type === 'ARCH_COUNT' && cond.p?.arch) {
+          if (!archSynergyMap[cond.p.arch]) archSynergyMap[cond.p.arch] = [];
+          if (!archSynergyMap[cond.p.arch].includes(dc.name))
+            archSynergyMap[cond.p.arch].push(dc.name);
+        }
+      }
+    }
+  }
+  for (const c of pool) {
+    const enables = archSynergyMap[c.archetype];
+    if (enables?.length) c.synergyWith = enables[0];
+  }
   return pool;
 }
 

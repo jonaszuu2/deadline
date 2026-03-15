@@ -21,6 +21,9 @@ export function getEffectiveFx(card, passives) {
           if (fx.wb > 0) fx.wb = Math.round(fx.wb * p.passiveVal);
           if (fx.tox < 0) fx.tox = Math.round(fx.tox * p.passiveVal);
         } break;
+      case 'CRUNCH_WB_HALVE':
+        if (card.archetype === 'CRUNCH' && fx.wb < 0)
+          fx.wb = Math.round(fx.wb * p.passiveVal); break;
       case 'COMP_PROD_CHIPS_PCT':
         if (card.archetype === 'PRODUCTION' && fx.chips > 0)
           fx.chips = Math.round(fx.chips * (1 + p.passiveVal)); break;
@@ -158,6 +161,14 @@ export function calcTurn(cards, ctx) {
     if (cCapBonus > 0) { acc.mult += Number(cCapBonus); lg('sy', `  🌿 [PRESSURE COOKER] Tox ${tox}% — +${cCapBonus}× Mult`); }
   }
 
+  // TOX_TO_CHIPS passive: +passiveVal Chips per 10% Tox above 30%
+  for (const p of passives) {
+    if (p.passiveType === 'TOX_TO_CHIPS' && tox > 30) {
+      const toxBonus = Math.floor((tox - 30) / 10) * p.passiveVal;
+      if (toxBonus > 0) { acc.chips += toxBonus; lg('ch', `  ★ [${p.name}] Tox ${tox}% — +${toxBonus} Chips`); }
+    }
+  }
+
   // ── Teammate pre-play bonuses ─────────────────────────
   const tmTier = tox >= 81 ? 3 : tox >= 31 ? 2 : 1;
   if (teammate === 'gary') {
@@ -277,6 +288,13 @@ export function calcTurn(cards, ctx) {
     if (teammate === 'gary' && tmTier === 1) {
       acc.chips += 25;
       lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +25 Chips`, true);
+    }
+    // CHIPS_PER_PLAY passive: +passiveVal Chips per card played
+    for (const p of passives) {
+      if (p.passiveType === 'CHIPS_PER_PLAY') {
+        acc.chips += p.passiveVal;
+        lg('ch', `  ★ [${p.name}] +${p.passiveVal} Chips`, true);
+      }
     }
 
     // Ben: tier-aware STRATEGY effect

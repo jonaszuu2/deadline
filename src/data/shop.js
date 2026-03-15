@@ -89,4 +89,17 @@ export const SHOP_DB = {
   sh_survivor_perk:{type:'PASSIVE',name:'Resilience Protocol',cost:8,icon:'☣️',unique:true,classExclusive:'survivor',
     desc:'[SURVIVOR] Passive: RECOVERY heals &amp; cleanses ×1.35',
     passiveType:'RECOVERY_BOOST',passiveVal:1.35},
+  // ── Exciting rule-changers ──
+  sh_crisis_mode:{type:'PASSIVE',name:'Crisis Mode',cost:8,icon:'🚨',unique:true,
+    desc:'Passive: CRUNCH cards\' WB costs halved',
+    passiveType:'CRUNCH_WB_HALVE',passiveVal:0.5},
+  sh_compound:{type:'PASSIVE',name:'Compound Interest',cost:10,icon:'📈',unique:true,
+    desc:'Passive: Each KPI pass grants +0.3 permanent Mult',
+    passiveType:'SCALE_ON_KPI',passiveVal:0.3},
+  sh_hostile:{type:'PASSIVE',name:'Hostile Environment',cost:7,icon:'⚗️',unique:true,
+    desc:'Passive: +100 Chips per 10% Toxicity above 30% at turn start',
+    passiveType:'TOX_TO_CHIPS',passiveVal:100},
+  sh_perf_bonus:{type:'PASSIVE',name:'Performance Bonus',cost:6,icon:'💰',unique:true,
+    desc:'Passive: Each card played this turn +75 Chips',
+    passiveType:'CHIPS_PER_PLAY',passiveVal:75},
 };

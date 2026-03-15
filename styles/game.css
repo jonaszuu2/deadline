@@ -604,4 +604,7 @@
 .dr-hint.hint-good{color:#60ff80;border-color:#60ff80;background:rgba(96,255,128,.05)}
 .dr-hint.hint-neutral{color:#ffcc44;border-color:#ffcc44;background:rgba(255,200,60,.05)}
 .dr-hint.hint-weak{color:#ff8060;border-color:#ff8060;background:rgba(255,100,60,.05)}
+.dr-syn-badge{font:bold 9px 'Courier New',monospace;color:#44ddff;margin-top:4px;
+              padding:3px 6px;background:rgba(68,221,255,.08);
+              border:1px solid rgba(68,221,255,.3);letter-spacing:.5px}
 

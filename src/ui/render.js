@@ -926,6 +926,7 @@ export function renderDraft(G) {
       c.fx.wb < 0  ? `❤ ${c.fx.wb} WB` : '',
     ].filter(Boolean).join('<br>');
     const synDesc = c.synergies?.[0]?.desc ? `<div class="dr-syn">★ ${esc(c.synergies[0].desc)}</div>` : '';
+    const synBadge = c.synergyWith ? `<div class="dr-syn-badge">🔗 ENABLES: ${esc(c.synergyWith)}</div>` : '';
     const hint = _draftBuildHint(c, G);
     return `<div class="dr-card ${c.archetype}" onclick="G.claimDraftCard('${c.id}')">
       <div class="dr-arch">${c.archetype}</div>
@@ -934,6 +935,7 @@ export function renderDraft(G) {
       <div class="dr-flavor">"${esc(c.flavor)}"</div>
       <div class="dr-fx">${fxLines}</div>
       ${synDesc}
+      ${synBadge}
       <div class="dr-hint ${hint.cls}">▸ ${hint.text}</div>
       <button class="dr-pick-btn">＋ Add to Deck</button>
     </div>`;
