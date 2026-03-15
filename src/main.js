@@ -3,7 +3,7 @@ import { render, zoomIn, zoomOut, setRpTab } from './ui/render.js';
 import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, startUpgradeSpin } from './ui/animations.js';
 import { showClassScreen, selectClass, dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
-import { showStartupScreen, dismissStartup, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial, checkFirstShopTutorial, _advanceShopTutorial, _skipShopTutorial, showContextualTip, resetCtxTips, showGuideTip } from './ui/tutorial.js';
+import { showStartupScreen, dismissStartup, showHowToPlay, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial, checkFirstShopTutorial, _advanceShopTutorial, _skipShopTutorial, showContextualTip, resetCtxTips, showGuideTip } from './ui/tutorial.js';
 import { aprCopyRun } from './share.js';
 
 // ═══════════════════════════════════════════════════════
@@ -43,6 +43,7 @@ setInterval(updateClock, 1000);
 window.selectClass          = selectClass;
 window.dismissTeammateModal = dismissTeammateModal;
 window.dismissStartup       = dismissStartup;
+window.showHowToPlay        = showHowToPlay;
 window._advanceTutorial     = _advanceTutorial;
 window._skipTutorial        = _skipTutorial;
 window._advanceShopTutorial = _advanceShopTutorial;

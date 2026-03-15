@@ -21,11 +21,16 @@ export function openHelp() {
         <div class="help-row"><b>☣️ TOX — Toxicity</b> — office stress. High TOX = random WB damage after each play.</div>
         <div class="help-row"><b>🔥 BO — Burnout</b> — reaches 100% → immediate termination. Never resets.</div>
         <div class="help-sep"></div>
+        <div class="help-section">TURN STRUCTURE</div>
+        <div class="help-row">Each week you have <b>Plays</b> (top-right). Select 1–3 cards → <b>SUBMIT PLAY</b>. Week ends when Plays run out.</div>
+        <div class="help-row"><b>Discards</b> — swap unwanted cards for free, no Play spent. 2 per week.</div>
+        <div class="help-sep"></div>
         <div class="help-section">CARD ARCHETYPES</div>
-        <div class="help-row"><b style="color:#6ab4ff">PRODUCTION</b> — safe Chips. Good to start your combo.</div>
-        <div class="help-row"><b style="color:#ff9090">STRATEGY</b> — Mult. Amplifies everything else you played this turn.</div>
-        <div class="help-row"><b style="color:#ff6030">CRUNCH</b> — high Mult but raises TOX. Risk vs. reward.</div>
-        <div class="help-row"><b style="color:#60ff80">RECOVERY</b> — heals WB, reduces TOX. Essential when stressed.</div>
+        <div class="help-row"><b style="color:#6ab4ff">PRODUCTION</b> — generates Chips. Upgrade → +Chips.</div>
+        <div class="help-row"><b style="color:#ff9090">STRATEGY</b> — generates Mult. Upgrade → +Mult.</div>
+        <div class="help-row"><b style="color:#ff6030">CRUNCH</b> — high Mult, raises TOX. Upgrade → +Mult.</div>
+        <div class="help-row"><b style="color:#60ff80">RECOVERY</b> — heals WB / lowers TOX. Upgrade → +Healing.</div>
+        <div class="help-row" style="color:#888;font-size:10px">Mix archetypes: PRODUCTION alone = 100×1.0 = 100. With STRATEGY: 100×2.0 = 200.</div>
         <div class="help-sep"></div>
         <div class="help-section">RISK LEVELS</div>
         <div class="help-row"><b style="color:#50ff78">SAFE</b> — no meaningful danger this play.</div>

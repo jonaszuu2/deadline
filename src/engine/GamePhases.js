@@ -144,7 +144,10 @@ export function chooseTeammate(id) {
   this.teammateTier = this.getTeammateTier();
   this.transition('play');
   this._commit();
-  if (this.week === 1) setTimeout(() => ui.showGuideTip?.('first_hand'), 600);
+  if (this.week === 1) {
+    setTimeout(() => ui.showGuideTip?.('bars_intro'), 400);
+    setTimeout(() => ui.showGuideTip?.('first_hand'), 5000);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -176,6 +179,7 @@ export function openShop() {
   }
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
+  if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
   ui.checkFirstShopTutorial?.();
 }
 
@@ -224,7 +228,17 @@ export function startNextWeek() {
     this.heldCards = [];
   }
   this.drawUp();
+  // Brief: side objective failure warning at week 10
+  if (this.week === 10 && this.brief && !this.briefSideAchieved) {
+    this.kpiMult = parseFloat((this.kpiMult * 1.20).toFixed(3));
+    this.addLog('ng', `> 📋 [BRIEF PENALTY] Side objective not completed — Week 10 KPI +20% → ${this.kpi()}`);
+  }
   this.addLog('d', `> Week ${this.week}/${TOTAL_WEEKS}. KPI target: ${this.kpi()}`);
+  // Brief reminder log at week start
+  if (this.brief && this.week > 1) {
+    const b = BRIEFS_DB[this.brief];
+    if (b) this.addLog('sy', `> 📋 [BRIEF] ${b.name}: ${b.effect}`);
+  }
   this.prepareTeammateChoice();
 }
 
@@ -261,12 +275,14 @@ export function _processEndOfWeekStats() {
   if (toxBo > 0) {
     this.bo = clamp(this.bo + toxBo, 0, 100);
     this.addLog('bo', `> ☣ Chronic Toxicity (${this.tox}%) — +${toxBo} Burnout → ${this.bo}%`);
+    if (this.bo > 0) setTimeout(() => ui.showGuideTip?.('bo_first'), 300);
   }
   if (!passed) {
     this.failedWeeks++;
     const failBo = this.brief === 'scale_or_fail' ? 30 : FAIL_BO;
     this.bo = clamp(this.bo + failBo, 0, 100);
     this.addLog('bo', `> Week ${this.week} FAILED (${this.failedWeeks}/3) — +${failBo} Burnout → ${this.bo}%`);
+    if (this.failedWeeks === 1) setTimeout(() => ui.showContextualTip?.('kpi_fail'), 400);
     if (this.checkGameEndConditions(passed)) return false;
     const pct = this.wscore / this.kpi();
     const failReward = 2 + Math.floor(pct * 5);
@@ -395,6 +411,7 @@ export function _openShopAfterDraft() {
   }
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
+  if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
   ui.checkFirstShopTutorial?.();
 }
 
@@ -551,6 +568,7 @@ export function claimBossReward(rewardId) {
   this.bossChosenRewards.push(rewardId);
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
+  if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
   ui.checkFirstShopTutorial?.();
 }
 

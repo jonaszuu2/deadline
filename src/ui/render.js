@@ -58,6 +58,7 @@ export function renderStatusBar(G) {
     phaseLbl[G.phase] || G.phase.toUpperCase(),
     `<span class="sb-zoom" onclick="zoomOut()">A-</span>`,
     `<span class="sb-zoom" onclick="zoomIn()">A+</span>`,
+    `<span class="sb-help" onclick="openHelp()">? Help</span>`,
   ];
   return cells.map(c => `<div class="sb-cell">${c}</div>`).join('<div class="sb-sep"></div>');
 }
@@ -266,8 +267,16 @@ export function renderHeader(G) {
         const prog = G.briefProgress || 0;
         const done = G.briefSideAchieved;
         const target = b.sideTarget;
-        const progStr = target ? ` ${Math.min(prog, target)}/${target}` : '';
-        return `<div class="brief-badge" style="--bc:${b.color}" title="${b.effect}&#10;Side: ${b.sideObjective}&#10;Reward: ${b.sideReward}">${b.icon} ${b.name}${progStr}${done ? ' ✓' : ''}</div>`;
+        const pct = target ? Math.min(100, Math.round(prog / target * 100)) : (done ? 100 : 0);
+        const progStr = target ? `${Math.min(prog, target)}/${target}` : (done ? '✓' : '—');
+        const sideStatus = done ? '<span style="color:#70ff78">✓ DONE</span>' : `<span style="color:#ffdd44">${progStr}</span>`;
+        const barHtml = target ? `<div class="brief-prog-track"><div class="brief-prog-fill" style="width:${pct}%;background:${b.color}"></div></div>` : '';
+        return `<div class="brief-badge-full" style="--bc:${b.color}">
+          <div class="brief-badge-top">${b.icon} <span class="brief-badge-name" style="color:${b.color}">${b.name}</span></div>
+          <div class="brief-badge-side">▸ ${b.sideObjective}</div>
+          ${barHtml}
+          <div class="brief-badge-status">${sideStatus} · reward: ${b.sideReward}</div>
+        </div>`;
       })() : ''}
     </div>
   </div>`;
@@ -957,6 +966,7 @@ export function renderBriefSelect(G) {
   return `<div class="brief-select-screen">
     <div class="brief-select-title">📋 PROJECT BRIEF ASSIGNMENT</div>
     <div class="brief-select-sub">HR has assigned you to a strategic initiative. Select your mandate for this run.</div>
+    <div class="brief-select-warning">⚠ Side objective not completed by Week 10 → KPI target +20%</div>
     <div class="brief-select-cards">${cardsHtml}</div>
   </div>`;
 }

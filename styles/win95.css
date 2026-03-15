@@ -47,6 +47,8 @@
          border:1px solid;border-color:var(--w95d) var(--w95l) var(--w95l) var(--w95d);white-space:nowrap} 
 .sb-zoom{cursor:pointer;font-size:1rem;padding:0 4px;color:#000;user-select:none}
 .sb-zoom:hover{background:rgba(0,0,0,.05)}
+.sb-help{cursor:pointer;font-size:1rem;padding:0 6px;color:#000080;font-weight:bold;user-select:none}
+.sb-help:hover{background:rgba(0,0,128,.08)}
 .sb-sep{width:1px;height:14px;background:var(--w95d);flex-shrink:0}
 
 /* ══ TASKBAR ══ */
