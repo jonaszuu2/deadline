@@ -791,7 +791,7 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .tb-label{font-size:10px;color:var(--color-text-muted);font-family:var(--font-data);white-space:nowrap;letter-spacing:0.06em}
 .tb-bar-wrap{flex:1}
 .tb-bar-bg{height:10px;background:#1a1a2e;border-radius:5px;overflow:hidden;position:relative}
-.tb-bar-fill{height:100%;border-radius:5px;transition:width 0.35s,background 0.35s}
+.tb-bar-fill{height:100%;border-radius:5px;transition:width 0.4s ease,background 0.3s ease}
 /* Reset old absolute positioning for #kpi-bar-inner when in topbar */
 #topbar #kpi-bar-inner{position:static !important;top:auto !important;left:auto !important;
                        box-shadow:none !important;transition:width 0.35s,background 0.35s !important}
@@ -871,10 +871,14 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .f-result .f-label{color:rgba(74,222,128,0.5)}
 .f-result .f-sub{color:rgba(74,222,128,0.3)}
 .f-warn{font-size:9px;color:var(--color-fail);font-family:var(--font-data);text-align:center;margin-top:3px}
-.f-sub.f-sub-idle{color:#5a5a7a}
-.f-sub.f-sub-pass{color:#00e090;font-weight:700}
-.f-sub.f-sub-fail{color:#ff2d55;font-weight:700}
-.f-sub.f-sub-progress{color:#ff9500}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(4px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+.f-sub.f-sub-idle{color:#5a5a7a;animation:fadeUp 0.15s ease-out}
+.f-sub.f-sub-pass{color:#00e090;font-weight:700;animation:fadeUp 0.15s ease-out}
+.f-sub.f-sub-fail{color:#ff2d55;font-weight:700;animation:fadeUp 0.15s ease-out}
+.f-sub.f-sub-progress{color:#ff9500;animation:fadeUp 0.15s ease-out}
 
 /* ── Hand label + cards area ── */
 .hand-label-new{font-size:10px;color:var(--color-text-muted);font-family:var(--font-data);
@@ -883,13 +887,26 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
                 overflow-y:auto;flex:1;min-height:0;align-content:flex-start;padding-bottom:4px}
 
 /* ── New Card Style ── */
-.card.new-card{background:var(--color-bg-surface);border:1px solid var(--color-border-hover);
+.card.new-card{background:#141428;border:1px solid #252538;
                border-radius:12px;padding:13px 12px;width:162px;flex-shrink:0;cursor:pointer;
-               transition:transform 0.18s,border-color 0.18s,background 0.18s;position:relative;
+               transition:all 0.15s ease;position:relative;
                user-select:none;display:flex;flex-direction:column;gap:0}
 .card.new-card:hover{transform:translateY(-4px);background:var(--color-bg-elevated)}
-.card.new-card.selected{transform:translateY(-7px);border-color:var(--color-pass);
-                        background:rgba(0,224,144,0.04)}
+.card.new-card.selected{transform:translateY(-8px);border-color:var(--color-pass) !important}
+/* archetype bg tint when selected */
+.card.new-card.PRODUCTION.selected{background:rgba(124,58,237,0.06)}
+.card.new-card.STRATEGY.selected{background:rgba(184,124,255,0.06)}
+.card.new-card.CRUNCH.selected{background:rgba(255,45,85,0.06)}
+.card.new-card.RECOVERY.selected{background:rgba(0,224,144,0.06)}
+/* disabled: max selection reached, this card not in sel */
+.card.new-card.card-disabled{opacity:0.4;cursor:not-allowed}
+.card.new-card.card-disabled:hover{transform:none !important;background:#141428 !important}
+/* fly-off when confirmed */
+@keyframes cardFlyOff{
+  0%  {transform:translateY(0);opacity:1}
+  100%{transform:translateY(-24px);opacity:0}
+}
+.card.new-card.card-fly-off{animation:cardFlyOff 0.2s ease-in forwards;pointer-events:none}
 .card.new-card.syn-active{border-color:var(--color-system);box-shadow:0 0 12px rgba(0,229,255,.15)}
 /* archetype border tints */
 .card.new-card.PRODUCTION{border-color:rgba(124,58,237,0.35)}
@@ -900,8 +917,7 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .card.new-card.CRUNCH:hover{border-color:#ff2d55}
 .card.new-card.RECOVERY{border-color:rgba(0,224,144,0.3)}
 .card.new-card.RECOVERY:hover{border-color:#00e090}
-/* Selected always gets teal border regardless of archetype */
-.card.new-card.selected{border-color:var(--color-pass) !important}
+/* Selected always gets teal border regardless of archetype (already set above) */
 /* card innards */
 .c-type{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;
         font-family:var(--font-data);margin-bottom:6px}
@@ -942,22 +958,27 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .action-hint.ok{color:var(--color-pass)}
 .action-hint.warn{color:var(--color-warning)}
 .action-hint.bad{color:var(--color-fail)}
-.btn-skip-new{padding:8px 14px;background:transparent;color:var(--color-text-muted);
-              border:1px solid var(--color-border-hover);border-radius:7px;
+.btn-skip-new{padding:8px 14px;background:#1e1e38;color:#5a5a7a;
+              border:1px solid #32324a;border-radius:7px;
               font-size:11px;font-family:var(--font-mono);cursor:pointer;white-space:nowrap;
-              transition:color 0.15s,border-color 0.15s}
-.btn-skip-new:hover{color:var(--color-text-primary);border-color:var(--color-text-primary)}
-.btn-skip-new:disabled{opacity:0.35;cursor:default}
+              transition:all 0.15s ease}
+.btn-skip-new:hover{background:#252540;color:#c8c8e0;border-color:#3e3e5e}
+.btn-skip-new:active{transform:scale(0.97);background:#141428}
+.btn-skip-new:disabled,.btn-skip-new[disabled]{opacity:0.35;cursor:not-allowed;transform:none}
 .btn-confirm{padding:9px 24px;background:#1e1e38;color:#5a5a7a;
              border:1px solid #32324a;border-radius:7px;font-size:12px;font-family:var(--font-mono);font-weight:700;
-             cursor:pointer;letter-spacing:0.05em;transition:all 0.2s ease;
+             cursor:pointer;letter-spacing:0.05em;transition:all 0.15s ease;
              white-space:nowrap}
+.btn-confirm:not(.ready):not(.danger):not(.caution):not(.risky):hover{background:#252540;color:#c8c8e0;border-color:#3e3e5e}
+.btn-confirm:not(.ready):active{transform:scale(0.97);background:#141428}
+.btn-confirm:disabled,.btn-confirm[disabled]{opacity:0.35;cursor:not-allowed;transform:none !important}
 .btn-confirm.ready{background:#00e090;color:#001a10;font-weight:700;border-color:#00e090}
-.btn-confirm.ready:hover{transform:scale(1.03)}
-.btn-confirm.ready:active{transform:scale(0.98)}
-.btn-confirm.danger{background:var(--color-fail);color:#fff}
-.btn-confirm.caution{background:var(--color-warning);color:#1a0800}
-.btn-confirm.risky{background:#cc4400;color:#fff}
+.btn-confirm.ready:hover{background:#00f0a0;transform:scale(1.02);border-color:#00f0a0}
+.btn-confirm.ready:active{transform:scale(0.97);background:#00c070}
+.btn-confirm.danger{background:var(--color-fail);color:#fff;border-color:var(--color-fail)}
+.btn-confirm.danger:hover{background:#ff5070;transform:scale(1.01)}
+.btn-confirm.caution{background:var(--color-warning);color:#1a0800;border-color:var(--color-warning)}
+.btn-confirm.risky{background:#cc4400;color:#fff;border-color:#cc4400}
 /* Crisis / vent row */
 .action-sub-row{display:flex;align-items:center;gap:8px;padding:0 20px 8px;flex-shrink:0}
 
@@ -1026,18 +1047,25 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .desk-slot.ds-active{border-color:#4ade80 !important}
 .desk-slot.will-activate{border-color:#00e5ff !important;box-shadow:0 0 8px rgba(0,229,255,.25)}
 @keyframes deskPulse{
-  0%  {border-color:var(--desk-tier-color,#2a2a40);box-shadow:none}
-  40% {border-color:var(--color-pass);box-shadow:0 0 10px rgba(0,224,144,.4)}
-  100%{border-color:var(--desk-tier-color,#2a2a40);box-shadow:none}
+  0%  {border-color:rgba(74,222,128,0.3);box-shadow:none}
+  50% {border-color:#4ade80;background:rgba(74,222,128,0.12);box-shadow:0 0 8px rgba(74,222,128,.4)}
+  100%{border-color:rgba(74,222,128,0.3);box-shadow:none}
 }
-.desk-slot.activating{animation:deskPulse 0.4s ease}
+.desk-slot.just-activated{animation:deskPulse 0.3s ease}
+
+@keyframes logSlideIn{
+  from{transform:translateX(-8px);opacity:0}
+  to  {transform:translateX(0);opacity:1}
+}
+.log-slide{animation:logSlideIn 0.15s ease-out}
 
 /* ── Pass flash animation ── */
 @keyframes passFlash {
-  0%,100%{border-color:rgba(74,222,128,0.2);background:var(--color-card-production-bg)}
-  50%{border-color:#00e090;background:#003020}
+  0%  {border-color:rgba(0,224,144,0.2)}
+  40% {border-color:rgba(0,224,144,1.0);background:#003020}
+  100%{border-color:rgba(0,224,144,0.2);background:var(--color-card-production-bg)}
 }
-.f-result.pass-flash{animation:passFlash 0.4s ease}
+.f-result.pass-flash{animation:passFlash 0.5s ease}
 
 /* ── Scanlines overlay ── */
 body::before{content:'';position:fixed;inset:0;

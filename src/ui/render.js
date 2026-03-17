@@ -225,7 +225,7 @@ export function render(G) {
         <div class="cards-area-new">
           ${G.pendingChoice
             ? `<div style="width:100%">${renderContextChoice(G)}</div>`
-            : hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount})).join('')
+            : hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount, maxSel: G.maxSel()})).join('')
           }
         </div>
         ${renderDeskRow(G)}
@@ -242,33 +242,40 @@ export function render(G) {
     requestAnimationFrame(() => initFinalReviewAnim(s.total));
   }
 
-  // Post-render: redline pressure + pass flash (Fix 2 & 6)
+  // Post-render micro-interactions (play phase only, on wscore increase)
   const prevWscore = _lastWscore;
   _lastWscore = wscore;
   if (G.phase === 'play' && wscore > prevWscore && prevWscore >= 0) {
     const activatedIds = new Set(G.lastActivatedDeskIds || []);
+    const crossedTarget = wscore >= target && prevWscore < target;
     requestAnimationFrame(() => {
-      const scoreEl = document.getElementById('revenue-val');
-      if (scoreEl) _startRevenueCountUp(scoreEl, 0, wscore, target);
-      if (wscore >= target && prevWscore < target) {
-        const fResult = document.querySelector('.f-result');
-        if (fResult) {
-          fResult.classList.remove('pass-flash');
-          void fResult.offsetWidth;
-          fResult.classList.add('pass-flash');
-          setTimeout(() => fResult.classList.remove('pass-flash'), 450);
-        }
-      }
-      // Desk item activation pulse
+      // Step 2 (0ms): desk item pulse
       if (activatedIds.size > 0) {
         document.querySelectorAll('.desk-slot[data-id]').forEach(el => {
           if (activatedIds.has(el.dataset.id)) {
-            el.classList.remove('activating');
+            el.classList.remove('just-activated');
             void el.offsetWidth;
-            el.classList.add('activating');
-            setTimeout(() => el.classList.remove('activating'), 450);
+            el.classList.add('just-activated');
+            setTimeout(() => el.classList.remove('just-activated'), 350);
           }
         });
+      }
+      // Step 4 (200ms): revenue count-up from previous wscore
+      const scoreEl = document.getElementById('revenue-val');
+      setTimeout(() => {
+        if (scoreEl) _startRevenueCountUp(scoreEl, prevWscore, wscore, target);
+      }, 200);
+      // Step 5 (1000ms): pass flash on REVENUE box
+      if (crossedTarget) {
+        setTimeout(() => {
+          const fResult = document.querySelector('.f-result');
+          if (fResult) {
+            fResult.classList.remove('pass-flash');
+            void fResult.offsetWidth;
+            fResult.classList.add('pass-flash');
+            setTimeout(() => fResult.classList.remove('pass-flash'), 550);
+          }
+        }, 1000);
       }
     });
   }
@@ -352,6 +359,31 @@ window._deskHover = function(cardUid) {
 };
 window._deskUnhover = function() {
   document.querySelectorAll('.desk-slot.will-activate').forEach(el => el.classList.remove('will-activate'));
+};
+
+// Step 1: card fly-off → then play (intercepted confirm handler)
+window._animatedPlay = function() {
+  const G = window.G;
+  if (!G || G._busy || G.phase !== 'play' || !G.sel.length) return;
+  // Fly off selected cards
+  G.sel.forEach(uid => {
+    const el = document.querySelector(`.card[data-uid="${uid}"]`);
+    if (el) el.classList.add('card-fly-off');
+  });
+  // Step 2 (100ms): briefly highlight desk slots that will activate
+  const selCards = G.sel.map(uid => (G.hand || []).find(c => c.uid === uid)).filter(Boolean);
+  setTimeout(() => {
+    const deskIds = new Set();
+    selCards.forEach(card => _getActivationsForHover(card, G.deskItems || [], G).forEach(id => deskIds.add(id)));
+    document.querySelectorAll('.desk-slot[data-id]').forEach(el => {
+      if (deskIds.has(el.dataset.id)) {
+        el.classList.add('will-activate');
+        setTimeout(() => el.classList.remove('will-activate'), 300);
+      }
+    });
+  }, 100);
+  // After fly-off completes, trigger actual play
+  setTimeout(() => G.playSelected(), 200);
 };
 
 // ═══════════════════════════════════════════════════════
@@ -548,13 +580,13 @@ function renderActionBarNew(G, preview) {
     const scoreStr  = '+$' + preview.score.toLocaleString();
     const pm = willPass ? ' ✓' : '';
     const risk = preview.riskLevel;
-    if      (risk === 'LETHAL')  { confirmBtn = `<button class="btn-confirm danger"  onclick="G.playSelected()">💀 DESPERATE (${scoreStr}${pm})</button>`; hintCls = 'bad'; }
-    else if (risk === 'RISKY')   { confirmBtn = `<button class="btn-confirm risky"   onclick="G.playSelected()">⚡ RISKY (${scoreStr}${pm})</button>`;      hintCls = 'warn'; }
-    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="G.playSelected()">⚠ CAUTION (${scoreStr}${pm})</button>`;    hintCls = 'warn'; }
-    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="G.playSelected()">Zatwierdź (${scoreStr}${pm})</button>`;   hintCls = willPass ? 'ok' : ''; }
+    if      (risk === 'LETHAL')  { confirmBtn = `<button class="btn-confirm danger"  onclick="_animatedPlay()">💀 DESPERATE (${scoreStr}${pm})</button>`; hintCls = 'bad'; }
+    else if (risk === 'RISKY')   { confirmBtn = `<button class="btn-confirm risky"   onclick="_animatedPlay()">⚡ RISKY (${scoreStr}${pm})</button>`;      hintCls = 'warn'; }
+    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="_animatedPlay()">⚠ CAUTION (${scoreStr}${pm})</button>`;    hintCls = 'warn'; }
+    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="_animatedPlay()">Zatwierdź (${scoreStr}${pm})</button>`;   hintCls = willPass ? 'ok' : ''; }
     hintText = `${sel.length} card(s) — $${preview.score.toLocaleString()} revenue · ${risk}`;
   } else {
-    confirmBtn = `<button class="btn-confirm ready" onclick="G.playSelected()">Zatwierdź (${sel.length} cards)</button>`;
+    confirmBtn = `<button class="btn-confirm ready" onclick="_animatedPlay()">Zatwierdź (${sel.length} cards)</button>`;
     hintText = `${sel.length} card(s) selected`;
     hintCls  = '';
   }
@@ -963,6 +995,7 @@ export function renderHand(hand, sel, preview, exhausted, passives, G) {
 
 export function renderCard(c, sel, preview, passives, ctx = {}) {
   const idx = sel.indexOf(c.uid), isSel = idx >= 0;
+  const isDisabled = !isSel && ctx.maxSel > 0 && sel.length >= ctx.maxSel;
   const isSynActive = preview && c.synergies.some(s => preview.activeSynergies.has(s.id));
   const fx = getEffectiveFx(c, passives || []);
 
@@ -1021,7 +1054,7 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
     ? `<div style="font-size:8px;color:var(--color-text-ghost);margin-top:2px">${['1st','2nd','3rd','4th'][idx]} in combo</div>`
     : '';
 
-  return `<div class="card new-card ${c.archetype}${isSel ? ' selected' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" data-uid="${c.uid}" onclick="G.toggle('${c.uid}')" onmouseenter="_deskHover('${c.uid}')" onmouseleave="_deskUnhover()">
+  return `<div class="card new-card ${c.archetype}${isSel ? ' selected' : ''}${isDisabled ? ' card-disabled' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" data-uid="${c.uid}" onclick="${isDisabled ? '' : `G.toggle('${c.uid}')`}" onmouseenter="_deskHover('${c.uid}')" onmouseleave="_deskUnhover()">
     <div class="c-type" style="color:${arch.color};">${arch.icon} ${arch.label}</div>
     <div class="c-name">${esc(c.name)}</div>
     ${mainHtml}${costHtml}
