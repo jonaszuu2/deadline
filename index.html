@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DEADLINE™ v0.4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles/base.css">
   <link rel="stylesheet" href="/styles/win95.css">
   <link rel="stylesheet" href="/styles/game.css">
@@ -11,45 +13,25 @@
   <link rel="stylesheet" href="/styles/animations.css">
 </head>
 <body>
-<!-- ══ DESKTOP ══ -->
-<div id="desktop">
-  <div id="desktop-icons">
-    <div class="dicon"><span class="di">💻</span>My Computer</div>
-    <div class="dicon"><span class="di">🗑️</span>Recycle Bin</div>
-    <div class="dicon"><span class="di">📁</span>HR Documents</div>
-    <div class="dicon active"><span class="di">📋</span>DEADLINE™</div>
-  </div>
-  <div id="win-area">
-    <div id="win">
-      <div id="titlebar">
-        <div class="tb-left">
-          <span class="tb-ico">📋</span>
-          <span class="tb-ttxt">DEADLINE™ — Performance Management Suite v0.4</span>
-        </div>
-        <div class="tb-btns">
-          <div class="tb-btn">_</div>
-          <div class="tb-btn">□</div>
-          <div class="tb-btn" style="background:#c04040">✕</div>
-        </div>
-      </div>
-      <div id="menubar">
-        <span class="mn"><u>F</u>ile</span>
-        <span class="mn"><u>W</u>eek</span>
-        <span class="mn"><u>O</u>ptions</span>
-        <span class="mn" onclick="openHelp()"><u>H</u>elp</span>
-      </div>
-      <div id="kpi-bar-outer"><div id="kpi-bar-inner"></div></div>
-      <div id="win-body"></div>
-      <div id="statusbar"></div>
+<div id="win">
+  <div class="win-chrome">
+    <div class="wc-dots">
+      <div class="wc-dot" style="background:#ff5f56;"></div>
+      <div class="wc-dot" style="background:#ffbd2e;"></div>
+      <div class="wc-dot" style="background:#27c93f;"></div>
+    </div>
+    <div class="wc-title">DEADLINE™ — Performance Management Suite v0.4 &nbsp;|&nbsp; File &nbsp; Week &nbsp; Options &nbsp; <span onclick="openHelp()" style="cursor:pointer;color:inherit">Help</span></div>
+    <div class="wc-btns">
+      <span class="wc-btn" onclick="zoomOut()">A-</span>
+      <span class="wc-btn" onclick="zoomIn()">A+</span>
     </div>
   </div>
+  <div id="topbar"></div>
+  <div id="win-body"></div>
+  <div id="statusbar"></div>
 </div>
-<div id="taskbar">
-  <button id="start-btn">🪟 <b>Start</b></button>
-  <div class="tb-div"></div>
-  <div class="task-btn">📋 DEADLINE™</div>
-  <div id="tray"><span id="clock">00:00</span></div>
-</div>
+<!-- keep kpi-bar-inner accessible for animation functions -->
+<div id="kpi-bar-outer" style="display:none"><div id="kpi-bar-inner"></div></div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -1,15 +1,65 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#07070f;--surf:#0d0d1e;--surf2:#111126;--border:#1e1e38;
-  --text:#b8b8d8;--dim:#505070;--chip:#6ab4ff;--mult:#ff7070;--tox:#50ffaa;--wb:#ff70b4;
+  /* ── Neon Dystopia palette ─────────────────────────── */
+  --color-bg-base:         #0d0d1f;
+  --color-bg-surface:      #141428;
+  --color-bg-elevated:     #1e1e38;
+  --color-bg-overlay:      rgba(13,13,31,.93);
+  --color-border-default:  #2a2a40;
+  --color-border-hover:    #3e3e5e;
+  --color-text-primary:    #d4d4f0;
+  --color-text-muted:      #6e6e9a;
+  --color-text-ghost:      #3a3a52;
+  /* Accents */
+  --color-revenue:         #4ade80;
+  --color-currency:        #fbbf24;
+  --color-pass:            #00e090;
+  --color-fail:            #ff2d55;
+  --color-warning:         #ff9500;
+  --color-system:          #00e5ff;
+  /* Card archetypes */
+  --color-card-production:    #7c3aed;
+  --color-card-production-bg: #12082a;
+  --color-card-strategy:      #b87cff;
+  --color-card-strategy-bg:   #160a2a;
+  --color-card-crunch:        #ff2d55;
+  --color-card-crunch-bg:     #1a0510;
+  --color-card-recovery:      #00e090;
+  --color-card-recovery-bg:   #001a12;
+  /* Stat bars */
+  --color-wellbeing:       #00e090;
+  --color-burnout:         #ff2d55;
+  --color-toxicity:        #fbbf24;
+  /* KPI target progress */
+  --color-target-low:      #ff2d55;
+  --color-target-mid:      #ff9500;
+  --color-target-pass:     #00e090;
+
+  /* ── Legacy shorthands (used throughout game.css etc.) */
+  --bg:    var(--color-bg-base);
+  --surf:  var(--color-bg-surface);
+  --surf2: var(--color-bg-elevated);
+  --border:var(--color-border-default);
+  --text:  var(--color-text-primary);
+  --dim:   var(--color-text-muted);
+  --chip:  var(--color-card-production);
+  --mult:  var(--color-card-strategy);
+  --tox:   var(--color-toxicity);
+  --wb:    var(--color-wellbeing);
+
+  /* ── Typography */
+  --font-mono:'Space Mono',monospace;
+  --font-ui:'Rajdhani',sans-serif;
+  --font-data:'Share Tech Mono',monospace;
+
+  /* ── Win95 chrome (unchanged) */
   --w95:#c0c0c0;--w95d:#808080;--w95dd:#404040;--w95l:#ffffff;--w95n:#000080;
   --base:10px;--scale:1;
-  /* card sizing — adjust here to grow/shrink all cards */
-  --card-w:15rem;    /* ~150px */
-  --card-h:19rem;    /* ~190px */
+  /* card sizing */
+  --card-w:15rem;
+  --card-h:19rem;
 }
-html{font-size:calc(var(--base)*var(--scale));} 
+html{font-size:calc(var(--base)*var(--scale));}
 
-body{font-family:'Courier New',monospace;background:#008080;
+body{font-family:'Courier New',monospace;background:#1a1a2e;
      height:100vh;overflow:hidden;display:flex;flex-direction:column}
-

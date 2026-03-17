@@ -1,7 +1,7 @@
 import { Game, _setUIFunctions } from './game.js';
 import { render, zoomIn, zoomOut } from './ui/render.js';
 import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, startUpgradeSpin } from './ui/animations.js';
-import { dismissTeammateModal, initStatTooltip, openHelp } from './ui/modals.js';
+import { dismissTeammateModal, initStatTooltip, initCardTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
 import { showStartupScreen, dismissStartup, showHowToPlay, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial, checkFirstShopTutorial, _advanceShopTutorial, _skipShopTutorial, showContextualTip, resetCtxTips, showGuideTip } from './ui/tutorial.js';
 import { aprCopyRun } from './share.js';
@@ -70,4 +70,5 @@ if (!isNaN(savedScale)) {
 }
 showStartupScreen();
 initStatTooltip();
+initCardTooltip();
 restoreHandHeight();

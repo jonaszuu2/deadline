@@ -111,6 +111,11 @@ export function triggerKpiFlash() {
   if (!bar) return;
   bar.classList.add('kpi-flash');
   setTimeout(() => bar.classList.remove('kpi-flash'), 900);
+  const win = document.getElementById('win');
+  if (win) {
+    win.classList.add('atm-pass');
+    setTimeout(() => win.classList.remove('atm-pass'), 1000);
+  }
 }
 
 export function showUpgradeFlash(card) {
@@ -126,9 +131,9 @@ export function showUpgradeFlash(card) {
       <div class="uf-name">${card.name}</div>
       <div class="uf-badge">&#8679; ${upLabel}</div>
       <div class="uf-stats">
-        <span class="uf-chips">&#x1F535; ${card.fx.chips || 0} Chips</span>
+        <span class="uf-chips">&#x1F535; ${card.fx.chips || 0} Output</span>
         <span class="uf-sep">&middot;</span>
-        <span class="uf-mult">&#x1F534; ×${(card.fx.mult || 0).toFixed(2)} Mult</span>
+        <span class="uf-mult">&#x1F534; ×${(card.fx.mult || 0).toFixed(2)} Eff</span>
       </div>
     </div>`;
   document.body.appendChild(el);
@@ -182,6 +187,61 @@ function _countUp(el, from, to, duration, onDone) {
   requestAnimationFrame(tick);
 }
 
+// Redline Pressure — count-up with threshold color shift (Neon Dystopia palette)
+function _redlineColor(ratio) {
+  if (ratio >= 1.0) return {
+    c: '#00e090', g: 'rgba(0,224,144,.75)',
+    barBg: 'linear-gradient(90deg,#006040,#00a870,#00e090)',
+    barShadow: '0 0 14px rgba(0,224,144,.9), 0 0 28px rgba(0,224,144,.3)',
+  };
+  if (ratio >= 0.7) return {
+    c: '#ff9500', g: 'rgba(255,149,0,.75)',
+    barBg: 'linear-gradient(90deg,#884400,#cc7000,#ff9500)',
+    barShadow: '0 0 10px rgba(255,149,0,.8), 0 0 20px rgba(255,149,0,.3)',
+  };
+  return {
+    c: '#ff2d55', g: 'rgba(255,45,85,.75)',
+    barBg: 'linear-gradient(90deg,#881020,#cc2040,#ff2d55)',
+    barShadow: '0 0 8px rgba(255,45,85,.7), 0 0 16px rgba(255,45,85,.25)',
+  };
+}
+
+function _countUpRedline(el, to, duration, prevWscore, target, onDone) {
+  if (!el) { onDone?.(); return; }
+  const bar  = document.getElementById('kpi-bar-inner');
+  const prev = prevWscore || 0;
+  const tgt  = target || 1;
+  const start = performance.now();
+
+  if (bar) bar.style.width = Math.min(100, prev / tgt * 100).toFixed(1) + '%';
+
+  function tick(now) {
+    const t       = Math.min(1, (now - start) / duration);
+    const eased   = 1 - Math.pow(1 - t, 3);
+    const current = Math.round(to * eased);
+    el.textContent  = current;
+
+    const { c, g, barBg, barShadow } = _redlineColor((prev + current) / tgt);
+    el.style.color      = c;
+    el.style.textShadow = `0 0 24px ${g}, 0 0 8px ${g}`;
+    if (bar) {
+      bar.style.background = barBg;
+      bar.style.boxShadow  = barShadow;
+      bar.style.width      = Math.min(100, (prev + current) / tgt * 100).toFixed(1) + '%';
+    }
+
+    if (t < 1) { requestAnimationFrame(tick); return; }
+
+    el.textContent = to;
+    const { c: fc, g: fg } = _redlineColor((prev + to) / tgt);
+    el.style.color      = fc;
+    el.style.textShadow = `0 0 24px ${fg}, 0 0 8px ${fg}`;
+    if (bar) { bar.style.background = ''; bar.style.boxShadow = ''; }
+    onDone?.();
+  }
+  requestAnimationFrame(tick);
+}
+
 export function initScoringAnimation(G) {
   const d = G.scoringDisplay;
   if (!d) return;
@@ -199,6 +259,7 @@ export function initScoringAnimation(G) {
 
   if (!chipsEl) return;
 
+  const target = G.kpi();
   const show = el => { if (el) el.classList.add('sc-show'); };
 
   let done = false;
@@ -214,11 +275,12 @@ export function initScoringAnimation(G) {
       show(multBlock);
       if (multEl) multEl.textContent = d.mult.toFixed(2);
 
-      // Phase 3: = and score pop
+      // Phase 3: = and score pop (Redline Pressure count-up)
       setTimeout(() => {
         show(opEq);
         show(scoreBlock);
-        _countUp(scoreEl, 0, d.baseScore, 550, () => {
+        if (scoreEl) scoreEl.style.color = '#ff4444'; // start red before sc-score-color kicks in
+        _countUpRedline(scoreEl, d.baseScore, 700, d.prevWscore, target, () => {
 
           // Phase 4: combo multiplier (if any)
           if (comboRow && d.comboMult > 1) {

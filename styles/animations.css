@@ -45,23 +45,23 @@
          cursor:pointer;display:flex;flex-direction:column;gap:6px;
          transition:transform .12s,border-color .15s,box-shadow .15s;position:relative}
 .dr-card:hover{transform:translateY(-6px);box-shadow:0 8px 24px rgba(0,0,0,.6)}
-.dr-card.PRODUCTION{border-color:var(--chip)}.dr-card.PRODUCTION:hover{box-shadow:0 0 20px rgba(106,180,255,.4)}
-.dr-card.STRATEGY{border-color:var(--mult)}.dr-card.STRATEGY:hover{box-shadow:0 0 20px rgba(255,112,112,.4)}
-.dr-card.CRUNCH{border-color:#ff9040}.dr-card.CRUNCH:hover{box-shadow:0 0 20px rgba(255,144,64,.4)}
-.dr-card.RECOVERY{border-color:var(--tox)}.dr-card.RECOVERY:hover{box-shadow:0 0 20px rgba(80,255,170,.4)}
+.dr-card.PRODUCTION{border-color:var(--color-card-production)}.dr-card.PRODUCTION:hover{box-shadow:0 0 20px rgba(124,58,237,.4)}
+.dr-card.STRATEGY{border-color:var(--color-card-strategy)}.dr-card.STRATEGY:hover{box-shadow:0 0 20px rgba(184,124,255,.4)}
+.dr-card.CRUNCH{border-color:var(--color-card-crunch)}.dr-card.CRUNCH:hover{box-shadow:0 0 20px rgba(255,45,85,.4)}
+.dr-card.RECOVERY{border-color:var(--color-card-recovery)}.dr-card.RECOVERY:hover{box-shadow:0 0 20px rgba(0,224,144,.35)}
 .dr-arch{font:bold 8px 'Courier New',monospace;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
 .dr-rarity{font:8px 'Courier New',monospace;color:var(--dim);position:absolute;top:12px;right:10px}
 .dr-name{font:bold 15px 'Courier New',monospace;color:#fff;margin:4px 0}
 .dr-flavor{font:italic 9px 'Tahoma',sans-serif;color:var(--dim);line-height:1.4;
            border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
 .dr-fx{font:11px 'Courier New',monospace;color:var(--text);line-height:1.7}
-.dr-syn{font:9px 'Courier New',monospace;color:#ffdd44;margin-top:4px;line-height:1.4;
-        padding:3px 5px;background:rgba(255,221,68,.08);border:1px solid rgba(255,221,68,.2)}
-.dr-pick-btn{margin-top:auto;padding:6px 10px;background:#0a200a;
-             border:2px solid #1a501a;color:#70ff78;
+.dr-syn{font:9px 'Courier New',monospace;color:var(--color-system);margin-top:4px;line-height:1.4;
+        padding:3px 5px;background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2)}
+.dr-pick-btn{margin-top:auto;padding:6px 10px;background:var(--color-pass);
+             border:2px solid var(--color-pass);color:#001a10;
              font:bold 10px 'Courier New',monospace;cursor:pointer;width:100%;
-             transition:background .1s}
-.dr-pick-btn:hover{background:#102810}
+             transition:opacity .1s}
+.dr-pick-btn:hover{opacity:.85}
 .dr-skip-row{margin-top:4px}
 .dr-skip-btn{background:transparent;border:1px solid var(--dim);color:var(--dim);
              font:10px 'Courier New',monospace;cursor:pointer;padding:5px 16px;
@@ -79,17 +79,17 @@
 .sh2-icon{font-size:32px;margin:4px 0}
 .sh2-name{font:bold 14px 'Courier New',monospace;color:#fff}
 .sh2-desc{font:11px 'Tahoma',sans-serif;color:var(--dim);line-height:1.5;flex:1}
-.sh2-buy-btn{margin-top:auto;padding:6px 10px;background:#0a200a;border:2px solid #1a501a;
-             color:#70ff78;font:bold 10px 'Courier New',monospace;cursor:pointer;width:100%;
-             transition:background .1s}
-.sh2-buy-btn:hover:not([disabled]){background:#102810}
+.sh2-buy-btn{margin-top:auto;padding:6px 10px;background:var(--color-pass);border:2px solid var(--color-pass);
+             color:#001a10;font:bold 10px 'Courier New',monospace;cursor:pointer;width:100%;
+             transition:opacity .1s}
+.sh2-buy-btn:hover:not([disabled]){opacity:.85}
 .sh2-buy-btn[disabled]{cursor:not-allowed}
-.sh2-buy-btn.sh2-cant{color:#ff7070;border-color:#501a1a;background:#200a0a}
-.sh2-buy-btn.sh2-owned{color:#555;border-color:#333;background:#111}
-.sh2-class-perk{border-color:#ffdd44 !important;box-shadow:0 0 10px rgba(255,221,68,.25)}
-.sh2-class-perk .sh2-type{color:#ffdd44}
+.sh2-buy-btn.sh2-cant{color:var(--color-fail);border-color:rgba(255,45,85,.4);background:rgba(255,45,85,.08)}
+.sh2-buy-btn.sh2-owned{color:var(--color-text-ghost);border-color:var(--color-border-default);background:var(--color-bg-elevated)}
+.sh2-class-perk{border-color:var(--color-currency) !important;box-shadow:0 0 10px rgba(251,191,36,.2)}
+.sh2-class-perk .sh2-type{color:var(--color-currency)}
 .sh2-actions{margin:8px 0 4px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.sh2-upgrade-btn{background:#0a1020;border:1px solid #3a5090;color:#6ab4ff;
+.sh2-upgrade-btn{background:var(--color-bg-elevated);border:1px solid var(--color-card-production);color:var(--color-card-production);
                  font:10px 'Courier New',monospace;cursor:pointer;padding:5px 14px;
                  letter-spacing:.5px;transition:all .1s}
 .sh2-upgrade-btn:hover:not([disabled]){background:#102030;border-color:#6ab4ff}
@@ -185,11 +185,37 @@
 .play-tox-risk{font:9px 'Courier New',monospace;color:#ff8040;
                text-align:center;margin-top:3px;letter-spacing:.5px;opacity:.9}
 
-/* ══ DRAMA: TOXIC ATMOSPHERE PULSE (tox ≥ 70) ══ */
-#win.tox-atmos{animation:tox-atmos-pulse 3s ease-in-out infinite}
-@keyframes tox-atmos-pulse{
-  0%,100%{box-shadow:inset 0 0 0 rgba(200,60,0,0)}
-  50%{box-shadow:inset 0 0 40px rgba(200,60,0,.2)}}
+/* ══ DRAMA: REACTIVE ATMOSPHERE SYSTEM ══ */
+/* tox 60–89%: amber creep */
+#win.atm-toxic{animation:atm-toxic-pulse 3.5s ease-in-out infinite}
+@keyframes atm-toxic-pulse{
+  0%,100%{box-shadow:inset 0 0 0 rgba(251,191,36,0)}
+  50%{box-shadow:inset 0 0 35px rgba(251,191,36,.1)}}
+
+/* tox 90%+: meltdown — harsh amber flicker */
+#win.atm-meltdown{animation:atm-meltdown-pulse 1.4s ease-in-out infinite}
+@keyframes atm-meltdown-pulse{
+  0%,100%{box-shadow:inset 0 0 30px rgba(251,191,36,.08)}
+  50%{box-shadow:inset 0 0 70px rgba(251,191,36,.24),inset 0 0 140px rgba(251,149,0,.1)}}
+
+/* wb < 30%: fail red — burnout spiral */
+#win.atm-wb-crit{animation:atm-wb-crit-pulse 2s ease-in-out infinite}
+@keyframes atm-wb-crit-pulse{
+  0%,100%{box-shadow:inset 0 0 0 rgba(255,45,85,0);filter:saturate(.85)}
+  50%{box-shadow:inset 0 0 50px rgba(255,45,85,.16);filter:saturate(.75)}}
+
+/* bo > 70%: warning glow */
+#win.atm-burnout{animation:atm-burnout-pulse 2.4s ease-in-out infinite}
+@keyframes atm-burnout-pulse{
+  0%,100%{box-shadow:inset 0 0 0 rgba(255,149,0,0)}
+  50%{box-shadow:inset 0 0 45px rgba(255,149,0,.14)}}
+
+/* kpi pass / weekly success: pass teal halo */
+#win.atm-pass{animation:atm-pass-flash .9s ease-out forwards}
+@keyframes atm-pass-flash{
+  0%{box-shadow:inset 0 0 0 rgba(0,224,144,0)}
+  25%{box-shadow:inset 0 0 60px rgba(0,224,144,.3)}
+  100%{box-shadow:inset 0 0 0 rgba(0,224,144,0)}}
 
 /* ══ DRAMA: COMBO ANNOUNCER ══ */
 .combo-announcer{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);

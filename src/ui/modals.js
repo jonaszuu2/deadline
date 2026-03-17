@@ -3,6 +3,7 @@ import { esc } from '../engine/utils.js';
 import { DB } from '../data/cards.js';
 import { TEAMMATES_DB } from '../data/content.js';
 import { getStatEffect } from '../engine/scoring.js';
+import { getEffectiveFx } from '../engine/calcTurn.js';
 
 export function openHelp() {
   const existing = document.getElementById('help-modal');
@@ -12,9 +13,9 @@ export function openHelp() {
       <div class="help-tbar">📖 QUICK REFERENCE — DEADLINE™ <span class="help-close" onclick="document.getElementById('help-modal').remove()">✕</span></div>
       <div class="help-body">
         <div class="help-section">FORMULA</div>
-        <div class="help-row help-formula-row">Score = <span class="help-chip">Chips</span> × <span class="help-mult">Mult</span></div>
-        <div class="help-row"><span class="help-chip">🔵 Chips</span> — base points. Stack up from PRODUCTION cards.</div>
-        <div class="help-row"><span class="help-mult">🔴 Mult</span> — multiplier on ALL Chips this play. Even 0.5× extra matters.</div>
+        <div class="help-row help-formula-row">Revenue = <span class="help-chip">Output</span> × <span class="help-mult">Efficiency</span></div>
+        <div class="help-row"><span class="help-chip">🔵 Output</span> — base points. Stack up from PRODUCTION cards.</div>
+        <div class="help-row"><span class="help-mult">🔴 Efficiency</span> — multiplier on ALL Output this play. Even 0.5× extra matters.</div>
         <div class="help-sep"></div>
         <div class="help-section">YOUR STATS</div>
         <div class="help-row"><b>❤️ WB — Wellbeing</b> — your HP. Hits 0% → game over.</div>
@@ -26,9 +27,9 @@ export function openHelp() {
         <div class="help-row"><b>Discards</b> — swap unwanted cards for free, no Play spent. 2 per week.</div>
         <div class="help-sep"></div>
         <div class="help-section">CARD ARCHETYPES</div>
-        <div class="help-row"><b style="color:#6ab4ff">PRODUCTION</b> — generates Chips. Upgrade → +Chips.</div>
-        <div class="help-row"><b style="color:#ff9090">STRATEGY</b> — generates Mult. Upgrade → +Mult.</div>
-        <div class="help-row"><b style="color:#ff6030">CRUNCH</b> — high Mult, raises TOX. Upgrade → +Mult.</div>
+        <div class="help-row"><b style="color:#6ab4ff">PRODUCTION</b> — generates Output. Upgrade → +Output.</div>
+        <div class="help-row"><b style="color:#ff9090">STRATEGY</b> — generates Efficiency. Upgrade → +Efficiency.</div>
+        <div class="help-row"><b style="color:#ff6030">CRUNCH</b> — high Efficiency, raises TOX. Upgrade → +Efficiency.</div>
         <div class="help-row"><b style="color:#60ff80">RECOVERY</b> — heals WB / lowers TOX. Upgrade → +Healing.</div>
         <div class="help-row" style="color:#888;font-size:10px">Mix archetypes: PRODUCTION alone = 100×1.0 = 100. With STRATEGY: 100×2.0 = 200.</div>
         <div class="help-sep"></div>
@@ -143,4 +144,97 @@ export function initStatTooltip() {
   document.addEventListener('mouseleave', () => {
     document.getElementById('stat-tooltip')?.classList.remove('visible');
   });
+}
+
+// ═══════════════════════════════════════════════════════
+//  CARD TOOLTIP — full card details on hover
+// ═══════════════════════════════════════════════════════
+const ARCH_COLORS = {
+  PRODUCTION: '#6ab4ff', STRATEGY: '#ff9090',
+  CRUNCH: '#ff6030',     RECOVERY: '#60ff80',
+};
+
+export function initCardTooltip() {
+  if (document.getElementById('card-tooltip')) return;
+  const el = document.createElement('div');
+  el.id = 'card-tooltip';
+  document.body.appendChild(el);
+
+  const tip = document.getElementById('card-tooltip');
+  let currentUid = null;
+
+  document.addEventListener('mousemove', e => {
+    const cardEl = e.target.closest('.card[data-uid]');
+    if (!cardEl) { tip.classList.remove('visible'); currentUid = null; return; }
+
+    const uid = cardEl.dataset.uid;
+    if (uid === currentUid) {
+      // just reposition
+      _positionTip(tip, e); return;
+    }
+    currentUid = uid;
+
+    const G = window.G;
+    if (!G) { tip.classList.remove('visible'); return; }
+    const allCards = [...(G.hand||[]), ...(G.deck||[]), ...(G.pile||[])];
+    const c = allCards.find(x => x.uid === uid);
+    if (!c) { tip.classList.remove('visible'); return; }
+
+    const passives = G.passives || [];
+    const fx = getEffectiveFx(c, passives);
+    const rawFx = c.fx;
+
+    const archColor = ARCH_COLORS[c.archetype] || '#fff';
+    const rarityColors = { COMMON:'#888', UNCOMMON:'#70ccff', RARE:'#ffcc44', EPIC:'#dd88ff' };
+    const rarityColor = rarityColors[c.rarity] || '#888';
+
+    // Effects rows
+    const fxRows = [];
+    if (fx.chips)   fxRows.push(`<div class="ctt-fx ctt-c">+${fx.chips.toLocaleString()} Output${rawFx.chips && rawFx.chips !== fx.chips ? ` <span class="ctt-passive">(base ${rawFx.chips})</span>` : ''}</div>`);
+    if (fx.mult)    fxRows.push(`<div class="ctt-fx ctt-m">×${fx.mult.toFixed(2)} Efficiency${rawFx.mult && rawFx.mult !== fx.mult ? ` <span class="ctt-passive">(base ${rawFx.mult.toFixed(2)})</span>` : ''}</div>`);
+    if (fx.tox > 0) fxRows.push(`<div class="ctt-fx ctt-tn">+${fx.tox}% Toxicity</div>`);
+    if (fx.wb  < 0) fxRows.push(`<div class="ctt-fx ctt-wn">${fx.wb} Wellbeing${rawFx.wb && rawFx.wb !== fx.wb ? ` <span class="ctt-passive">(base ${rawFx.wb})</span>` : ''}</div>`);
+    if (fx.tox < 0) fxRows.push(`<div class="ctt-fx ctt-tp">${fx.tox}% Toxicity</div>`);
+    if (fx.wb  > 0) fxRows.push(`<div class="ctt-fx ctt-wp">+${fx.wb} Wellbeing</div>`);
+    if (!fxRows.length) fxRows.push(`<div class="ctt-fx" style="color:#505070">No base effect</div>`);
+
+    // Synergy rows — full text, no truncation
+    const synRows = c.synergies.map(s => {
+      const colon = s.desc.indexOf(':');
+      const title = colon >= 0 ? s.desc.slice(0, colon) : s.desc;
+      const body  = colon >= 0 ? s.desc.slice(colon) : '';
+      return `<div class="ctt-syn">★ <b>${title}</b>${body}</div>`;
+    }).join('');
+
+    const exhaustRow  = c.exhaust ? `<div class="ctt-exh">⊗ EXHAUST — once per round</div>` : '';
+    const levelRow    = c.level   ? `<div class="ctt-lvl">${'★'.repeat(c.level)}${'☆'.repeat(3-c.level)} Level ${c.level}</div>` : '';
+    const flavorRow   = c.flavor  ? `<div class="ctt-flavor">"${c.flavor}"</div>` : '';
+
+    tip.innerHTML = `
+      <div class="ctt-head">
+        <span class="ctt-arch" style="color:${archColor}">${c.archetype}</span>
+        <span class="ctt-rarity" style="color:${rarityColor}">${c.rarity||''}</span>
+      </div>
+      <div class="ctt-name">${c.name}</div>
+      <div class="ctt-divider"></div>
+      <div class="ctt-effects">${fxRows.join('')}</div>
+      ${c.synergies.length ? `<div class="ctt-divider"></div><div class="ctt-syns">${synRows}</div>` : ''}
+      ${exhaustRow}
+      ${flavorRow || levelRow ? `<div class="ctt-divider"></div>${flavorRow}${levelRow}` : ''}
+    `;
+    tip.classList.add('visible');
+    _positionTip(tip, e);
+  });
+
+  document.addEventListener('mouseleave', () => {
+    tip.classList.remove('visible'); currentUid = null;
+  });
+}
+
+function _positionTip(tip, e) {
+  const TW = tip.offsetWidth || 220, TH = tip.offsetHeight || 120;
+  let x = e.clientX + 16, y = e.clientY - TH - 12;
+  if (x + TW > window.innerWidth  - 8) x = e.clientX - TW - 8;
+  if (y < 8) y = e.clientY + 16;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
 }

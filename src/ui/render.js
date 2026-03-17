@@ -42,17 +42,31 @@ function _showPhaseFlash(phase, week) {
 //  STATUS BAR
 // ═══════════════════════════════════════════════════════
 export function renderStatusBar(G) {
-  const phaseLbl = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS REVIEW', gameover:'GAME OVER', win:'WIN', review:'REVIEW', draft:'CARD DRAFT', teammate_choice:'STAFFING', targeted_draw:'TARGETED DRAW'};
-  const boColor = G.bo >= 90 ? '#ff2020' : G.bo >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
-  const boIcon  = G.bo >= 90 ? '🔥' : '🔥';
-  const cells = [
-    `Week ${G.week}/${TOTAL_WEEKS}`,
-    phaseLbl[G.phase] || G.phase.toUpperCase(),
-    `<span class="sb-zoom" onclick="zoomOut()">A-</span>`,
-    `<span class="sb-zoom" onclick="zoomIn()">A+</span>`,
-    `<span class="sb-help" onclick="openHelp()">? Help</span>`,
-  ];
-  return cells.map(c => `<div class="sb-cell">${c}</div>`).join('<div class="sb-sep"></div>');
+  const tierInfo = G.tox >= 91 ? {cls:'tier-meltdown', lbl:'MELTDOWN ZONE'}
+                 : G.tox >= 61 ? {cls:'tier-toxic',    lbl:'TOXIC CULTURE'}
+                 : G.tox >= 31 ? {cls:'tier-passive',  lbl:'PASSIVE-AGGRESSIVE'}
+                 :               {cls:'tier-pro',      lbl:'PROFESSIONAL'};
+
+  const lastEntry = G.log ? [...G.log].reverse().find(e => !e.hidden) : null;
+  const logText   = lastEntry ? lastEntry.t : 'System ready.';
+  const logCls    = lastEntry?.cls === 'tg' ? 'ok'
+                  : lastEntry?.cls === 'er' ? 'fail'
+                  : lastEntry?.cls === 'sy' ? 'warn' : '';
+  const dayNames  = ['MON','TUE','WED','THU','FRI'];
+  const dayName   = dayNames[G.dayIndex ?? 0] || 'MON';
+  const phase     = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS', gameover:'GAME OVER',
+                     win:'WIN', review:'REVIEW', draft:'DRAFT', teammate_choice:'STAFFING',
+                     targeted_draw:'DRAW', scoring:'SCORING'}[G.phase] || G.phase.toUpperCase();
+
+  // Apply class to statusbar
+  const sb = document.getElementById('statusbar');
+  if (sb) sb.className = 'new-sb';
+
+  return `<div class="sb-dot"></div>
+    <span class="sb-role">${tierInfo.lbl}</span>
+    <div class="sb-vsep"></div>
+    <span class="sb-log ${logCls}" id="status-log-line">${esc(logText.slice(0, 120))}</span>
+    <span class="sb-right">v0.4 &nbsp;|&nbsp; ${dayName} &nbsp;|&nbsp; Week ${G.week}/${TOTAL_WEEKS} &nbsp;|&nbsp; ${phase}</span>`;
 }
 
 export function zoomIn() {
@@ -71,6 +85,66 @@ export function zoomOut() {
 }
 
 // ═══════════════════════════════════════════════════════
+//  TOPBAR
+// ═══════════════════════════════════════════════════════
+export function renderTopbar(G) {
+  const {week, coins, discs, wscore, plays} = G;
+  const target  = G.kpi();
+  const pct     = Math.min(100, target > 0 ? wscore / target * 100 : 0).toFixed(1);
+  const willPass = wscore >= target;
+  const barColor = willPass ? 'var(--color-pass)' : pct >= 70 ? 'var(--color-warning)' : 'var(--color-fail)';
+
+  const weekDots = Array.from({length: TOTAL_WEEKS}, (_, i) => {
+    const wk   = i + 1;
+    const hist = (G.weekHistory || []).find(h => h.week === wk);
+    let cls = 'wd';
+    if      (hist && hist.passed) cls += ' done-pass';
+    else if (hist)                cls += ' done-fail';
+    else if (wk === week)         cls += ' active';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  const pips = Array.from({length:(G.playsMax||PLAYS)}, (_, i) =>
+    `<div class="tp-pip${i >= plays ? ' used' : ''}"></div>`
+  ).join('');
+
+  const phase = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS', gameover:'GAME OVER',
+                 win:'WIN', review:'REVIEW', draft:'DRAFT', teammate_choice:'STAFFING',
+                 targeted_draw:'DRAW', scoring:'SCORING'}[G.phase] || G.phase.toUpperCase();
+
+  return `
+    <div class="logo">DEAD<span>LINE</span></div>
+    <div class="week-block">
+      <span class="wb-label">WEEK</span>
+      <span class="wb-num">${week}/${TOTAL_WEEKS}</span>
+      <div class="wb-dots">${weekDots}</div>
+    </div>
+    <div class="target-block">
+      <span class="tb-label">WEEKLY TARGET</span>
+      <div class="tb-bar-wrap">
+        <div class="tb-bar-bg">
+          <div id="kpi-bar-inner" class="tb-bar-fill" style="width:${pct}%;background:${barColor};"></div>
+        </div>
+        <div class="tb-nums">
+          <span style="color:${barColor}">$${wscore.toLocaleString()}</span>
+          <span style="color:var(--color-text-muted)">$${target.toLocaleString()}</span>
+        </div>
+      </div>
+      ${willPass ? `<div class="pass-badge">✓ PASS</div>` : ''}
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-pips">${pips}</div>
+      <div class="cc-pill">
+        <div class="cc-icon"></div>
+        <span class="cc-val">${coins}</span>
+        <span class="cc-label">CC</span>
+      </div>
+      <span class="discards-info">DISCARD: ${discs}</span>
+      <div class="topbar-phase">${phase}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
 //  MAIN RENDER
 // ═══════════════════════════════════════════════════════
 export function render(G) {
@@ -78,80 +152,390 @@ export function render(G) {
     _showPhaseFlash(G.phase, G.week);
     _lastPhase = G.phase;
   }
+
+  // Always update topbar
+  const tb = document.getElementById('topbar');
+  if (tb) tb.innerHTML = renderTopbar(G);
+
+  // Atmosphere on #win
+  const win = document.getElementById('win');
+  if (win) {
+    const atm = ['atm-toxic','atm-meltdown','atm-wb-crit','atm-burnout','atm-pass'];
+    atm.forEach(c => win.classList.remove(c));
+    if      (G.tox >= 90)  win.classList.add('atm-meltdown');
+    else if (G.tox >= 60)  win.classList.add('atm-toxic');
+    if (G.wb  <  30)       win.classList.add('atm-wb-crit');
+    else if (G.bo > 70)    win.classList.add('atm-burnout');
+  }
+
+  // Status bar
   const sb = document.getElementById('statusbar');
   if (sb) sb.innerHTML = renderStatusBar(G);
-  updateKpiBar(G);
-  const win = document.getElementById('win');
-  if (win) win.classList.toggle('tox-atmos', G.tox >= 70);
+
+  const winBody = document.getElementById('win-body');
 
   if (G.phase === 'teammate_choice') {
-    document.getElementById('win-body').innerHTML = renderTeammateChoice(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderTeammateChoice(G)}</div>`;
     return;
   }
   if (G.phase === 'boss') {
-    document.getElementById('win-body').innerHTML = renderBossEncounter(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderBossEncounter(G)}</div>`;
     return;
   }
   if (G.phase === 'draft') {
-    document.getElementById('win-body').innerHTML = renderDraft(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderDraft(G)}</div>`;
     return;
   }
   if (G.phase === 'targeted_draw') {
-    document.getElementById('win-body').innerHTML = renderTargetedDraw(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderTargetedDraw(G)}</div>`;
     return;
   }
   if (G.phase === 'scoring') {
-    document.getElementById('win-body').innerHTML = renderScoring(G);
-    if (_currentHandH !== HAND_H_DEF) applyHandHeight(_currentHandH);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderScoring(G)}</div>`;
     initScoringAnimation(G);
     return;
   }
   if (G.phase === 'upgrade_result') {
-    document.getElementById('win-body').innerHTML = renderUpgradeResult(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderUpgradeResult(G)}</div>`;
     return;
   }
   if (G.phase === 'shop') {
-    document.getElementById('win-body').innerHTML = renderShop(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderShop(G)}</div>`;
     return;
   }
   // Desk item offer can appear during result phase
   if (G.deskItemOffer && G.deskItemOffer.length && G.phase === 'result') {
-    document.getElementById('win-body').innerHTML = renderDeskItemOffer(G);
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderDeskItemOffer(G)}</div>`;
     return;
   }
-  const {week, wb, tox, bo, wscore, plays, discs, phase, hand, sel, log, lastScore, playsMax} = G;
+
+  // ── PLAY / RESULT phase — 3-column layout ──
+  const {week, wb, tox, bo, wscore, plays, discs, phase, hand, sel, log, playsMax} = G;
   const target   = G.kpi();
   const selCards = sel.map(uid => hand.find(c => c.uid === uid)).filter(Boolean);
   const preview  = selCards.length ? simulateTurn(selCards, G) : null;
 
-  document.getElementById('win-body').innerHTML = `
-    ${renderHeader(G)}
-    <div id="main-layout">
-      <div id="main-col">
-        <div id="top-row">
-          ${renderEmployeeDashboard(wb, tox, bo, preview)}
-          ${renderScoreMachine(preview, wscore, target, G)}
-          <div id="ctx-strip-col">${renderContextStrip(G)}</div>
+  winBody.innerHTML = `
+    <div class="main-3col">
+      ${renderLeftPanel(G, preview)}
+      <div class="center-panel">
+        ${renderFormulaRow(preview, wscore, target, G)}
+        <div class="hand-label-new">HAND (${hand.length}) · ${sel.length ? `${sel.length} selected` : `select 1–${G.maxSel()}`}</div>
+        <div class="cards-area-new">
+          ${G.pendingChoice
+            ? `<div style="width:100%">${renderContextChoice(G)}</div>`
+            : hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount})).join('')
+          }
         </div>
-        <div id="action-row">${G.pendingChoice ? renderContextChoice(G) : renderActions(G, preview)}</div>
-        ${renderHand(hand, sel, preview, G.exhausted, G.passives, G)}
-        <div id="hand-resize-handle" onmousedown="startHandResize(event)"></div>
-        <div id="bottom-row">
-          ${renderDeckPanel(G)}
-          ${renderLog(log, preview)}
-        </div>
+        ${renderActionBarNew(G, preview)}
       </div>
-      ${renderRightPanel(G)}
+      ${renderRightPanelNew(G)}
     </div>
     ${phase === 'gameover' ? ovGameOver(G) : ''}
     ${phase === 'win'      ? ovWin(G)      : ''}
     ${phase === 'review'   ? ovFinalReview(G) : ''}
   `;
-  if (_currentHandH !== HAND_H_DEF) applyHandHeight(_currentHandH);
   if (G.phase === 'review') {
     const s = calculateFinalScore(G);
     requestAnimationFrame(() => initFinalReviewAnim(s.total));
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NEW 3-COL LAYOUT HELPERS
+// ═══════════════════════════════════════════════════════
+
+function renderLeftPanel(G, preview) {
+  const {wb, tox, bo} = G;
+
+  // Stat bars
+  const statBars = `
+    <div>
+      <div class="section-title">Employee Status</div>
+      <div class="lp-stat-bars">
+        <div class="lp-sb-row">
+          <span class="lp-sb-label">Wellbeing</span>
+          <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${wb}%;background:var(--color-wellbeing);"></div></div>
+          <span class="lp-sb-val" style="color:var(--color-wellbeing);">${wb}%</span>
+        </div>
+        <div class="lp-sb-row">
+          <span class="lp-sb-label">Toxicity</span>
+          <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${tox}%;background:var(--color-toxicity);"></div></div>
+          <span class="lp-sb-val" style="color:var(--color-toxicity);">${tox}%</span>
+        </div>
+        <div class="lp-sb-row">
+          <span class="lp-sb-label">Burnout</span>
+          <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${bo}%;background:var(--color-burnout);"></div></div>
+          <span class="lp-sb-val" style="color:${bo > 0 ? 'var(--color-burnout)' : 'var(--color-text-muted)'};">${bo}%</span>
+        </div>
+      </div>
+    </div>`;
+
+  // Archetype counters
+  const wa = G.weekArchetypes || {};
+  const mh = G.archetypeMilestonesHit || new Set();
+  const AC = [
+    {k:'PRODUCTION', lbl:'PROD', c:'var(--color-card-production)', bg:'rgba(124,58,237,0.12)', bd:'rgba(124,58,237,0.2)'},
+    {k:'STRATEGY',   lbl:'STRA', c:'var(--color-card-strategy)',   bg:'rgba(184,124,255,0.1)', bd:'rgba(184,124,255,0.15)'},
+    {k:'CRUNCH',     lbl:'CRUN', c:'var(--color-card-crunch)',     bg:'rgba(255,45,85,0.08)',  bd:'rgba(255,45,85,0.15)'},
+    {k:'RECOVERY',   lbl:'RECO', c:'var(--color-card-recovery)',   bg:'rgba(0,224,144,0.08)',  bd:'rgba(0,224,144,0.15)'},
+  ];
+  const archGrid = `
+    <div>
+      <div class="section-title">Week Archetypes</div>
+      <div class="arch-grid">
+        ${AC.map(a => {
+          const hit = mh.has(a.k);
+          return `<div class="arch-chip" style="background:${a.bg};border:1px solid ${a.bd};" title="${a.k}: ${wa[a.k]||0}/4${hit?' ★ MILESTONE':''}">
+            <span class="arch-name" style="color:${a.c};">${a.lbl}</span>
+            <span class="arch-val" style="color:${hit?'var(--color-currency)':a.c};">${hit?'★':(wa[a.k]||0)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  // Calendar / context days
+  let calHtml = '';
+  if (G.weekContexts?.length) {
+    const idx = G.dayIndex ?? 0;
+    const dayNames = ['MON','TUE','WED','THU','FRI'];
+    const days = G.weekContexts.map((ctxId, i) => {
+      const ctx = CONTEXTS_DB[ctxId];
+      if (!ctx) return '';
+      const done    = i < idx;
+      const today   = i === idx;
+      const visible = i <= idx + 1;
+      let cls = 'lp-cal-day';
+      if (done)  cls += ' lp-day-done';
+      else if (today) cls += ' lp-day-active';
+      else cls += ' lp-day-unknown';
+      const icon = visible ? (done ? '✓' : ctx.icon) : '?';
+      const title = visible ? esc(ctx.name) : '???';
+      return `<div class="${cls}" title="${title}">
+        <div class="lp-cd-label">${dayNames[i]}</div>
+        <div class="lp-cd-icon">${icon}</div>
+      </div>`;
+    }).join('');
+    const todayCtx = CONTEXTS_DB[G.weekContexts[idx]];
+    const todayDesc = todayCtx ? `<div style="font-size:9px;color:var(--color-text-muted);font-family:var(--font-data);margin-top:5px;line-height:1.5">${todayCtx.icon} <b style="color:var(--color-text-primary)">${esc(todayCtx.name)}</b><br>${esc(todayCtx.desc)}</div>` : '';
+    calHtml = `<div>
+      <div class="section-title">Week Calendar</div>
+      <div class="lp-cal-row">${days}</div>
+      ${todayDesc}
+    </div>`;
+  }
+
+  const tierInfo = tox >= 91 ? {cls:'tier-meltdown', lbl:'☣ MELTDOWN', color:'var(--color-fail)'}
+                 : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC',   color:'var(--color-warning)'}
+                 : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 PASSIVE-AGG', color:'var(--color-text-muted)'}
+                 :              {cls:'tier-pro',      lbl:'✅ PROFESSIONAL', color:'var(--color-pass)'};
+  const tierBadge = `<div class="lp-tox-tier" style="color:${tierInfo.color};border-color:${tierInfo.color};">${tierInfo.lbl}</div>`;
+
+  return `<div class="left-panel">${statBars}${archGrid}${calHtml}${tierBadge}</div>`;
+}
+
+function renderFormulaRow(preview, wscore, target, G) {
+  const hasP    = !!preview;
+  const projTotal = wscore + (preview ? preview.score : 0);
+  const willPass  = projTotal >= target;
+  const need = Math.max(0, target - wscore);
+
+  const chipsVal = hasP ? preview.chips.toLocaleString() : (wscore > 0 ? '—' : '—');
+  const multVal  = hasP ? preview.mult.toFixed(2) + '×' : '—';
+  const scoreVal = hasP ? '$' + preview.score.toLocaleString() : (wscore > 0 ? '$' + wscore.toLocaleString() : '$0');
+
+  const chipsCls  = hasP ? 'f-val live chips' : 'f-val';
+  const multCls   = hasP ? 'f-val live mult'  : 'f-val';
+  const scoreCls  = hasP ? (willPass ? 'f-val live score win' : 'f-val live score') : 'f-val';
+
+  const toxWarn = hasP && preview.toxChecks > 0
+    ? `<div class="f-warn">☣ up to −${preview.maxToxDmg} WB risk</div>` : '';
+
+  const weekProgress = need > 0
+    ? `<div class="f-sub">need $${need.toLocaleString()} more</div>`
+    : `<div class="f-sub" style="color:var(--color-pass)">✓ target reached</div>`;
+
+  return `<div class="formula-row">
+    <div class="f-slot">
+      <div class="f-label">OUTPUT</div>
+      <div class="${chipsCls}">${chipsVal}</div>
+      <div class="f-sub">cards played</div>
+    </div>
+    <div class="f-op">×</div>
+    <div class="f-slot">
+      <div class="f-label">EFFICIENCY</div>
+      <div class="${multCls}">${multVal}</div>
+      <div class="f-sub">active bonus</div>
+    </div>
+    <div class="f-op">=</div>
+    <div class="f-result">
+      <div class="f-label">REVENUE</div>
+      <div class="${scoreCls}">${scoreVal}</div>
+      ${weekProgress}
+      ${toxWarn}
+    </div>
+  </div>`;
+}
+
+function renderActionBarNew(G, preview) {
+  const {sel, plays, discs, phase, wscore} = G;
+  const target = G.kpi();
+
+  // Deck tracker
+  const deckN = (G.deck || []).length;
+  const pileN = (G.pile || []).length;
+  const handN = (G.hand || []).length;
+  const deckTracker = `<div class="deck-tracker">
+    <div class="dt-item"><span class="dt-label">DECK</span><span style="color:var(--color-card-strategy);">${deckN}</span></div>
+    <div class="dt-sep"></div>
+    <div class="dt-item"><span class="dt-label">DISCARD</span><span style="color:var(--color-fail);">${pileN}</span></div>
+    <div class="dt-sep"></div>
+    <div class="dt-item"><span class="dt-label">HAND</span><span style="color:var(--color-text-primary);">${handN}</span></div>
+  </div>`;
+
+  if (phase === 'result') {
+    const passed = wscore >= target;
+    const bankBtn = G.plays > 0
+      ? `<button class="btn-skip-new" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} PLAYS (+${G.plays * 4} CC)</button>`
+      : '';
+    const nextBtn = passed && G.week >= TOTAL_WEEKS
+      ? `<button class="btn-confirm ready" onclick="G.openShop()">🏆 CLAIM VICTORY</button>`
+      : `<button class="btn-confirm ready" onclick="G.openShop()">${passed ? '✓ PASSED — SHOP' : '✗ FAILED — SHOP'}</button>`;
+    const skipBtn = `<button class="btn-skip-new" onclick="G.skipShop()" title="Skip Shop: +3 CC">⏭ SKIP (+3 CC)</button>`;
+    const hintCls  = passed ? 'ok' : 'bad';
+    const hintText = passed ? `PASS — $${wscore.toLocaleString()} / $${target.toLocaleString()}` : `FAIL — need $${(target-wscore).toLocaleString()} more`;
+    return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${hintText}</div>${bankBtn}${skipBtn}${nextBtn}</div>`;
+  }
+
+  // Build confirm button
+  let confirmBtn = '';
+  let hintText = '';
+  let hintCls  = '';
+  if (!sel.length) {
+    confirmBtn = `<button class="btn-confirm" disabled>Zatwierdź wybór</button>`;
+    hintText = `Select 1–${G.maxSel()} cards to play`;
+    hintCls  = '';
+  } else if (plays <= 0) {
+    confirmBtn = `<button class="btn-confirm" disabled>No plays left</button>`;
+    hintText = 'No plays remaining';
+    hintCls  = 'bad';
+  } else if (preview) {
+    const projTotal = wscore + preview.score;
+    const willPass  = projTotal >= target;
+    const scoreStr  = '+$' + preview.score.toLocaleString();
+    const pm = willPass ? ' ✓' : '';
+    const risk = preview.riskLevel;
+    if      (risk === 'LETHAL')  { confirmBtn = `<button class="btn-confirm danger"  onclick="G.playSelected()">💀 DESPERATE (${scoreStr}${pm})</button>`; hintCls = 'bad'; }
+    else if (risk === 'RISKY')   { confirmBtn = `<button class="btn-confirm risky"   onclick="G.playSelected()">⚡ RISKY (${scoreStr}${pm})</button>`;      hintCls = 'warn'; }
+    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="G.playSelected()">⚠ CAUTION (${scoreStr}${pm})</button>`;    hintCls = 'warn'; }
+    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="G.playSelected()">Zatwierdź (${scoreStr}${pm})</button>`;   hintCls = willPass ? 'ok' : ''; }
+    hintText = `${sel.length} card(s) — $${preview.score.toLocaleString()} revenue · ${risk}`;
+  } else {
+    confirmBtn = `<button class="btn-confirm ready" onclick="G.playSelected()">Zatwierdź (${sel.length} cards)</button>`;
+    hintText = `${sel.length} card(s) selected`;
+    hintCls  = '';
+  }
+
+  const discBtn = (phase === 'play' && discs > 0 && sel.length)
+    ? `<button class="btn-skip-new" onclick="G.discardSelected()">✕ DISCARD [${discs}]</button>` : '';
+  const ventBtn = (phase === 'play' && !G.pressureReleaseUsed && G.discs > 0 && G.tox > 0)
+    ? `<button class="btn-skip-new" onclick="G.releasePressure()" title="Use 1 discard — reduce Toxicity by 15%">💨 VENT</button>` : '';
+  const crisisBanner = (plays === 1 && wscore < target && phase === 'play')
+    ? `<span style="font-size:9px;color:var(--color-fail);font-family:var(--font-data);">⚡ LAST PLAY</span>` : '';
+
+  return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${crisisBanner}${hintText}</div>${discBtn}${ventBtn}${confirmBtn}</div>`;
+}
+
+function renderRightPanelNew(G) {
+  // Teammate
+  let tmHtml = `<div class="empty-slot-new">No teammate.<br>Assigned at week start.</div>`;
+  if (G.teammate && TEAMMATES_DB[G.teammate]) {
+    const tm = TEAMMATES_DB[G.teammate];
+    const curTier = G.getTeammateTier ? G.getTeammateTier() : 1;
+    const tierData = tm.tiers ? tm.tiers[curTier - 1] : null;
+    const buffText    = tierData ? tierData.buffText : tm.buffText;
+    const penaltyText = tierData ? tierData.penaltyText : tm.penaltyText;
+    const tierLabel   = tierData ? `<div class="tm-role-new" style="color:var(--color-currency);">T${curTier}: ${esc(tierData.name)}</div>` : '';
+    const loyalty = G.consecutiveSameTeammate || 0;
+    const loyaltyHtml = loyalty >= 3
+      ? `<div class="tm-loyalty-new">🤝 ${loyalty >= 7 ? 'Unbreakable Bond' : loyalty >= 5 ? 'Deep Partnership' : 'Trusted Ally'} (${loyalty} wks)</div>`
+      : '';
+    const snitchHtml = G.pendingSnitch ? `<div style="font-size:9px;color:var(--color-fail);margin-top:4px;">⚠ HR SNITCH ACTIVE</div>` : '';
+    const initials = tm.fullName.split(' ').map(w=>w[0]).join('').slice(0,2);
+    tmHtml = `<div class="tm-card-new">
+      <div class="tm-head">
+        <div class="tm-avatar" style="color:${tm.color};border-color:${tm.color}">${initials}</div>
+        <div>
+          <div class="tm-name-new" style="color:${tm.color}">${esc(tm.fullName)}</div>
+          ${tierLabel}
+        </div>
+      </div>
+      <div class="tm-buff-new">▲ ${esc(buffText)}</div>
+      <div class="tm-nerf-new">▼ ${esc(penaltyText)}</div>
+      ${loyaltyHtml}${snitchHtml}
+    </div>`;
+  }
+
+  // Perks
+  const perksHtml = (G.passives || []).length
+    ? (G.passives || []).map(p => {
+        const icon = SHOP_DB[p.itemId]?.icon || '⚡';
+        return `<div class="rp-perk-new">
+          <span style="font-size:14px;flex-shrink:0">${icon}</span>
+          <div><div class="rp-perk-name-new">${esc(p.name)}</div><div class="rp-perk-desc-new">${p.passiveType} ×${p.passiveVal}</div></div>
+        </div>`;
+      }).join('')
+    : `<div class="empty-slot-new">No perks.<br>Buy in shop after each week.</div>`;
+
+  // Desk items
+  const deskItems = G.deskItems || [];
+  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
+  const deskHtml = deskItems.length
+    ? `<div class="rp-desk-grid">${deskItems.map(d => {
+        const col = rarityColors[d.rarity] || '#aaa';
+        const isResig = d.id === 'resignation_letter';
+        const useBtn = isResig && !G.resignationLetterUsed && (G.phase === 'play' || G.phase === 'result')
+          ? `<button class="btn-skip-new" style="padding:3px 8px;font-size:9px;margin-top:4px" onclick="useResignationLetter()">USE</button>` : '';
+        return `<div class="rp-desk-item${isResig && G.resignationLetterUsed ? ' rp-desk-item-used' : ''}" title="${esc(d.name)}: ${esc(d.desc)}">
+          <div class="rp-desk-icon">${d.icon}</div>
+          <div class="rp-desk-name" style="color:${col}">${esc(d.name)}</div>
+          <div class="rp-desk-rarity" style="color:${col}">${d.rarity}</div>
+          ${useBtn}
+        </div>`;
+      }).join('')}</div>`
+    : `<div class="empty-slot-new">No desk items.<br>Earn by ending week with WB ≥75%.</div>`;
+
+  // Build name + career forecast (compact)
+  const pwr = getPowerRating(G);
+  const s = calculateFinalScore(G);
+  const tier = predictCareerTier(s.total);
+  const pwrCls = pwr >= 120 ? 'var(--color-pass)' : pwr >= 80 ? 'var(--color-currency)' : pwr >= 50 ? 'var(--color-warning)' : 'var(--color-fail)';
+  const buildInfo = `<div style="font-size:9px;font-family:var(--font-data);color:var(--color-text-muted);line-height:1.7">
+    <span style="color:var(--color-text-primary);font-weight:bold">${esc(getBuildName(G))}</span><br>
+    <span style="color:${tier.color}">T${tier.tier} ${esc(tier.title)}</span> &nbsp;·&nbsp;
+    <span style="color:${pwrCls}">PWR ${pwr}%</span><br>
+    <span style="color:var(--color-revenue)">${s.total.toLocaleString()} pts</span>
+  </div>`;
+
+  return `<div class="right-panel-outer">
+    <div>
+      <div class="section-title">Teammate</div>
+      ${tmHtml}
+    </div>
+    <div>
+      <div class="section-title">Perks</div>
+      ${perksHtml}
+    </div>
+    <div>
+      <div class="section-title">Desk <span style="color:var(--color-text-ghost);font-size:9px">(${deskItems.length}/4)</span></div>
+      ${deskHtml}
+    </div>
+    <div>
+      <div class="section-title">Build</div>
+      ${buildInfo}
+    </div>
+    ${renderForecastPanel(G)}
+  </div>`;
 }
 
 export function getPowerRating(G) {
@@ -209,8 +593,8 @@ export function renderHeader(G) {
       </div>
       <div class="hc-kpi">
         <div class="hc-kpi-row">
-          <span class="hc-kpi-lbl">WEEKLY KPI TARGET</span>
-          <span class="hc-kpi-nums${willPass ? ' pass' : ''}">${wscore} / ${target}${willPass ? ' ✓ PASS' : ''}</span>
+          <span class="hc-kpi-lbl">WEEKLY REVENUE TARGET</span>
+          <span class="hc-kpi-nums${willPass ? ' pass' : ''}">$${wscore.toLocaleString()} / $${target.toLocaleString()}${willPass ? ' ✓ PASS' : ''}</span>
         </div>
         <div class="hc-kpi-bar">
           <div class="hc-kpi-fill ${willPass ? 'pass' : pct >= 80 ? 'near' : pct >= 50 ? 'mid' : 'low'}" style="width:${pct}%"></div>
@@ -285,9 +669,9 @@ export function renderEmployeeDashboard(wb, tox, bo, preview) {
     return `<div class="ed-fc risk" style="left:${clamp(base - rW, 0, 100)}%;width:${rW}%"></div>`;
   })() : '';
 
-  const tierInfo = tox >= 91 ? {cls:'tier-meltdown', lbl:'☣ MELTDOWN ZONE', tip:'Mult ×2 | 20% auto-exhaust'}
+  const tierInfo = tox >= 91 ? {cls:'tier-meltdown', lbl:'☣ MELTDOWN ZONE', tip:'Efficiency ×2 | 20% auto-exhaust'}
                  : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC CULTURE', tip:'+1 karta/play | -1 Discard/tydzień'}
-                 : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 PASSIVE-AGGRESSIVE', tip:'STRATEGY +0.2 Mult | -1 WB/karta'}
+                 : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 PASSIVE-AGGRESSIVE', tip:'STRATEGY +0.2 Eff | -1 WB/karta'}
                  :              {cls:'tier-pro',      lbl:'✅ PROFESSIONAL', tip:'+4 WB na końcu tygodnia (jeśli Tox ≤30%)'};
   return `<div id="employee-dashboard">
     <div class="ed-title">EMPLOYEE DASHBOARD</div>
@@ -302,20 +686,14 @@ export function renderScoreMachine(p, wscore, target, G) {
   const hasP      = !!p;
   const projTotal = wscore + (p ? p.score : 0);
   const willPass  = projTotal >= target;
-  const chipsVal  = hasP ? p.chips : '—';
+  const chipsVal  = hasP ? p.chips.toLocaleString() : '—';
   const multVal   = hasP ? p.mult + '×' : '—';
-  const scoreVal  = hasP ? '???' : (wscore > 0 ? wscore : '—');
+  const scoreVal  = hasP ? '???' : (wscore > 0 ? '$' + wscore.toLocaleString() : '—');
   const chipsCls  = hasP ? 'chips' : 'idle';
   const multCls   = hasP ? 'mult'  : 'idle';
   const scoreCls  = hasP ? 'score score-hidden' : (wscore > 0 ? 'score' : 'idle');
-  let weekHtml = '';
-  if (hasP) {
-    const need = Math.max(0, target - wscore);
-    weekHtml = `<span class="sm-week"><b>${wscore}</b> / ${target}${need > 0 ? ` · need <b>${need}</b> more` : ' ✓'}</span>`;
-  } else {
-    const need = Math.max(0, target - wscore);
-    weekHtml = `<span class="sm-week"><b>${wscore}</b> / ${target}${need > 0 ? ` · need <b>${need}</b> more` : ' ✓'}</span>`;
-  }
+  const need = Math.max(0, target - wscore);
+  const weekHtml = `<span class="sm-week"><b>$${wscore.toLocaleString()}</b> / $${target.toLocaleString()}${need > 0 ? ` · need <b>$${need.toLocaleString()}</b> more` : ' ✓'}</span>`;
   const toxWarn = hasP && p.toxChecks > 0
     ? `<span class="sm-tox-warn">☣ ${p.toxChecks} tox check${p.toxChecks > 1 ? 's' : ''} · est. −${p.expectedToxDmg} / worst −${p.maxToxDmg} HP</span>`
     : '';
@@ -324,11 +702,11 @@ export function renderScoreMachine(p, wscore, target, G) {
     : '';
   return `<div id="score-machine">
     <div class="sm-displays">
-      <div class="sm-panel"><div class="sm-lbl">CHIPS</div><div class="sm-display ${chipsCls}">${chipsVal}</div></div>
+      <div class="sm-panel"><div class="sm-lbl">OUTPUT</div><div class="sm-display ${chipsCls}">${chipsVal}</div></div>
       <div class="sm-op">×</div>
-      <div class="sm-panel"><div class="sm-lbl">MULT</div><div class="sm-display ${multCls}">${multVal}</div></div>
+      <div class="sm-panel"><div class="sm-lbl">EFFICIENCY</div><div class="sm-display ${multCls}">${multVal}</div></div>
       <div class="sm-op">=</div>
-      <div class="sm-panel"><div class="sm-lbl">KPI SCORE</div><div class="sm-display ${scoreCls}">${scoreVal}</div></div>
+      <div class="sm-panel"><div class="sm-lbl">REVENUE</div><div class="sm-display ${scoreCls}">${scoreVal}</div></div>
     </div>
     <div class="sm-bottom">${weekHtml}${toxWarn}${wbWarn}</div>
   </div>`;
@@ -372,8 +750,8 @@ export function renderForecastPanel(G) {
     <details class="forecast-details">
       <summary class="rp-section-hdr forecast-summary">CAREER FORECAST ▸</summary>
       <div style="padding:4px 2px">
-        <div class="rp-proj-stat"><span>Chips</span><span>${s.chips.toLocaleString()}</span></div>
-        <div class="rp-proj-stat"><span>Avg ×</span><span>${s.avgMult}×</span></div>
+        <div class="rp-proj-stat"><span>Output</span><span>${s.chips.toLocaleString()}</span></div>
+        <div class="rp-proj-stat"><span>Avg Eff</span><span>${s.avgMult}×</span></div>
         <div class="rp-proj-stat"><span>WB</span><span style="${col(s.wbPts)}">${sign(s.wbPts)}</span></div>
         <div class="rp-proj-stat"><span>BO</span><span style="${col(s.boPts)}">${sign(s.boPts)}</span></div>
         <div class="rp-proj-divider"></div>
@@ -411,9 +789,9 @@ export function renderRightPanel(G) {
     const snitch = G.pendingSnitch ? `<div class="rp-snitch">⚠ HR SNITCH ACTIVE</div>` : '';
     const loyalty = G.consecutiveSameTeammate || 0;
     const loyaltyHtml = loyalty >= 7
-      ? `<div class="rp-tm-loyalty bond">🤝 Unbreakable Bond (${loyalty} wks) +0.6 Mult/play</div>`
-      : loyalty >= 5 ? `<div class="rp-tm-loyalty deep">🤝 Deep Partnership (${loyalty} wks) +0.4 Mult/play</div>`
-      : loyalty >= 3 ? `<div class="rp-tm-loyalty">🤝 Trusted Ally (${loyalty} wks) +0.2 Mult/play</div>`
+      ? `<div class="rp-tm-loyalty bond">🤝 Unbreakable Bond (${loyalty} wks) +0.6 Eff/play</div>`
+      : loyalty >= 5 ? `<div class="rp-tm-loyalty deep">🤝 Deep Partnership (${loyalty} wks) +0.4 Eff/play</div>`
+      : loyalty >= 3 ? `<div class="rp-tm-loyalty">🤝 Trusted Ally (${loyalty} wks) +0.2 Eff/play</div>`
       : loyalty >= 2 ? `<div class="rp-tm-loyalty dim">⏳ ${loyalty} wks together</div>` : '';
     tmHtml = `<div class="rp-teammate">
       <span class="rp-tm-portrait" style="color:${tm.color}">${tm.portrait}</span>
@@ -485,41 +863,74 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
   const idx = sel.indexOf(c.uid), isSel = idx >= 0;
   const isSynActive = preview && c.synergies.some(s => preview.activeSynergies.has(s.id));
   const fx = getEffectiveFx(c, passives || []);
-  const effects = [];
-  if (fx.chips)   effects.push(`<div class="fx c">+${fx.chips} Chips</div>`);
-  if (fx.mult)    effects.push(`<div class="fx m">+${fx.mult.toFixed(2)} Mult</div>`);
-  if (fx.tox > 0) effects.push(`<div class="fx tn">+${fx.tox}% Toxicity</div>`);
-  if (fx.wb < 0)  effects.push(`<div class="fx wn">${fx.wb} Wellbeing</div>`);
-  if (fx.tox < 0) effects.push(`<div class="fx tp">${fx.tox}% Toxicity</div>`);
-  if (fx.wb > 0)  effects.push(`<div class="fx wp">+${fx.wb} Wellbeing</div>`);
-  if (!fx.chips && !fx.mult && !fx.tox && !fx.wb) effects.push(`<div class="fx" style="color:var(--dim)">—</div>`);
-  const syns = c.synergies.map(s => {
+
+  const archConfig = {
+    PRODUCTION: {icon:'⬡', label:'Production', color:'var(--color-card-production)'},
+    STRATEGY:   {icon:'◆', label:'Strategy',   color:'var(--color-card-strategy)'},
+    CRUNCH:     {icon:'⚡', label:'Crunch',     color:'var(--color-card-crunch)'},
+    RECOVERY:   {icon:'◈', label:'Recovery',   color:'var(--color-card-recovery)'},
+  };
+  const arch = archConfig[c.archetype] || {icon:'■', label:c.archetype, color:'var(--color-text-primary)'};
+
+  // Main effect line
+  let mainHtml = '';
+  if (fx.chips && fx.mult) {
+    mainHtml = `<div class="c-main" style="color:var(--color-revenue);">+${fx.chips.toLocaleString()} Output</div>
+    <div class="c-cost" style="color:var(--color-card-strategy);">×${fx.mult.toFixed(2)} Efficiency</div>`;
+  } else if (fx.chips) {
+    mainHtml = `<div class="c-main" style="color:var(--color-revenue);">+${fx.chips.toLocaleString()} Output</div>`;
+  } else if (fx.mult) {
+    mainHtml = `<div class="c-main" style="color:var(--color-card-strategy);">×${fx.mult.toFixed(2)} Efficiency</div>`;
+  } else {
+    mainHtml = `<div class="c-main" style="color:var(--color-text-ghost);">—</div>`;
+  }
+
+  // Side effects
+  const sides = [];
+  if (fx.tox > 0) sides.push(`+${fx.tox}% <span style="color:var(--color-warning)">Toxicity</span>`);
+  if (fx.wb  < 0) sides.push(`${fx.wb} <span style="color:var(--color-fail)">Wellbeing</span>`);
+  if (fx.tox < 0) sides.push(`${fx.tox}% <span style="color:var(--color-pass)">Toxicity</span>`);
+  if (fx.wb  > 0) sides.push(`+${fx.wb} <span style="color:var(--color-pass)">Wellbeing</span>`);
+  const costHtml = sides.length ? `<div class="c-cost" style="color:var(--color-text-muted);font-size:10px;">${sides.join(' · ')}</div>` : '';
+
+  // Synergies — full text, no truncation
+  const synsHtml = c.synergies.map(s => {
     const active = preview && preview.activeSynergies.has(s.id);
-    const desc = s.desc.length > 36 ? s.desc.slice(0, 34) + '…' : s.desc;
-    return `<div class="csyn${active ? ' active' : ''}" title="${s.desc}">${active ? '⚡ ' : '★ '}${desc}</div>`;
+    return `<div class="c-passive${active ? ' syn-active' : ''}"><em>${active ? '⚡' : '★'}</em> ${esc(s.desc)}</div>`;
   }).join('');
-  const comboPos = (isSel && preview)
-    ? `<div style="font-size:8px;color:var(--dim);margin-top:3px;border-top:1px solid rgba(255,255,255,.08);padding-top:3px">${['1st','2nd','3rd','4th'][idx]} in combo</div>`
-    : '';
-  const exhaust = c.exhaust ? `<div class="cexh">⊗ EXHAUST</div>` : '';
-  const crunchFreeBadge = '';
-  const crunchFatigueBadge = (c.archetype === 'CRUNCH' && ctx.crunchCount > 0)
-    ? `<div class="crunch-fatigue-badge">⚠ +${ctx.crunchCount * 12}% Fatigue Tox</div>`
-    : '';
+
+  // Exhaust
+  const exhaustHtml = c.exhaust ? `<div class="c-exhaust">⊗ EXHAUST</div>` : '';
+
+  // Crunch fatigue
+  const crunchWarn = (c.archetype === 'CRUNCH' && ctx.crunchCount > 0)
+    ? `<div class="c-crunch-warn">⚠ +${ctx.crunchCount * 12}% Fatigue</div>` : '';
+
+  // Footer: play progress
   const cardLevel = c.level || 0;
+  const playCount = c.playCount || 0;
+  const footerText = cardLevel >= 3 ? `${playCount} plays · MAX` : `${playCount % 5}/5 ► Lv${cardLevel + 1}`;
+
   const upgCount = c.upgrades || 0;
   const upgCls = upgCount >= 3 ? ' card-up3' : upgCount === 2 ? ' card-up2' : upgCount >= 1 ? ' card-up1' : '';
-  const levelStars = cardLevel > 0 ? `<div class="card-level-stars" title="Card Level ${cardLevel}">${'★'.repeat(cardLevel)}${'☆'.repeat(3-cardLevel)}</div>` : '';
-  const playCountHint = cardLevel < 3
-    ? `<div class="card-play-count" title="Plays: ${c.playCount||0}">${(c.playCount||0) % 5}/5 ▶ Lv${cardLevel+1}</div>` : '';
-  return `<div class="card ${c.archetype}${isSel ? ' sel' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" onclick="G.toggle('${c.uid}')">
-    <div class="cbadge">${idx + 1}</div>
-    <div class="ctag">${c.archetype}</div>
-    ${levelStars}
-    <div class="cname">${c.name}</div>
-    <div class="cfx">${effects.join('')}${exhaust}</div>
-    ${syns}${comboPos}
-    ${crunchFreeBadge}${crunchFatigueBadge}${playCountHint}
+
+  // combo position hint
+  const comboPosHtml = (isSel && preview)
+    ? `<div style="font-size:8px;color:var(--color-text-ghost);margin-top:2px">${['1st','2nd','3rd','4th'][idx]} in combo</div>`
+    : '';
+
+  return `<div class="card new-card ${c.archetype}${isSel ? ' selected' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" data-uid="${c.uid}" onclick="G.toggle('${c.uid}')">
+    <div class="c-type" style="color:${arch.color};">${arch.icon} ${arch.label}</div>
+    <div class="c-name">${esc(c.name)}</div>
+    ${mainHtml}${costHtml}
+    ${synsHtml ? `<div class="c-divider"></div>${synsHtml}` : ''}
+    ${exhaustHtml}
+    <div class="c-footer">
+      <span class="c-uses">${footerText}</span>
+      ${crunchWarn}
+    </div>
+    ${comboPosHtml}
+    <div class="sel-mark">${isSel ? (idx + 1) : ''}</div>
   </div>`;
 }
 
@@ -600,17 +1011,18 @@ export function renderActions(G, preview) {
     const projTotal = wscore + score;
     const willPass = projTotal >= target;
     const pm = willPass ? ' ✓' : '';
-    if      (riskLevel === 'LETHAL')  playBtn = `<button class="btn btn-lethal"  onclick="G.playSelected()">💀 DESPERATE MOVE (+${score}${pm})</button>`;
-    else if (riskLevel === 'RISKY')   playBtn = `<button class="btn btn-risky"   onclick="G.playSelected()">⚡ RISKY PLAY (+${score}${pm})</button>`;
-    else if (riskLevel === 'CAUTION') playBtn = `<button class="btn btn-caution" onclick="G.playSelected()">⚠ CAUTIOUS PLAY (+${score}${pm})</button>`;
-    else                              playBtn = `<button class="btn btn-safe"    onclick="G.playSelected()">✓ SUBMIT WORK (+${score}${pm})</button>`;
+    const scoreStr = '+$' + score.toLocaleString();
+    if      (riskLevel === 'LETHAL')  playBtn = `<button class="btn btn-lethal"  onclick="G.playSelected()">💀 DESPERATE MOVE (${scoreStr}${pm})</button>`;
+    else if (riskLevel === 'RISKY')   playBtn = `<button class="btn btn-risky"   onclick="G.playSelected()">⚡ RISKY PLAY (${scoreStr}${pm})</button>`;
+    else if (riskLevel === 'CAUTION') playBtn = `<button class="btn btn-caution" onclick="G.playSelected()">⚠ CAUTIOUS PLAY (${scoreStr}${pm})</button>`;
+    else                              playBtn = `<button class="btn btn-safe"    onclick="G.playSelected()">✓ SUBMIT WORK (${scoreStr}${pm})</button>`;
   }
   const ms = G.maxSel ? G.maxSel() : MAX_SEL;
   const discBtn = phase === 'play'
     ? `<button class="btn btn-disc" ${discs <= 0 || !sel.length ? 'disabled' : ''} onclick="G.discardSelected()">✕ DISCARD +10/card [${discs}]</button>`
     : '';
   const crisisBanner = (plays === 1 && wscore < target && phase === 'play')
-    ? `<div class="crisis-banner">⚡ LAST PLAY — need ${target - wscore} more pts</div>` : '';
+    ? `<div class="crisis-banner">⚡ LAST PLAY — need $${(target - wscore).toLocaleString()} more revenue</div>` : '';
   const toxRiskLine = (preview && preview.toxChecks > 0 && phase === 'play')
     ? `<div class="play-tox-risk">☣ ${preview.toxChecks} tox check${preview.toxChecks > 1 ? 's' : ''} · est. −${preview.expectedToxDmg} WB · worst −${preview.maxToxDmg} WB</div>` : '';
   const ventBtn = (phase === 'play' && !G.pressureReleaseUsed && G.discs > 0 && G.tox > 0)
@@ -627,7 +1039,7 @@ export function renderLog(log, preview) {
     const tStr  = preview.toxDelta !== 0 ? ` | TOX ${preview.toxDelta > 0 ? '+' : ''}${preview.toxDelta}%` : '';
     const bStr  = preview.boDelta  !== 0 ? ` | BO +${preview.boDelta}%` : '';
     const rStr  = preview.toxChecks > 0  ? ` | ☣ up to -${preview.maxToxDmg} HP risk` : '';
-    const sumLine = `<div class="ll preview" style="color:${col}">↓ [${preview.riskLevel}] +${preview.score} Score${wbStr}${tStr}${bStr}${rStr}</div>`;
+    const sumLine = `<div class="ll preview" style="color:${col}">↓ [${preview.riskLevel}] +$${preview.score.toLocaleString()} Revenue${wbStr}${tStr}${bStr}${rStr}</div>`;
     const breakdownHtml = preview.log.reduce((acc, e, i, arr) => {
       acc += `<div class="ll ${e.cls}">${esc(e.t)}</div>`;
       if (e.cls === 'sc' && i < arr.length - 1) acc += `<div class="ll-sep"></div>`;
@@ -646,7 +1058,7 @@ export function renderLog(log, preview) {
     const tStr  = preview.toxDelta !== 0 ? ` | TOX ${preview.toxDelta > 0 ? '+' : ''}${preview.toxDelta}%` : '';
     const bStr  = preview.boDelta  !== 0 ? ` | BO +${preview.boDelta}%` : '';
     const rStr  = preview.toxChecks > 0  ? ` | ☣ up to -${preview.maxToxDmg} HP risk` : '';
-    previewLine = `<div class="ll preview" style="color:${col}">↓ [${preview.riskLevel}] +${preview.score} Score${wbStr}${tStr}${bStr}${rStr}</div>`;
+    previewLine = `<div class="ll preview" style="color:${col}">↓ [${preview.riskLevel}] +$${preview.score.toLocaleString()} Revenue${wbStr}${tStr}${bStr}${rStr}</div>`;
   }
   const logHtml = log.slice(-80).filter(e => !e.hidden).reduce((acc, e, i, arr) => {
     acc += `<div class="ll ${e.cls}">${esc(e.t)}</div>`;
@@ -666,7 +1078,7 @@ export function _fxBadges(fx) {
   if (fx.bo)       parts.push([`${fx.bo > 0 ? '+' : ''}${fx.bo}% BO`,       fx.bo   < 0]);
   if (fx.coins)    parts.push([`${fx.coins > 0 ? '+' : ''}${fx.coins} CC`,  fx.coins > 0]);
   if (fx.kpiMult)  parts.push([`KPI ×${fx.kpiMult}`,                         fx.kpiMult < 1]);
-  if (fx.permMult) parts.push([`+${fx.permMult}× Perm Mult`,                 true]);
+  if (fx.permMult) parts.push([`+${fx.permMult}× Perm Eff`,                  true]);
   return parts.map(([txt, good]) => `<span class="boss-fx-${good ? 'pos' : 'neg'}">${txt}</span>`).join('');
 }
 
@@ -779,8 +1191,8 @@ export function renderCardOverlay(G, cards, actionFn, emptyMsg, mode = 'remove')
   const sortBar = `<div class="oc-sort-row">
     <span class="oc-sort-label">Sort:</span>
     <button class="oc-sort-btn${sortKey==='name'?' oc-sort-active':''}" onclick="G.setOverlaySort('name')">Name</button>
-    <button class="oc-sort-btn${sortKey==='chips'?' oc-sort-active':''}" onclick="G.setOverlaySort('chips')">Chips ↓</button>
-    <button class="oc-sort-btn${sortKey==='mult'?' oc-sort-active':''}" onclick="G.setOverlaySort('mult')">Mult ↓</button>
+    <button class="oc-sort-btn${sortKey==='chips'?' oc-sort-active':''}" onclick="G.setOverlaySort('chips')">Output ↓</button>
+    <button class="oc-sort-btn${sortKey==='mult'?' oc-sort-active':''}" onclick="G.setOverlaySort('mult')">Eff ↓</button>
   </div>`;
   const cardsHtml = sorted.map(c => {
     const lvl   = c.level || 0;
@@ -790,8 +1202,8 @@ export function renderCardOverlay(G, cards, actionFn, emptyMsg, mode = 'remove')
     const lvlBadge = lvl > 0 ? `<span class="oc-lv-badge lv${lvl}">LV${lvl}</span>` : '';
     const stars = lvl > 0 ? `<span class="oc-stars">${'★'.repeat(lvl)}</span>` : '';
     const fxParts = [
-      c.fx.chips > 0 ? `<span class="oc-fx-chip">🔵 ${c.fx.chips} Chips</span>` : '',
-      c.fx.mult  > 0 ? `<span class="oc-fx-mult">🔴 ×${c.fx.mult.toFixed(2)} Mult</span>` : '',
+      c.fx.chips > 0 ? `<span class="oc-fx-chip">🔵 ${c.fx.chips.toLocaleString()} Output</span>` : '',
+      c.fx.mult  > 0 ? `<span class="oc-fx-mult">🔴 ×${c.fx.mult.toFixed(2)} Eff</span>` : '',
       c.fx.tox   > 0 ? `<span class="oc-fx-tox">☣ +${c.fx.tox}% Tox</span>` : '',
       c.fx.tox   < 0 ? `<span class="oc-fx-toxg">☣ ${c.fx.tox}% Tox</span>` : '',
       c.fx.wb    > 0 ? `<span class="oc-fx-wb">❤ +${c.fx.wb} WB</span>` : '',
@@ -801,7 +1213,7 @@ export function renderCardOverlay(G, cards, actionFn, emptyMsg, mode = 'remove')
       ? `<div class="oc-upgrade-preview">
           <span class="oc-fx-chip">🔵 ${(c.fx.chips||0)+80}</span>
           <span class="oc-fx-mult">🔴 ×${((c.fx.mult||0)+0.3).toFixed(2)}</span>
-          <span class="oc-upgrade-delta">↑ +80 Chips / +0.3 Mult</span>
+          <span class="oc-upgrade-delta">↑ +80 Output / +0.3 Eff</span>
         </div>` : '';
     const playInfo = c.playCount !== undefined
       ? `<div class="oc-plays">${c.playCount||0} plays${lvl < 3 ? ` · ${(c.playCount||0)%5}/5 → Lv${lvl+1}` : ' · MAX LVL'}</div>` : '';
@@ -833,11 +1245,11 @@ export function renderTeammateChoice(G) {
     const isCurrent = id === G.loyaltyTeammateId;
     const streak = isCurrent ? (G.consecutiveSameTeammate || 0) : 0;
     const loyaltyTag = streak >= 7
-      ? `<div class="tmc-loyalty bond">🤝 Unbreakable Bond (${streak} wks) — +0.6 Mult/play</div>`
+      ? `<div class="tmc-loyalty bond">🤝 Unbreakable Bond (${streak} wks) — +0.6 Eff/play</div>`
       : streak >= 5
-      ? `<div class="tmc-loyalty deep">🤝 Deep Partnership (${streak} wks) — +0.4 Mult/play</div>`
+      ? `<div class="tmc-loyalty deep">🤝 Deep Partnership (${streak} wks) — +0.4 Eff/play</div>`
       : streak >= 3
-      ? `<div class="tmc-loyalty">🤝 Trusted Ally (${streak} wks) — +0.2 Mult/play</div>`
+      ? `<div class="tmc-loyalty">🤝 Trusted Ally (${streak} wks) — +0.2 Eff/play</div>`
       : streak >= 2
       ? `<div class="tmc-loyalty dim">⏳ ${streak} wks together — ${3 - streak} more for Trusted Ally</div>`
       : streak === 1
@@ -854,7 +1266,7 @@ export function renderTeammateChoice(G) {
       const bonus = toxTier === 2
         ? fmt1(Math.floor(G.tox / 20) * 0.5)
         : fmt1(Math.min(10, Math.floor(G.tox / 10) * 1.0));
-      garyPreview = `<div class="tmc-gary-preview">≈ +${bonus} Mult @ ${G.tox}% TOX now</div>`;
+      garyPreview = `<div class="tmc-gary-preview">≈ +${bonus} Eff @ ${G.tox}% TOX now</div>`;
     }
     return `<div class="tmc-card${isCurrent && streak >= 2 ? ' returning' : ''}" onclick="G.chooseTeammate('${id}')">
       <div class="tmc-portrait" style="color:${tm.color}">${tm.portrait}</div>
@@ -918,8 +1330,8 @@ function _draftBuildHint(card, G) {
 export function renderDraft(G) {
   const cardsHtml = G.draftPool.map(c => {
     const fxLines = [
-      c.fx.chips ? `🔵 +${c.fx.chips} Chips` : '',
-      c.fx.mult  ? `🔴 +${c.fx.mult}× Mult` : '',
+      c.fx.chips ? `🔵 +${c.fx.chips} Output` : '',
+      c.fx.mult  ? `🔴 +${c.fx.mult}× Eff` : '',
       c.fx.tox > 0 ? `☣ +${c.fx.tox}% Tox` : '',
       c.fx.tox < 0 ? `☣ ${c.fx.tox}% Tox` : '',
       c.fx.wb > 0  ? `❤ +${c.fx.wb} WB` : '',
@@ -957,8 +1369,8 @@ export function renderDraft(G) {
 export function renderTargetedDraw(G) {
   const cardsHtml = (G.targetedDrawOptions || []).map(c => {
     const fxLines = [
-      c.fx.chips   ? `🔵 +${c.fx.chips} Chips` : '',
-      c.fx.mult    ? `🔴 +${c.fx.mult}× Mult`  : '',
+      c.fx.chips   ? `🔵 +${c.fx.chips} Output` : '',
+      c.fx.mult    ? `🔴 +${c.fx.mult}× Eff`   : '',
       c.fx.tox > 0 ? `☣ +${c.fx.tox}% Tox`   : '',
       c.fx.tox < 0 ? `☣ ${c.fx.tox}% Tox`    : '',
       c.fx.wb  > 0 ? `❤ +${c.fx.wb} WB`      : '',
@@ -1021,17 +1433,17 @@ export function renderScoring(G) {
         <div class="sc-cards-row">${cardBadges}</div>
         <div class="sm-displays">
           <div class="sm-panel">
-            <div class="sm-lbl">CHIPS</div>
+            <div class="sm-lbl">OUTPUT</div>
             <div class="sm-display sc-chips-color" id="sc-chips-val">0</div>
           </div>
           <div class="sm-op sc-f-op" id="sc-op-x">×</div>
           <div class="sm-panel" id="sc-mult-block">
-            <div class="sm-lbl">MULT</div>
+            <div class="sm-lbl">EFFICIENCY</div>
             <div class="sm-display sc-mult-color" id="sc-mult-val">?</div>
           </div>
           <div class="sm-op sc-f-op" id="sc-op-eq">=</div>
           <div class="sm-panel" id="sc-score-block">
-            <div class="sm-lbl">SCORE</div>
+            <div class="sm-lbl">REVENUE</div>
             <div class="sm-display sc-score-color" id="sc-score-val">?</div>
           </div>
         </div>
@@ -1044,24 +1456,13 @@ export function renderScoring(G) {
       </div>
     </div>`;
 
-  return `
-    ${renderHeader(G)}
-    <div id="main-layout" class="scoring-mode">
-      <div id="main-col">
-        <div id="top-row">
-          ${renderEmployeeDashboard(wb, tox, bo, null)}
-          ${scoringMachine}
-          ${renderActions(G, null)}
-        </div>
-        ${renderHand(hand, [], null, exhausted, passives, G)}
-        <div id="hand-resize-handle" onmousedown="startHandResize(event)"></div>
-        <div id="bottom-row">
-          ${renderDeckPanel(G)}
-          ${renderLog(log, null)}
-        </div>
-      </div>
-      ${renderRightPanel(G)}
-    </div>`;
+  // Scoring uses a centered layout (no 3-col — scoring machine takes center stage)
+  return `<div style="display:flex;flex-direction:column;height:100%;align-items:center;justify-content:center;gap:16px;padding:20px">
+    ${scoringMachine}
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;max-width:700px">
+      ${hand.map(c => renderCard(c, [], null, passives, {})).join('')}
+    </div>
+  </div>`;
 }
 
 export function renderUpgradeResult(G) {
@@ -1113,21 +1514,21 @@ export function renderUpgradeResult(G) {
         <div class="oc-name">${esc(card.name)}</div>
         ${card.flavor ? `<div class="oc-flavor">"${esc(card.flavor)}"</div>` : ''}
         <div class="oc-fx-row">
-          ${newChips > 0 ? `<span class="oc-fx-chip">🔵 ${newChips} Chips</span>` : ''}
-          ${newMult  > 0 ? `<span class="oc-fx-mult">🔴 ×${newMult.toFixed(2)} Mult</span>` : ''}
+          ${newChips > 0 ? `<span class="oc-fx-chip">🔵 ${newChips} Output</span>` : ''}
+          ${newMult  > 0 ? `<span class="oc-fx-mult">🔴 ×${newMult.toFixed(2)} Eff</span>` : ''}
         </div>
       </div>
     </div>
     <div class="upgr-compare">
       <div class="upgr-cmp-row">
-        <span class="upgr-cmp-label">Chips</span>
+        <span class="upgr-cmp-label">Output</span>
         <span class="upgr-cmp-before">${from.chips}</span>
         <span class="upgr-cmp-arrow">→</span>
         <span class="upgr-cmp-after upgr-cmp-chips">${newChips}</span>
         <span class="upgr-cmp-delta" style="color:${tier.color};border-color:${tier.color}60">+${tier.chips}</span>
       </div>
       <div class="upgr-cmp-row">
-        <span class="upgr-cmp-label">Mult</span>
+        <span class="upgr-cmp-label">Efficiency</span>
         <span class="upgr-cmp-before">×${from.mult.toFixed(2)}</span>
         <span class="upgr-cmp-arrow">→</span>
         <span class="upgr-cmp-after upgr-cmp-mult">×${newMult.toFixed(2)}</span>
@@ -1180,7 +1581,7 @@ export function renderShop(G) {
     return `<div class="draft-screen">
       <div class="dr-header">
         <div class="dr-title">⬆️ PERFORMANCE UPGRADE</div>
-        <div class="dr-sub">Choose a card to permanently upgrade — +80 Chips &amp; +0.3 Mult added to base stats</div>
+        <div class="dr-sub">Choose a card to permanently upgrade — +80 Output &amp; +0.3 Eff added to base stats</div>
       </div>
       <div class="oc-grid">${renderCardOverlay(G, allCards, 'G.upgradeCard', 'No cards available to upgrade.', 'upgrade')}</div>
       <div class="dr-skip-row"><button class="dr-skip-btn" onclick="G.cancelAction()">✕ Cancel</button></div>
@@ -1258,7 +1659,7 @@ export function renderShop(G) {
     ? `<div class="sh2-installed" style="color:#80ffa8">💼 Held: ${G.heldCards.map(c => `<span class="sp-tag">${c.name}</span>`).join('')}</div>`
     : '';
   const meltdownAdvisory = G.tox >= 91
-    ? `<div class="meltdown-advisory" style="margin:6px 0 10px">☣ MELTDOWN ZONE — Mult ×2 all plays · 20% auto-exhaust risk per card</div>`
+    ? `<div class="meltdown-advisory" style="margin:6px 0 10px">☣ MELTDOWN ZONE — Efficiency ×2 all plays · 20% auto-exhaust risk per card</div>`
     : '';
   const shredCost = G.freeRemovalUsed ? 3 : 0;
   const canAffordShred = shredCost === 0 || G.coins >= shredCost;
@@ -1282,7 +1683,7 @@ export function renderShop(G) {
     <div class="dr-cards">${cardsHtml || '<div style="color:var(--dim);padding:20px;font:12px Courier New">Shop is empty.</div>'}</div>
     <div class="sh2-actions">
       <button class="dr-skip-btn" ${canAffordShred ? '' : 'disabled'} onclick="G.startRemoval()">${shredLabel}</button>
-      <button class="sh2-upgrade-btn" ${canAffordUpgrade ? '' : 'disabled'} onclick="G.buyItem('sh_upgrade')" title="+80 Chips &amp; +0.3 Mult added permanently to 1 card">${upgradeLabel}</button>
+      <button class="sh2-upgrade-btn" ${canAffordUpgrade ? '' : 'disabled'} onclick="G.buyItem('sh_upgrade')" title="+80 Output &amp; +0.3 Eff added permanently to 1 card">${upgradeLabel}</button>
     </div>
     ${passiveList}${heldList}
     <div class="sh2-footer">
