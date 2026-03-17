@@ -14,7 +14,7 @@ export function generateShareText(G, s, career, achievements) {
     `🏆 ${tier.title} (Tier ${tier.tier}/10)`,
     `📈 Raise: +${raise}%  |  💯 Score: ${s.total.toLocaleString()} pts`,
     line,
-    `⚡ Chips: ${s.chips.toLocaleString()}  |  ×${s.avgMult} avg mult`,
+    `⚡ Output: ${s.chips.toLocaleString()}  |  ×${s.avgMult} avg eff`,
     `💚 WB: ${G.wb}%  |  🔥 BO: ${G.bo}%  |  ☢ Peak TOX: ${G.peakTox}%`,
     `${end}`,
     line,

@@ -60,8 +60,8 @@ export function chooseTeammate(id) {
   // Loyalty tracking
   if (id === this.loyaltyTeammateId) {
     this.consecutiveSameTeammate++;
-    if (this.consecutiveSameTeammate === 3) this.addLog('sy', `> 🤝 Trusted Ally: ${TEAMMATES_DB[id]?.name} — 3 weeks together. +0.2 Mult/play`);
-    else if (this.consecutiveSameTeammate === 5) this.addLog('sy', `> 🤝 Deep Partnership: ${TEAMMATES_DB[id]?.name} — 5 weeks together. +0.4 Mult/play`);
+    if (this.consecutiveSameTeammate === 3) this.addLog('sy', `> 🤝 Trusted Ally: ${TEAMMATES_DB[id]?.name} — 3 weeks together. +0.2 Eff/play`);
+    else if (this.consecutiveSameTeammate === 5) this.addLog('sy', `> 🤝 Deep Partnership: ${TEAMMATES_DB[id]?.name} — 5 weeks together. +0.4 Eff/play`);
   } else {
     this.consecutiveSameTeammate = 1;
     this.loyaltyTeammateId = id;
@@ -243,13 +243,13 @@ export function _processEndOfWeekStats() {
     if (this.wscore >= this.kpi() * 2) {
       this.permMult = fmt1((this.permMult || 0) + 0.5);
       this.justBreakthrough = true;
-      this.addLog('sy', `> 💥 BREAKTHROUGH! Score ${this.wscore} ≥ 2× KPI — +0.5 permanent Mult → ${this.permMult}×`);
+      this.addLog('sy', `> 💥 BREAKTHROUGH! Revenue $${this.wscore.toLocaleString()} ≥ 2× Target — +0.5 permanent Eff → ${this.permMult}×`);
     }
     // SCALE_ON_KPI passive: each KPI pass → +0.3 perm Mult
     for (const p of this.passives) {
       if (p.passiveType === 'SCALE_ON_KPI') {
         this.permMult = fmt1((this.permMult || 0) + p.passiveVal);
-        this.addLog('sy', `> 📈 [${p.name}] KPI passed — +${p.passiveVal} perm Mult → ${this.permMult}×`);
+        this.addLog('sy', `> 📈 [${p.name}] KPI passed — +${p.passiveVal} perm Eff → ${this.permMult}×`);
       }
     }
     if (this.checkGameEndConditions(passed)) return false;
@@ -668,7 +668,7 @@ export function _processDeskItemWeekEnd(passed) {
     const allFour = ['PRODUCTION','STRATEGY','CRUNCH','RECOVERY'].every(a => (wa[a] || 0) >= 1);
     if (allFour) {
       this.permMult = fmt1((this.permMult || 0) + 0.3);
-      this.addLog('sy', `> 🖊️ [Whiteboard] All 4 archetypes used this week — +0.3 perm Mult → ${this.permMult}×`);
+      this.addLog('sy', `> 🖊️ [Whiteboard] All 4 archetypes used this week — +0.3 perm Eff → ${this.permMult}×`);
     }
   }
   // nameplate: pass → +5 coins
@@ -679,12 +679,12 @@ export function _processDeskItemWeekEnd(passed) {
   // company_mug: pass → +0.1 perm mult
   if (desk('company_mug') && passed) {
     this.permMult = fmt1((this.permMult || 0) + 0.1);
-    this.addLog('sy', `> 🏆 [Company Mug] KPI passed — +0.1 perm Mult → ${this.permMult}×`);
+    this.addLog('sy', `> 🏆 [Company Mug] KPI passed — +0.1 perm Eff → ${this.permMult}×`);
   }
   // mouse_pad: tox ≤ 10 → +0.5 perm mult
   if (desk('mouse_pad') && this.tox <= 10) {
     this.permMult = fmt1((this.permMult || 0) + 0.5);
-    this.addLog('sy', `> 🖱️ [Mouse Pad] Clean week (Tox ${this.tox}%) — +0.5 perm Mult → ${this.permMult}×`);
+    this.addLog('sy', `> 🖱️ [Mouse Pad] Clean week (Tox ${this.tox}%) — +0.5 perm Eff → ${this.permMult}×`);
   }
 }
 

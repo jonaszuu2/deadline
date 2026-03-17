@@ -8,12 +8,12 @@ export const DESK_ITEMS_DB = {
   // ── COMMON ──────────────────────────────────────────
   coffee_mug: {
     id:'coffee_mug', name:'Coffee Mug', icon:'☕', rarity:'COMMON',
-    desc:'First play each week: +50 Chips.',
+    desc:'First play each week: +50 Output.',
     flavor:"Lukewarm. Bought at 7am. Undrinkable by 7:05.",
   },
   sticky_notes: {
     id:'sticky_notes', name:'Sticky Notes', icon:'🟨', rarity:'COMMON',
-    desc:'Playing 3 cards at once: +20 Chips per card beyond 2.',
+    desc:'Playing 3 cards at once: +20 Output per card beyond 2.',
     flavor:"A wall of yellow. 90% are 'TODO: handle this later'.",
   },
   desk_fan: {
@@ -23,38 +23,38 @@ export const DESK_ITEMS_DB = {
   },
   stapler: {
     id:'stapler', name:'Stapler', icon:'🔩', rarity:'COMMON',
-    desc:'Playing exactly 2 cards: +30 bonus Chips.',
+    desc:'Playing exactly 2 cards: +30 bonus Output.',
     flavor:"Has never been refilled. Somehow still works.",
   },
   paper_clip: {
     id:'paper_clip', name:'Paper Clip Chain', icon:'📎', rarity:'COMMON',
-    desc:'+5 Chips per card remaining in hand (not played this turn).',
+    desc:'+5 Output per card remaining in hand (not played this turn).',
     flavor:"Hand made. 47 links. 3 hours of your life.",
   },
   stress_ball: {
     id:'stress_ball', name:'Stress Ball', icon:'🔴', rarity:'COMMON',
-    desc:'Wellbeing < 40%: +0.5 bonus Mult on this play.',
+    desc:'Wellbeing < 40%: +0.5 bonus Eff on this play.',
     flavor:"Given by HR after the restructure. Feels like an apology.",
   },
   calendar: {
     id:'calendar', name:'Wall Calendar', icon:'📅', rarity:'COMMON',
-    desc:'PRODUCTION cards: +[current week number] bonus Chips each.',
+    desc:'PRODUCTION cards: +[current week number] bonus Output each.',
     flavor:"The cats in each month seem increasingly judgemental.",
   },
   whiteboard: {
     id:'whiteboard', name:'Whiteboard', icon:'🖊️', rarity:'COMMON',
-    desc:'End of week: all 4 archetypes used ≥1× → +0.3 permanent Mult.',
+    desc:'End of week: all 4 archetypes used ≥1× → +0.3 permanent Eff.',
     flavor:"Covered in diagrams no one remembers drawing.",
   },
   // ── UNCOMMON ────────────────────────────────────────
   rubber_duck: {
     id:'rubber_duck', name:'Rubber Duck', icon:'🦆', rarity:'UNCOMMON',
-    desc:"Solo play (1 card only): that play's Chips ×2.",
+    desc:"Solo play (1 card only): that play's Output ×2.",
     flavor:"Your only functional colleague. Tells HR nothing.",
   },
   desk_lamp: {
     id:'desk_lamp', name:'Desk Lamp', icon:'💡', rarity:'UNCOMMON',
-    desc:'STRATEGY cards: +15 bonus Chips each.',
+    desc:'STRATEGY cards: +15 bonus Output each.',
     flavor:"Bought for ambience. Now essential. Won't work without it.",
   },
   nameplate: {
@@ -64,7 +64,7 @@ export const DESK_ITEMS_DB = {
   },
   inbox_tray: {
     id:'inbox_tray', name:'Inbox Tray', icon:'📥', rarity:'UNCOMMON',
-    desc:'Playing 3+ cards at once: +0.3 bonus Mult.',
+    desc:'Playing 3+ cards at once: +0.3 bonus Eff.',
     flavor:"Full. Always. You process one email a fortnight.",
   },
   fidget_spinner: {
@@ -74,12 +74,12 @@ export const DESK_ITEMS_DB = {
   },
   mouse_pad: {
     id:'mouse_pad', name:'Motivational Mouse Pad', icon:'🖱️', rarity:'UNCOMMON',
-    desc:'End of week: Toxicity ≤10% → +0.5 permanent Mult.',
+    desc:'End of week: Toxicity ≤10% → +0.5 permanent Eff.',
     flavor:'"HUSTLE HARDER" — says the man who left at 3pm.',
   },
   company_mug: {
     id:'company_mug', name:'Company Award Mug', icon:'🏆', rarity:'UNCOMMON',
-    desc:'Each KPI pass: +0.1 permanent Mult (stacks each week).',
+    desc:'Each KPI pass: +0.1 permanent Eff (stacks each week).',
     flavor:"Employee of Q3, 2018. Still coasting on it.",
   },
   // ── RARE ────────────────────────────────────────────
@@ -90,43 +90,43 @@ export const DESK_ITEMS_DB = {
   },
   hourglass: {
     id:'hourglass', name:'Hourglass', icon:'⏳', rarity:'RARE',
-    desc:'Last play of the week (1 play remaining): Chips ×1.5.',
+    desc:'Last play of the week (1 play remaining): Revenue ×1.5.',
     flavor:"Ornamental. Time-keeping responsibility outsourced to phone.",
   },
   cactus: {
     id:'cactus', name:'Cactus', icon:'🌵', rarity:'RARE',
-    desc:'Tox ≥60%: +50 bonus Chips/card. Tox ≥90%: +120 Chips/card instead.',
+    desc:'Tox ≥60%: +50 bonus Output/card. Tox ≥90%: +120 Output/card instead.',
     flavor:"The one plant that thrived in your environment. Relatable.",
   },
   whitenoise_machine: {
     id:'whitenoise_machine', name:'White Noise Machine', icon:'🔊', rarity:'RARE',
-    desc:'RECOVERY cards: +0.2 bonus Mult each.',
+    desc:'RECOVERY cards: +0.2 bonus Eff each.',
     flavor:"Drowns out Gary. Not legally. But effectively.",
   },
   red_stapler: {
     id:'red_stapler', name:'Red Stapler', icon:'❤️', rarity:'RARE',
-    desc:"First play of week + first card is PRODUCTION: +100 Chips.",
+    desc:"First play of week + first card is PRODUCTION: +100 Output.",
     flavor:"Milton's, actually. Don't touch it. He knows.",
   },
   action_figure: {
     id:'action_figure', name:'Action Figure', icon:'🧸', rarity:'RARE',
-    desc:'Wellbeing < 50%: +0.3 bonus Mult on this play.',
+    desc:'Wellbeing < 50%: +0.3 bonus Eff on this play.',
     flavor:"Bought at peak desperation. Ironically, helps.",
   },
   // ── LEGENDARY ───────────────────────────────────────
   golden_mug: {
     id:'golden_mug', name:'Golden Mug', icon:'🥇', rarity:'LEGENDARY',
-    desc:'Every 5th play of the run: Chips ×2 on that play.',
+    desc:'Every 5th play of the run: Revenue ×2 on that play.',
     flavor:'"Sales Champion Q2" — a title held for 9 minutes.',
   },
   org_chart: {
     id:'org_chart', name:'Org Chart', icon:'🗺️', rarity:'LEGENDARY',
-    desc:'Each play: +0.2 Mult per unique archetype in the combo (max +0.8).',
+    desc:'Each play: +0.2 Eff per unique archetype in the combo (max +0.8).',
     flavor:"A document that causes more confusion than it solves. Classic.",
   },
   broken_printer: {
     id:'broken_printer', name:'Broken Printer', icon:'🖨️', rarity:'LEGENDARY',
-    desc:'A play that generates 0 Chips: +6 Coins and −10 Tox.',
+    desc:'A play that generates 0 Output: +6 Coins and −10 Tox.',
     flavor:"Error 47: Success. The printer now works on its own terms.",
   },
   resignation_letter: {

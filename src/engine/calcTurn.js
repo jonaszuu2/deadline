@@ -65,8 +65,8 @@ export function evalSyn(syn, acc, log, snap, gs) {
     acc.mult += unique * p.per;
   }
   if (type === 'MULT_PER_STAT') acc.mult += Math.floor((snap[p.stat] || 0) / p.div) * p.per;
-  if (type === 'SCALE_CHIPS') { if (acc.scaleLog) acc.scaleLog.push(`CHIPS ×${p.v}`); acc.chips = Math.round(acc.chips * p.v); }
-  if (type === 'SCALE_MULT')  { if (acc.scaleLog) acc.scaleLog.push(`MULT ×${p.v}`);  acc.mult  = Number(fmt1(acc.mult * p.v)); }
+  if (type === 'SCALE_CHIPS') { if (acc.scaleLog) acc.scaleLog.push(`OUTPUT ×${p.v}`); acc.chips = Math.round(acc.chips * p.v); }
+  if (type === 'SCALE_MULT')  { if (acc.scaleLog) acc.scaleLog.push(`EFF ×${p.v}`);   acc.mult  = Number(fmt1(acc.mult * p.v)); }
   return true;
 }
 
@@ -112,15 +112,15 @@ export function calcTurn(cards, ctx) {
   // ── Pre-play bonuses ──────────────────────────────────
   if (discardComboMult > 0) {
     acc.mult += discardComboMult;
-    lg('sy', `  ♻ [Batch Discard] Consuming +${fmt1(discardComboMult)}× stacked Mult`);
+    lg('sy', `  ♻ [Batch Discard] Consuming +${fmt1(discardComboMult)}× stacked Eff`);
   }
   if (permMult > 0) {
     acc.mult += permMult;
-    lg('sy', `  ★ [Boss Bonus] +${fmt1(permMult)}× Permanent Mult`);
+    lg('sy', `  ★ [Boss Bonus] +${fmt1(permMult)}× Permanent Eff`);
   }
   // Context flat bonuses
-  if (ctxMods.extraMult)  { acc.mult  += ctxMods.extraMult;  lg('sy', `  📋 [Context] +${fmt1(ctxMods.extraMult)}× Mult`); }
-  if (ctxMods.extraChips) { acc.chips += ctxMods.extraChips; lg('ch', `  📋 [Context] +${ctxMods.extraChips} Chips`); }
+  if (ctxMods.extraMult)  { acc.mult  += ctxMods.extraMult;  lg('sy', `  📋 [Context] +${fmt1(ctxMods.extraMult)}× Eff`); }
+  if (ctxMods.extraChips) { acc.chips += ctxMods.extraChips; lg('ch', `  📋 [Context] +${ctxMods.extraChips} Output`); }
 
   // ── Desk Item pre-play effects ────────────────────────
   if (desk('desk_fan') && tox >= 50) {
@@ -129,60 +129,60 @@ export function calcTurn(cards, ctx) {
   }
   if (desk('stress_ball') && wb < 40) {
     acc.mult += 0.5;
-    lg('mu', `  🔴 [Stress Ball] Hanging on — WB ${wb}% < 40%: +0.5 Mult`);
+    lg('mu', `  🔴 [Stress Ball] Hanging on — WB ${wb}% < 40%: +0.5 Eff`);
   }
   if (desk('action_figure') && wb < 50) {
     acc.mult += 0.3;
-    lg('mu', `  🧸 [Action Figure] Low WB motivation — +0.3 Mult`);
+    lg('mu', `  🧸 [Action Figure] Low WB motivation — +0.3 Eff`);
   }
   if (desk('coffee_mug') && firstCardThisWeek) {
     acc.chips += 50;
-    lg('ch', `  ☕ [Coffee Mug] First play this week — +50 Chips`);
+    lg('ch', `  ☕ [Coffee Mug] First play this week — +50 Output`);
   }
   if (desk('paper_clip') && handSize > 0) {
     const bonus = handSize * 5;
     acc.chips += bonus;
-    lg('ch', `  📎 [Paper Clip] ${handSize} cards in hand — +${bonus} Chips`);
+    lg('ch', `  📎 [Paper Clip] ${handSize} cards in hand — +${bonus} Output`);
   }
   if (desk('stapler') && cards.length === 2) {
     acc.chips += 30;
-    lg('ch', `  🔩 [Stapler] Exactly 2 cards — +30 Chips`);
+    lg('ch', `  🔩 [Stapler] Exactly 2 cards — +30 Output`);
   }
   if (desk('sticky_notes') && cards.length > 2) {
     const extra = (cards.length - 2) * 20;
     acc.chips += extra;
-    lg('ch', `  🟨 [Sticky Notes] ${cards.length} cards — +${extra} Chips`);
+    lg('ch', `  🟨 [Sticky Notes] ${cards.length} cards — +${extra} Output`);
   }
   if (desk('inbox_tray') && cards.length >= 3) {
     acc.mult += 0.3;
-    lg('mu', `  📥 [Inbox Tray] 3+ cards — +0.3 Mult`);
+    lg('mu', `  📥 [Inbox Tray] 3+ cards — +0.3 Eff`);
   }
-  // Org Chart: +0.2 Mult per unique archetype in combo
+  // Org Chart: +0.2 Eff per unique archetype in combo
   if (desk('org_chart')) {
     const unique = new Set(cards.map(c => c.archetype)).size;
     if (unique > 0) {
       const orgBonus = unique * 0.2;
       acc.mult += orgBonus;
-      lg('mu', `  🗺️ [Org Chart] ${unique} unique archetype${unique > 1 ? 's' : ''} — +${fmt1(orgBonus)} Mult`);
+      lg('mu', `  🗺️ [Org Chart] ${unique} unique archetype${unique > 1 ? 's' : ''} — +${fmt1(orgBonus)} Eff`);
     }
   }
-  // Cactus: bonus chips per card based on tox
+  // Cactus: bonus Output per card based on tox
   if (desk('cactus')) {
     const cactusPer = tox >= 90 ? 120 : tox >= 60 ? 50 : 0;
     if (cactusPer > 0) {
       const cactusBonus = cactusPer * cards.length;
       acc.chips += cactusBonus;
-      lg('ch', `  🌵 [Cactus] Tox ${tox}% — +${cactusPer}×${cards.length} = +${cactusBonus} Chips`);
+      lg('ch', `  🌵 [Cactus] Tox ${tox}% — +${cactusPer}×${cards.length} = +${cactusBonus} Output`);
     }
   }
-  // Hourglass: last play of week → Chips ×1.5 (applied after card loop)
-  // Golden Mug: every 5th total play → Chips ×2 (applied after card loop)
+  // Hourglass: last play of week → Revenue ×1.5 (applied after card loop)
+  // Golden Mug: every 5th total play → Revenue ×2 (applied after card loop)
 
   // TOX_TO_CHIPS passive: +passiveVal Chips per 10% Tox above 30%
   for (const p of passives) {
     if (p.passiveType === 'TOX_TO_CHIPS' && tox > 30) {
       const toxBonus = Math.floor((tox - 30) / 10) * p.passiveVal;
-      if (toxBonus > 0) { acc.chips += toxBonus; lg('ch', `  ★ [${p.name}] Tox ${tox}% — +${toxBonus} Chips`); }
+      if (toxBonus > 0) { acc.chips += toxBonus; lg('ch', `  ★ [${p.name}] Tox ${tox}% — +${toxBonus} Output`); }
     }
   }
 
@@ -191,23 +191,23 @@ export function calcTurn(cards, ctx) {
   if (teammate === 'gary') {
     if (tmTier === 2) {
       const tb = Math.floor(tox / 20) * 0.5;
-      if (tb > 0) { acc.mult += tb; lg('sy', `  🗣️ [Gary T2] Tox ${tox}% → +${fmt1(tb)} Mult`); }
+      if (tb > 0) { acc.mult += tb; lg('sy', `  🗣️ [Gary T2] Tox ${tox}% → +${fmt1(tb)} Eff`); }
     } else if (tmTier === 3) {
       const tb = Math.floor(tox / 10) * 1.0;
-      if (tb > 0) { acc.mult += tb; lg('sy', `  🗣️ [Gary T3 — Meltdown] Tox ${tox}% → +${fmt1(tb)} Mult (max +10!)`); }
+      if (tb > 0) { acc.mult += tb; lg('sy', `  🗣️ [Gary T3 — Meltdown] Tox ${tox}% → +${fmt1(tb)} Eff (max +10!)`); }
       bo = clamp(bo + 5, 0, 100);
       lg('bo', `  🗣️ [Gary T3 — Meltdown] Pushing hard — +5 Burnout → ${bo}%`);
     }
   }
   if (teammate === 'sarah') {
     if (tmTier === 1) { wb = clamp(wb + 2, 0, 100); lg('wg', `  👻 [Sarah T1 — Present!] Wellness check — +2 WB → ${wb}%`); }
-    else if (tmTier === 3) { acc.mult += 0.8; lg('mu', `  👻 [Sarah T3 — Gone] Lean team bonus — +0.8 Mult`); }
+    else if (tmTier === 3) { acc.mult += 0.8; lg('mu', `  👻 [Sarah T3 — Gone] Lean team bonus — +0.8 Eff`); }
   }
   if (teammate === 'alex') {
     const alexChips = tmTier === 1 ? 40 : tmTier === 3 ? 250 : 100;
     const ab = cards.length * alexChips;
     acc.chips += ab;
-    lg('ch', `  🦈 [Alex T${tmTier}] +${ab} Chips (${cards.length} card${cards.length > 1 ? 's' : ''} × ${alexChips})`);
+    lg('ch', `  🦈 [Alex T${tmTier}] +${ab} Output (${cards.length} card${cards.length > 1 ? 's' : ''} × ${alexChips})`);
   }
   // Loyalty bonus: consecutive weeks with same teammate
   const loyalty = ctx.consecutiveSameTeammate || 0;
@@ -215,12 +215,12 @@ export function calcTurn(cards, ctx) {
     const loyaltyMult = loyalty >= 7 ? 0.6 : loyalty >= 5 ? 0.4 : 0.2;
     acc.mult += loyaltyMult;
     const label = loyalty >= 7 ? 'Unbreakable Bond' : loyalty >= 5 ? 'Deep Partnership' : 'Trusted Ally';
-    lg('sy', `  🤝 [${label} — ${loyalty} wks] Workplace bond — +${loyaltyMult} Mult`);
+    lg('sy', `  🤝 [${label} — ${loyalty} wks] Workplace bond — +${loyaltyMult} Eff`);
   }
 
   // ── Toxicity tier (based on starting tox) ────────────
   const toxTier = tox >= 91 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
-  if (toxTier === 4) { acc.mult *= 2; lg('sy', `  ☣ [Meltdown Zone] All Mult ×2 → ${fmt1(acc.mult)}×`); }
+  if (toxTier === 4) { acc.mult *= 2; lg('sy', `  ☣ [Meltdown Zone] All Eff ×2 → ${fmt1(acc.mult)}×`); }
 
   // ── Card loop ─────────────────────────────────────────
   for (const card of cards) {
@@ -257,22 +257,22 @@ export function calcTurn(cards, ctx) {
     if (ctxMods.stratMultMult  && card.archetype === 'STRATEGY'  && fx.mult  > 0) fx.mult  = fmt1(fx.mult  * ctxMods.stratMultMult);
     if (ctxMods.stratExtraMult && card.archetype === 'STRATEGY')                   fx.mult  = fmt1((fx.mult || 0) + ctxMods.stratExtraMult);
 
-    if (fx.chips) { acc.chips += fx.chips; lg('ch', `  [${card.name}] +${fx.chips} Chips`, true); }
+    if (fx.chips) { acc.chips += fx.chips; lg('ch', `  [${card.name}] +${fx.chips} Output`, true); }
     if (fx.chips && card.archetype === 'PRODUCTION') prodChips += fx.chips;
-    if (fx.mult)  { acc.mult  += fx.mult;  lg('mu', `  [${card.name}] +${fx.mult.toFixed(2)} Mult`, true); }
+    if (fx.mult)  { acc.mult  += fx.mult;  lg('mu', `  [${card.name}] +${fx.mult.toFixed(2)} Eff`, true); }
     // Context per-card mult
     if (ctxMods.perCardMult) { acc.mult += ctxMods.perCardMult; }
 
-    // Gary T1: +25 chips per card
+    // Gary T1: +25 Output per card
     if (teammate === 'gary' && tmTier === 1) {
       acc.chips += 25;
-      lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +25 Chips`, true);
+      lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +25 Output`, true);
     }
-    // CHIPS_PER_PLAY passive: +passiveVal Chips per card played
+    // CHIPS_PER_PLAY passive: +passiveVal Output per card played
     for (const p of passives) {
       if (p.passiveType === 'CHIPS_PER_PLAY') {
         acc.chips += p.passiveVal;
-        lg('ch', `  ★ [${p.name}] +${p.passiveVal} Chips`, true);
+        lg('ch', `  ★ [${p.name}] +${p.passiveVal} Output`, true);
       }
     }
 
@@ -296,7 +296,7 @@ export function calcTurn(cards, ctx) {
       if (card.archetype === 'PRODUCTION') {
         const mc = tmTier === 3 ? 200 : 100;
         acc.chips += mc;
-        lg('ch', `  📋 [Marcus T${tmTier}] Deliverable approved — +${mc} Chips`, true);
+        lg('ch', `  📋 [Marcus T${tmTier}] Deliverable approved — +${mc} Output`, true);
         if (tmTier === 1) { wb = clamp(wb + 5, 0, 100); lg('wg', `  📋 [Marcus T1] Good work noted — +5 WB → ${wb}%`, true); }
         if (tmTier === 3) { bo = clamp(bo + 3, 0, 100); lg('bo', `  📋 [Marcus T3] Running you ragged — +3 Burnout → ${bo}%`, true); }
       }
@@ -311,7 +311,7 @@ export function calcTurn(cards, ctx) {
       if (card.archetype === 'STRATEGY') {
         const pm = tmTier === 1 ? 0.2 : tmTier === 3 ? 0.6 : 0.4;
         acc.mult += pm;
-        lg('mu', `  📊 [Priya T${tmTier}] Strategic insight — +${pm.toFixed(1)} Mult`, true);
+        lg('mu', `  📊 [Priya T${tmTier}] Strategic insight — +${pm.toFixed(1)} Eff`, true);
       }
     }
 
@@ -347,7 +347,7 @@ export function calcTurn(cards, ctx) {
     // Toxicity Tier 2: Passive-Aggressive
     if (toxTier === 2) {
       wb = clamp(wb - 1, 0, 100); lg('wl', `  [Passive-Aggressive] -1 WB → ${wb}%`, true);
-      if (card.archetype === 'STRATEGY') { acc.mult += 0.2; lg('mu', `  [Passive-Aggressive] STRATEGY: +0.2 Mult`, true); }
+      if (card.archetype === 'STRATEGY') { acc.mult += 0.2; lg('mu', `  [Passive-Aggressive] STRATEGY: +0.2 Eff`, true); }
     }
 
     // Crunch Fatigue: 2nd+ CRUNCH costs extra Tox
@@ -401,7 +401,7 @@ export function calcTurn(cards, ctx) {
   if (desk('rubber_duck') && cards.length === 1 && !gameOver) {
     const before = acc.chips;
     acc.chips = Math.round(acc.chips * 2);
-    lg('ch', `  🦆 [Rubber Duck] Solo play — Chips ×2: ${before} → ${acc.chips}`);
+    lg('ch', `  🦆 [Rubber Duck] Solo play — Output ×2: ${before} → ${acc.chips}`);
   }
   // rubber_band_ball: halve crunch fatigue tox on 2nd+ CRUNCH (already paid above)
   // (handled inline per-card above via fx.tox, fatigue handled below)
@@ -441,7 +441,7 @@ export function calcTurn(cards, ctx) {
     if (prodCardCount >= 2 && prodChips > 0) {
       const chainBonus = Math.round(prodChips * (prodCardCount - 1) * 0.05);
       acc.chips += chainBonus;
-      lg('sy', `  🔵 [PRODUCTION CHAIN] ${prodCardCount} PROD cards — +${chainBonus} Combo Chips (+${(prodCardCount-1)*10}%)`);
+      lg('sy', `  🔵 [PRODUCTION CHAIN] ${prodCardCount} PROD cards — +${chainBonus} Combo Output (+${(prodCardCount-1)*10}%)`);
     }
 
     // ── Context post-loop effects ─────────────────────
@@ -449,7 +449,7 @@ export function calcTurn(cards, ctx) {
       const types = new Set(cards.map(c => c.archetype)).size;
       if (types >= ctxMods.archComboMult.minTypes) {
         acc.mult += ctxMods.archComboMult.bonus;
-        lg('sy', `  📋 [Context] ${types} archetypy → +${ctxMods.archComboMult.bonus} Mult`);
+        lg('sy', `  📋 [Context] ${types} archetypy → +${ctxMods.archComboMult.bonus} Eff`);
       }
     }
     if (ctxMods.sameArchBonus) {
@@ -457,16 +457,16 @@ export function calcTurn(cards, ctx) {
       const maxSame = Math.max(...Object.values(cnts));
       if (maxSame >= ctxMods.sameArchBonus.min) {
         acc.mult += ctxMods.sameArchBonus.bonus;
-        lg('sy', `  📋 [Context] ${maxSame}× sam archetype → +${ctxMods.sameArchBonus.bonus} Mult`);
+        lg('sy', `  📋 [Context] ${maxSame}× sam archetype → +${ctxMods.sameArchBonus.bonus} Eff`);
       }
     }
     if (ctxMods.noStratMultPenalty && !cards.some(c => c.archetype === 'STRATEGY')) {
       acc.mult += ctxMods.noStratMultPenalty;
-      lg('mu', `  📋 [Context] Brak STRATEGY — ${ctxMods.noStratMultPenalty} Mult`);
+      lg('mu', `  📋 [Context] Brak STRATEGY — ${ctxMods.noStratMultPenalty} Eff`);
     }
     if (ctxMods.minCardsChipsBonus && cards.length >= ctxMods.minCardsChipsBonus.min) {
       acc.chips += ctxMods.minCardsChipsBonus.chips;
-      lg('ch', `  📋 [Context] ${cards.length} karty → +${ctxMods.minCardsChipsBonus.chips} Chips`);
+      lg('ch', `  📋 [Context] ${cards.length} karty → +${ctxMods.minCardsChipsBonus.chips} Output`);
     }
 
     // Toxicity Tier Transition announcement (real only)
@@ -475,7 +475,7 @@ export function calcTurn(cards, ctx) {
       const tierAfter  = tox >= 91 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
       if (tierAfter > tierBefore) {
         const names = ['','','PASSIVE-AGGRESSIVE','TOXIC CULTURE','☣ MELTDOWN ZONE'];
-        const effs  = ['','','+0.2 Mult/STRATEGY | −1 WB/card','−1 Discard next week','ALL MULT ×2 | 20% auto-exhaust'];
+        const effs  = ['','','+0.2 Eff/STRATEGY | −1 WB/card','−1 Discard next week','ALL EFF ×2 | 20% auto-exhaust'];
         log.push({cls:'tg', t:`  !! TIER UP → [${names[tierAfter]}] ${effs[tierAfter]}`});
       }
     }
@@ -491,26 +491,26 @@ export function calcTurn(cards, ctx) {
     let score = comboMult > 1.0 ? Math.floor(baseScore * comboMult) : baseScore;
     if (ctxMods.scoreMult && ctxMods.scoreMult !== 1.0) {
       score = Math.floor(score * ctxMods.scoreMult);
-      lg('sc', `  📋 [Context] Score ×${ctxMods.scoreMult} → ${score}`);
+      lg('sc', `  📋 [Context] Revenue ×${ctxMods.scoreMult} → $${score.toLocaleString()}`);
     }
     if (ctxMods.singleCardScoreMult && cards.length === 1) {
       score = Math.floor(score * ctxMods.singleCardScoreMult);
-      lg('sc', `  📋 [Context] 1 karta → Score ×${ctxMods.singleCardScoreMult} → ${score}`);
+      lg('sc', `  📋 [Context] 1 karta → Revenue ×${ctxMods.singleCardScoreMult} → $${score.toLocaleString()}`);
     }
     // Desk Item: hourglass — last play of week → Chips ×1.5
     if (desk('hourglass') && ctx.plays === 1) {
       const hbefore = score;
       score = Math.floor(score * 1.5);
-      lg('sc', `  ⏳ [Hourglass] Last play of week — Score ×1.5: ${hbefore} → ${score}`);
+      lg('sc', `  ⏳ [Hourglass] Last play of week — Revenue ×1.5: ${hbefore} → ${score}`);
     }
     // Desk Item: golden_mug — every 5th play (totalPlayCount is BEFORE this play)
     if (desk('golden_mug') && (totalPlayCount + 1) % 5 === 0) {
       const gbefore = score;
       score = score * 2;
-      lg('sc', `  🥇 [Golden Mug] Play #${totalPlayCount + 1} — every 5th play: Score ×2: ${gbefore} → ${score}`);
+      lg('sc', `  🥇 [Golden Mug] Play #${totalPlayCount + 1} — every 5th play: Revenue ×2: ${gbefore} → ${score}`);
     }
     const comboTag = comboMult > 1.0 ? ` × ${fmt1(comboMult)} COMBO` : '';
-    lg('sc', `  ▶ SCORE: ${acc.chips} × ${fmt1(acc.mult)}${comboTag} = ${score}`);
+    lg('sc', `  ▶ REVENUE: $${acc.chips.toLocaleString()} × ${fmt1(acc.mult)}${comboTag} = $${score.toLocaleString()}`);
 
     const finalWb = Math.round(wb), finalTox = Math.round(tox), finalBo = Math.round(bo);
     const expectedToxDmg = toxLevels.reduce((s, t) => s + Math.round(TOX_DMG * (t / 100)), 0);

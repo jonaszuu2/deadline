@@ -17,6 +17,7 @@ export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#f
 //  MODULE STATE
 // ═══════════════════════════════════════════════════════
 let _lastPhase = null;
+let _lastWscore = 0;
 
 const _phaseFlashLabels = {
   play:            wk => `WEEK ${wk} — DELIVERABLES`,
@@ -92,7 +93,7 @@ export function renderTopbar(G) {
   const target  = G.kpi();
   const pct     = Math.min(100, target > 0 ? wscore / target * 100 : 0).toFixed(1);
   const willPass = wscore >= target;
-  const barColor = willPass ? 'var(--color-pass)' : pct >= 70 ? 'var(--color-warning)' : 'var(--color-fail)';
+  const barColor = wscore >= target ? '#00e090' : pct >= 70 ? '#ff9500' : '#ff2d55';
 
   const weekDots = Array.from({length: TOTAL_WEEKS}, (_, i) => {
     const wk   = i + 1;
@@ -227,6 +228,7 @@ export function render(G) {
             : hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount})).join('')
           }
         </div>
+        ${renderDeskRow(G)}
         ${renderActionBarNew(G, preview)}
       </div>
       ${renderRightPanelNew(G)}
@@ -239,7 +241,118 @@ export function render(G) {
     const s = calculateFinalScore(G);
     requestAnimationFrame(() => initFinalReviewAnim(s.total));
   }
+
+  // Post-render: redline pressure + pass flash (Fix 2 & 6)
+  const prevWscore = _lastWscore;
+  _lastWscore = wscore;
+  if (G.phase === 'play' && wscore > prevWscore && prevWscore >= 0) {
+    const activatedIds = new Set(G.lastActivatedDeskIds || []);
+    requestAnimationFrame(() => {
+      const scoreEl = document.getElementById('revenue-val');
+      if (scoreEl) _startRevenueCountUp(scoreEl, 0, wscore, target);
+      if (wscore >= target && prevWscore < target) {
+        const fResult = document.querySelector('.f-result');
+        if (fResult) {
+          fResult.classList.remove('pass-flash');
+          void fResult.offsetWidth;
+          fResult.classList.add('pass-flash');
+          setTimeout(() => fResult.classList.remove('pass-flash'), 450);
+        }
+      }
+      // Desk item activation pulse
+      if (activatedIds.size > 0) {
+        document.querySelectorAll('.desk-slot[data-id]').forEach(el => {
+          if (activatedIds.has(el.dataset.id)) {
+            el.classList.remove('activating');
+            void el.offsetWidth;
+            el.classList.add('activating');
+            setTimeout(() => el.classList.remove('activating'), 450);
+          }
+        });
+      }
+    });
+  }
 }
+
+function _startRevenueCountUp(el, from, to, target) {
+  const duration = 700;
+  const interval = 25;
+  const steps = Math.ceil(duration / interval);
+  let step = 0;
+  const timer = setInterval(() => {
+    step++;
+    const ease = 1 - Math.pow(1 - step / steps, 2);
+    const val = Math.round(from + (to - from) * ease);
+    const ratio = target > 0 ? val / target : 0;
+    el.textContent = '$' + val.toLocaleString();
+    el.style.color = ratio >= 1 ? '#4ade80' : ratio >= 0.70 ? '#ff9500' : '#ff2d55';
+    if (step >= steps) {
+      clearInterval(timer);
+      el.style.color = '';  // let CSS class handle final color
+    }
+  }, interval);
+}
+
+// ── Desk item tier colors ──
+const DESK_TIER_COLORS = {COMMON:'#7c3aed', UNCOMMON:'#b87cff', RARE:'#ff2d55', LEGENDARY:'#fbbf24'};
+
+function renderDeskRow(G) {
+  const items = G.deskItems || [];
+  const slots = [];
+  for (let i = 0; i < 5; i++) {
+    const item = items[i];
+    if (item) {
+      const col = DESK_TIER_COLORS[item.rarity] || '#7c3aed';
+      const isActive = item.active === true && !(item.id === 'resignation_letter' && G.resignationLetterUsed);
+      slots.push(`<div class="desk-slot${isActive ? ' ds-active' : ''}" data-id="${item.id}" style="--desk-tier-color:${col}">
+        <div class="desk-slot-icon">${item.icon}</div>
+        <div class="desk-slot-name">${esc(item.name)}</div>
+        <div class="desk-slot-desc">${esc(item.desc)}</div>
+      </div>`);
+    } else {
+      slots.push(`<div class="desk-slot desk-slot-empty">— pusty —</div>`);
+    }
+  }
+  return `<div class="desk-row"><div class="desk-slots">${slots.join('')}</div></div>`;
+}
+
+function _getActivationsForHover(card, deskItems, G) {
+  const ids = new Set();
+  const di = id => deskItems.some(d => d.id === id);
+  if (card.archetype === 'STRATEGY')   { if (di('desk_lamp')) ids.add('desk_lamp'); }
+  if (card.archetype === 'PRODUCTION') {
+    if (di('calendar'))   ids.add('calendar');
+    if (di('red_stapler') && G.firstCardThisWeek) ids.add('red_stapler');
+  }
+  if (card.archetype === 'RECOVERY')   { if (di('whitenoise_machine')) ids.add('whitenoise_machine'); }
+  if (card.archetype === 'CRUNCH') {
+    if (di('fidget_spinner')) ids.add('fidget_spinner');
+    if (di('rubber_band_ball') && (G.weekCrunchCount || 0) > 0) ids.add('rubber_band_ball');
+  }
+  if (di('desk_fan')      && G.tox >= 50)   ids.add('desk_fan');
+  if (di('stress_ball')   && G.wb  <  40)   ids.add('stress_ball');
+  if (di('action_figure') && G.wb  <  50)   ids.add('action_figure');
+  if (di('coffee_mug')    && G.firstCardThisWeek) ids.add('coffee_mug');
+  if (di('paper_clip'))                      ids.add('paper_clip');
+  if (di('cactus')        && G.tox >= 60)   ids.add('cactus');
+  if (di('hourglass')     && G.plays === 1) ids.add('hourglass');
+  if (di('golden_mug')    && ((G.totalPlayCount || 0) + 1) % 5 === 0) ids.add('golden_mug');
+  if (di('org_chart'))                       ids.add('org_chart');
+  return ids;
+}
+
+window._deskHover = function(cardUid) {
+  if (!window.G) return;
+  const card = (window.G.hand || []).find(c => c.uid === cardUid);
+  if (!card) return;
+  const ids = _getActivationsForHover(card, window.G.deskItems || [], window.G);
+  document.querySelectorAll('.desk-slot[data-id]').forEach(el => {
+    el.classList.toggle('will-activate', ids.has(el.dataset.id));
+  });
+};
+window._deskUnhover = function() {
+  document.querySelectorAll('.desk-slot.will-activate').forEach(el => el.classList.remove('will-activate'));
+};
 
 // ═══════════════════════════════════════════════════════
 //  NEW 3-COL LAYOUT HELPERS
@@ -351,9 +464,19 @@ function renderFormulaRow(preview, wscore, target, G) {
   const toxWarn = hasP && preview.toxChecks > 0
     ? `<div class="f-warn">☣ up to −${preview.maxToxDmg} WB risk</div>` : '';
 
-  const weekProgress = need > 0
-    ? `<div class="f-sub">need $${need.toLocaleString()} more</div>`
-    : `<div class="f-sub" style="color:var(--color-pass)">✓ target reached</div>`;
+  let weekProgress;
+  if (G.phase === 'result') {
+    weekProgress = wscore >= target
+      ? `<div class="f-sub f-sub-pass">✓ cel osiągnięty</div>`
+      : `<div class="f-sub f-sub-fail">✗ brakuje $${(target - wscore).toLocaleString()}</div>`;
+  } else if (!hasP) {
+    weekProgress = `<div class="f-sub f-sub-idle">wybierz karty</div>`;
+  } else {
+    const projTotal = wscore + preview.score;
+    weekProgress = projTotal >= target
+      ? `<div class="f-sub f-sub-pass">✓ cel osiągnięty</div>`
+      : `<div class="f-sub f-sub-progress">potrzebujesz $${(target - projTotal).toLocaleString()} więcej</div>`;
+  }
 
   return `<div class="formula-row">
     <div class="f-slot">
@@ -370,7 +493,7 @@ function renderFormulaRow(preview, wscore, target, G) {
     <div class="f-op">=</div>
     <div class="f-result">
       <div class="f-label">REVENUE</div>
-      <div class="${scoreCls}">${scoreVal}</div>
+      <div class="${scoreCls}" id="revenue-val">${scoreVal}</div>
       ${weekProgress}
       ${toxWarn}
     </div>
@@ -487,24 +610,6 @@ function renderRightPanelNew(G) {
       }).join('')
     : `<div class="empty-slot-new">No perks.<br>Buy in shop after each week.</div>`;
 
-  // Desk items
-  const deskItems = G.deskItems || [];
-  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
-  const deskHtml = deskItems.length
-    ? `<div class="rp-desk-grid">${deskItems.map(d => {
-        const col = rarityColors[d.rarity] || '#aaa';
-        const isResig = d.id === 'resignation_letter';
-        const useBtn = isResig && !G.resignationLetterUsed && (G.phase === 'play' || G.phase === 'result')
-          ? `<button class="btn-skip-new" style="padding:3px 8px;font-size:9px;margin-top:4px" onclick="useResignationLetter()">USE</button>` : '';
-        return `<div class="rp-desk-item${isResig && G.resignationLetterUsed ? ' rp-desk-item-used' : ''}" title="${esc(d.name)}: ${esc(d.desc)}">
-          <div class="rp-desk-icon">${d.icon}</div>
-          <div class="rp-desk-name" style="color:${col}">${esc(d.name)}</div>
-          <div class="rp-desk-rarity" style="color:${col}">${d.rarity}</div>
-          ${useBtn}
-        </div>`;
-      }).join('')}</div>`
-    : `<div class="empty-slot-new">No desk items.<br>Earn by ending week with WB ≥75%.</div>`;
-
   // Build name + career forecast (compact)
   const pwr = getPowerRating(G);
   const s = calculateFinalScore(G);
@@ -525,10 +630,6 @@ function renderRightPanelNew(G) {
     <div>
       <div class="section-title">Perks</div>
       ${perksHtml}
-    </div>
-    <div>
-      <div class="section-title">Desk <span style="color:var(--color-text-ghost);font-size:9px">(${deskItems.length}/4)</span></div>
-      ${deskHtml}
     </div>
     <div>
       <div class="section-title">Build</div>
@@ -714,6 +815,7 @@ export function renderScoreMachine(p, wscore, target, G) {
 
 export function renderForecastPanel(G) {
   const s = calculateFinalScore(G);
+  if (!G.weekHistory?.length && G.wscore === 0) return '';
   const tier = predictCareerTier(s.total);
   const tierIdx = CAREER_DB.indexOf(tier);
   const nextTier = tierIdx > 0 ? CAREER_DB[tierIdx - 1] : null;
@@ -919,7 +1021,7 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
     ? `<div style="font-size:8px;color:var(--color-text-ghost);margin-top:2px">${['1st','2nd','3rd','4th'][idx]} in combo</div>`
     : '';
 
-  return `<div class="card new-card ${c.archetype}${isSel ? ' selected' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" data-uid="${c.uid}" onclick="G.toggle('${c.uid}')">
+  return `<div class="card new-card ${c.archetype}${isSel ? ' selected' : ''}${isSynActive ? ' syn-active' : ''}${cardLevel > 0 ? ` card-lv${cardLevel}` : ''}${upgCls}" data-uid="${c.uid}" onclick="G.toggle('${c.uid}')" onmouseenter="_deskHover('${c.uid}')" onmouseleave="_deskUnhover()">
     <div class="c-type" style="color:${arch.color};">${arch.icon} ${arch.label}</div>
     <div class="c-name">${esc(c.name)}</div>
     ${mainHtml}${costHtml}

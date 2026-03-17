@@ -36,17 +36,17 @@ export function showHowToPlay() {
 export const INTRO_SLIDES = [
   {
     icon: '🎯', step: 1,
-    title: 'CHIPS × MULT = SCORE',
+    title: 'OUTPUT \xd7 EFFICIENCY = REVENUE',
     content: '<div class="tut-scene">'
       + '<div class="tut-cards-row">'
-      + '<div class="tut-cmi prod"><div class="tut-cmi-arch">PRODUCTION</div><div class="tut-cmi-val it-chip">+100 Chips</div></div>'
+      + '<div class="tut-cmi prod"><div class="tut-cmi-arch">PRODUCTION</div><div class="tut-cmi-val it-chip">+100 Output</div></div>'
       + '<span class="tut-op">+</span>'
-      + '<div class="tut-cmi strat"><div class="tut-cmi-arch">STRATEGY</div><div class="tut-cmi-val it-mult">+0.5 Mult</div></div>'
+      + '<div class="tut-cmi strat"><div class="tut-cmi-arch">STRATEGY</div><div class="tut-cmi-val it-mult">+0.5 Eff</div></div>'
       + '</div>'
-      + '<div class="tut-formula-line">100 Chips &times; 1.5 = <strong>150 pts ✓</strong></div>'
-      + '<div class="tut-formula-line dim">PRODUCTION only: 100 &times; 1.0 = <span style="color:#888">100 pts</span></div>'
+      + '<div class="tut-formula-line">100 Output &times; 1.5 = <strong>$150 ✓</strong></div>'
+      + '<div class="tut-formula-line dim">PRODUCTION only: 100 &times; 1.0 = <span style="color:#888">$100</span></div>'
       + '</div>'
-      + '<p>PRODUCTION cards give <b>Chips</b>. STRATEGY cards give <b>Mult</b>. Neither alone is enough &mdash; <b>mix archetypes</b> to multiply your score.</p>',
+      + '<p>PRODUCTION cards give <b>Output</b>. STRATEGY cards give <b>Efficiency</b>. Neither alone is enough &mdash; <b>mix archetypes</b> to multiply your revenue.</p>',
     btn: 'Got it →',
   },
   {
@@ -68,12 +68,12 @@ export const INTRO_SLIDES = [
     title: 'UPGRADES ARE ARCHETYPE-SPECIFIC',
     content: '<div class="tut-scene">'
       + '<div class="tut-upgrade-rows">'
-      + '<div class="tut-uprow"><div class="tut-cmi prod sm"><span class="tut-cmi-arch">PRODUCTION</span></div><span class="tut-arr">→</span><span class="tut-upval it-chip">+Chips</span></div>'
-      + '<div class="tut-uprow"><div class="tut-cmi strat sm"><span class="tut-cmi-arch">STRATEGY</span></div><span class="tut-arr">→</span><span class="tut-upval it-mult">+Mult</span></div>'
-      + '<div class="tut-uprow"><div class="tut-cmi crunch sm"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-arr">→</span><span class="tut-upval it-mult">+Mult</span></div>'
+      + '<div class="tut-uprow"><div class="tut-cmi prod sm"><span class="tut-cmi-arch">PRODUCTION</span></div><span class="tut-arr">→</span><span class="tut-upval it-chip">+Output</span></div>'
+      + '<div class="tut-uprow"><div class="tut-cmi strat sm"><span class="tut-cmi-arch">STRATEGY</span></div><span class="tut-arr">→</span><span class="tut-upval it-mult">+Eff</span></div>'
+      + '<div class="tut-uprow"><div class="tut-cmi crunch sm"><span class="tut-cmi-arch">CRUNCH</span></div><span class="tut-arr">→</span><span class="tut-upval it-mult">+Eff</span></div>'
       + '<div class="tut-uprow"><div class="tut-cmi recov sm"><span class="tut-cmi-arch">RECOVERY</span></div><span class="tut-arr">→</span><span class="tut-upval it-wb">+Healing</span></div>'
       + '</div></div>'
-      + '<p>Performance Upgrade in the shop boosts a card <b>based on its archetype</b>. To get high Chips AND high Mult &mdash; keep both card types and upgrade both.</p>',
+      + '<p>Performance Upgrade in the shop boosts a card <b>based on its archetype</b>. To get high Output AND high Efficiency &mdash; keep both card types and upgrade both.</p>',
     btn: 'Next →',
   },
   {
@@ -91,7 +91,7 @@ export const INTRO_SLIDES = [
   {
     icon: '⚙️', step: 5,
     title: 'START YOUR RUN',
-    content: '<p>You have everything you need. Select cards, build <b>Chips \xd7 Mult</b>, hit your weekly KPI target, survive 10 weeks.</p><p style="margin-top:8px">As you play, you\'ll find <b>Desk Items</b> &mdash; objects that change how the game works entirely.</p>',
+    content: '<p>You have everything you need. Select cards, build <b>Output \xd7 Efficiency</b>, hit your weekly Revenue Target, survive 10 weeks.</p><p style="margin-top:8px">As you play, you\'ll find <b>Desk Items</b> &mdash; objects that change how the game works entirely.</p>',
     btn: '▶ START GAME',
   },
 ];
@@ -157,9 +157,9 @@ const SHOP_TUT_DB = [
   {icon:'🛒',title:'THE CORPORATE STORE',
    content:'At the end of each week, the <b>Shop</b> opens. Spend your <b>coins (CC)</b> on items — the shop offers a few random items each week and refreshes next week. Spend wisely.'},
   {icon:'💊',title:'CONSUMABLES & PASSIVES',
-   content:'<b>Consumables</b> are one-time-use — they heal WB or lower TOX immediately. <b>Passives</b> are permanent bonuses for the rest of the run (e.g., +10 PRODUCTION chips, ×1.25 RECOVERY healing). Passives compound over time.'},
+   content:'<b>Consumables</b> are one-time-use — they heal WB or lower TOX immediately. <b>Passives</b> are permanent bonuses for the rest of the run (e.g., +10 PRODUCTION output, ×1.25 RECOVERY healing). Passives compound over time.'},
   {icon:'⚡',title:'POWER ACTIONS',
-   content:'<b>Upgrade</b> boosts a card based on its archetype — PRODUCTION gets +Chips, STRATEGY/CRUNCH get +Mult, RECOVERY gets +Healing. <b>Remove</b> permanently deletes a weak card (smaller deck = better draws). <b>Reclaim</b> brings back an exhausted card.'},
+   content:'<b>Upgrade</b> boosts a card based on its archetype — PRODUCTION gets +Output, STRATEGY/CRUNCH get +Efficiency, RECOVERY gets +Healing. <b>Remove</b> permanently deletes a weak card (smaller deck = better draws). <b>Reclaim</b> brings back an exhausted card.'},
 ];
 let _shopTutStep = 0;
 let _shopTutOnComplete = null;
@@ -222,19 +222,19 @@ export function showContextualTip(type) {
     },
     low_wb: {
       title:'❤ LOW WELLBEING',
-      text:'WB &lt;60% — Chips output is penalised (×0.85 or worse). Play <b>RECOVERY</b> cards before your next play — low WB sabotages your score.',
+      text:'WB &lt;60% — Output is penalised (×0.85 or worse). Play <b>RECOVERY</b> cards before your next play — low WB sabotages your revenue.',
     },
     first_synergy: {
       title:'★ SYNERGY TRIGGERED',
-      text:'A combo bonus just fired! Check the log on the left. Build plays around triggering synergies — they are the main source of big Mult.',
+      text:'A combo bonus just fired! Check the log on the left. Build plays around triggering synergies — they are the main source of big Efficiency.',
     },
     bo_rising: {
       title:'🔥 BURNOUT RISING',
-      text:'BO &gt;50% — Mult from all cards reduced by 20%. Burnout never resets. If WB hits 0, overflow goes to BO — reach 100% and the run ends.',
+      text:'BO &gt;50% — Efficiency from all cards reduced by 20%. Burnout never resets. If WB hits 0, overflow goes to BO — reach 100% and the run ends.',
     },
     kpi_early: {
       title:'✓ KPI TARGET HIT',
-      text:'You crossed the weekly target with Plays remaining! You can keep playing for a higher score — it counts toward your end-of-run ranking.',
+      text:'You crossed the weekly target with Plays remaining! You can keep playing for higher revenue — it counts toward your end-of-run ranking.',
     },
     kpi_fail: {
       title:'✗ KPI MISSED',
@@ -242,7 +242,7 @@ export function showContextualTip(type) {
     },
     week_end_first: {
       title:'📦 END OF WEEK — SHOP',
-      text:'Plays exhausted — week is over. The <b>Shop</b> opens now. Spend coins: <b>upgrade cards</b> (boosts chips or mult based on archetype), buy consumables to heal WB, or remove weak cards from your deck.',
+      text:'Plays exhausted — week is over. The <b>Shop</b> opens now. Spend coins: <b>upgrade cards</b> (boosts Output or Efficiency based on archetype), buy consumables to heal WB, or remove weak cards from your deck.',
     },
   };
   const tip = tips[type]; if (!tip) return;
@@ -282,13 +282,13 @@ const GUIDE_TIP_DATA = {
   },
   score_formula: {
     anchor: '#score-machine', pos: 'above',
-    title: '🎯 CHIPS × MULT = SCORE',
-    text: '<b>PRODUCTION</b> → Chips. <b>STRATEGY / CRUNCH</b> → Mult. Mix both: 100 Chips × 2.0 Mult = 200 pts. Only one type = half the potential.',
+    title: '🎯 OUTPUT × EFFICIENCY = REVENUE',
+    text: '<b>PRODUCTION</b> → Output. <b>STRATEGY / CRUNCH</b> → Efficiency. Mix both: 100 Output × 2.0 Eff = $200. Only one type = half the potential.',
   },
   kpi_hit: {
     anchor: '#hdr', pos: 'below',
     title: '✓ KPI TARGET HIT',
-    text: 'Target cleared! You can keep playing for bonus score, or let the week end naturally when Plays run out.',
+    text: 'Target cleared! You can keep playing for bonus revenue, or let the week end naturally when Plays run out.',
   },
   bo_first: {
     anchor: '#employee-dashboard', pos: 'below',

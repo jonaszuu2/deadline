@@ -42,7 +42,7 @@ export const BOSS_DB = {
     rewardPool: [
       { id:'br_s_wb25',     type:'STAT_BOOST', label:'+25 Wellbeing',          icon:'💚', desc:'HR wellness program kicks in.',          fx:{wb:+25} },
       { id:'br_s_tox20',    type:'STAT_BOOST', label:'−20 Toxicity',           icon:'🧹', desc:'Sandra schedules a team debrief.',        fx:{tox:-20} },
-      { id:'br_s_mult02',   type:'STAT_BOOST', label:'+0.2× Permanent Mult',  icon:'📈', desc:'Early recognition pays off.',             fx:{permMult:+0.2} },
+      { id:'br_s_mult02',   type:'STAT_BOOST', label:'+0.2× Permanent Eff',  icon:'📈', desc:'Early recognition pays off.',             fx:{permMult:+0.2} },
       { id:'br_s_remove',   type:'REMOVE',     label:'Free Card Removal',      icon:'🗑️', desc:'HR helps you offload a responsibility.',  fx:{} },
       { id:'br_s_coins3',   type:'STAT_BOOST', label:'+3 Budget',              icon:'💰', desc:'Onboarding bonus approved.',              fx:{coins:+3} },
       { id:'br_s_recovery', type:'ADD_CARD',   label:'Wellness Initiative',    icon:'🌿', desc:'Add 1 Recovery card to your deck.',       cardId:'recovery_001' },
@@ -94,10 +94,10 @@ export const BOSS_DB = {
       { id:'br_tox20',     type:'STAT_BOOST', label:'−20 Toxicity',          icon:'🧹', desc:'Immediate stat boost.',              fx:{tox:-20} },
       { id:'br_coins5',    type:'STAT_BOOST', label:'+5 Budget',             icon:'💰', desc:'Immediate Corpo Coins.',             fx:{coins:+5} },
       { id:'br_extraplay', type:'EXTRA_PLAY', label:'Free Overtime Turn',    icon:'⏱️', desc:'Gain +1 play for the next week.',    fx:{} },
-      { id:'br_passive',   type:'PASSIVE',    label:'Performance Pip',       icon:'📌', desc:'+10 Chips on every Production card.',
+      { id:'br_passive',   type:'PASSIVE',    label:'Performance Pip',       icon:'📌', desc:'+10 Output on every Production card.',
         passiveType:'PRODUCTION_CHIPS', passiveVal:10 },
       { id:'br_addcard',   type:'ADD_CARD',   label:'Executive Memo',        icon:'📄', desc:'Add 1 Crunch card to your deck.',    cardId:'crunch_001' },
-      { id:'br_multboost', type:'STAT_BOOST', label:'+0.5× Permanent Mult', icon:'📈', desc:'Boosts every play for the rest of the game.', fx:{permMult:+0.5} },
+      { id:'br_multboost', type:'STAT_BOOST', label:'+0.5× Permanent Eff', icon:'📈', desc:'Boosts every play for the rest of the game.', fx:{permMult:+0.5} },
     ],
   },
 
@@ -141,7 +141,7 @@ export const BOSS_DB = {
       },
     ],
     rewardPool: [
-      { id:'br_r_permMult',   type:'STAT_BOOST', label:'+1.0× Permanent Mult',  icon:'📈', desc:'Executive endorsement. Permanent boost.',              fx:{permMult:+1.0} },
+      { id:'br_r_permMult',   type:'STAT_BOOST', label:'+1.0× Permanent Eff',  icon:'📈', desc:'Executive endorsement. Permanent boost.',              fx:{permMult:+1.0} },
       { id:'br_r_tox30',      type:'STAT_BOOST', label:'−30 Toxicity',          icon:'🧹', desc:'Richard reassigns your most toxic responsibility.',     fx:{tox:-30} },
       { id:'br_r_coins8',     type:'STAT_BOOST', label:'+8 Budget',             icon:'💰', desc:'Q4 discretionary spend approved.',                      fx:{coins:+8} },
       { id:'br_r_plays2',     type:'EXTRA_PLAY', label:'Two Overtime Turns',    icon:'⏱️', desc:'Gain +2 plays for the next week.',                      fx:{extraPlays:2} },

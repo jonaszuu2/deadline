@@ -84,8 +84,8 @@ export function ovFinalReview(G) {
       })()}
       <div class="apr-subtitle">── PERFORMANCE BREAKDOWN ──</div>
       <div class="apr-lines">
-        <div class="apr-line"><span class="apr-lbl">🔵 Chips Path — Total Chips</span><span class="apr-val">${s.chips.toLocaleString()}</span><span class="apr-pts ${ptsClass(s.rawPts)}">${sign(s.rawPts)} pts</span></div>
-        <div class="apr-line"><span class="apr-lbl">🔴 Mult Path — Avg Multiplier</span><span class="apr-val">${s.avgMult}× (×1000)</span><span class="apr-pts ${ptsClass(s.multPts)}">${sign(s.multPts)} pts</span></div>
+        <div class="apr-line"><span class="apr-lbl">🔵 Output Path — Total Output</span><span class="apr-val">${s.chips.toLocaleString()}</span><span class="apr-pts ${ptsClass(s.rawPts)}">${sign(s.rawPts)} pts</span></div>
+        <div class="apr-line"><span class="apr-lbl">🔴 Efficiency Path — Avg Efficiency</span><span class="apr-val">${s.avgMult}× (×1000)</span><span class="apr-pts ${ptsClass(s.multPts)}">${sign(s.multPts)} pts</span></div>
         <div class="apr-line"><span class="apr-lbl">❤ Wellness Path — WB≥70% weeks</span><span class="apr-val">${G.wellnessWeeks || 0} / ${TOTAL_WEEKS} (×150)</span><span class="apr-pts ${ptsClass(s.wellnessPts)}">${sign(s.wellnessPts)} pts</span></div>
         <div class="apr-divider">· · · · · · · · · · · · · · · · · · · · · · · · · · · ·</div>
         <div class="apr-line"><span class="apr-lbl">Final Wellbeing</span><span class="apr-val">${G.wb}%</span><span class="apr-pts ${ptsClass(s.wbPts)}">${sign(s.wbPts)} pts</span></div>
@@ -106,8 +106,8 @@ export function ovFinalReview(G) {
         const newCards = Object.values(DB).filter(c => c.tier === G.newUnlockTier);
         const cardsHtml = newCards.map((c, i) => {
           const fxParts = [];
-          if (c.fx.chips) fxParts.push(`+${c.fx.chips} Chips`);
-          if (c.fx.mult) fxParts.push(`+${c.fx.mult}× Mult`);
+          if (c.fx.chips) fxParts.push(`+${c.fx.chips} Output`);
+          if (c.fx.mult) fxParts.push(`+${c.fx.mult}× Eff`);
           if (c.fx.tox > 0) fxParts.push(`+${c.fx.tox}% Tox`);
           if (c.fx.wb < 0) fxParts.push(`${c.fx.wb} WB`);
           if (c.fx.wb > 0) fxParts.push(`+${c.fx.wb} WB`);

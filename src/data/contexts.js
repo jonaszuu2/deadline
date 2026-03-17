@@ -9,18 +9,18 @@ export const CONTEXTS_DB = {
   // ── MONDAY POOL ────────────────────────────────────────
   mon_kickoff: {
     id:'mon_kickoff', name:'Fresh Start', icon:'☀️', pool:'monday',
-    desc:'+1.5 Mult. Wchodzisz zmotywowany.',
+    desc:'+1.5 Eff. Wchodzisz zmotywowany.',
     ctxMods: { extraMult: 1.5 },
   },
   mon_blues: {
     id:'mon_blues', name:'Monday Blues', icon:'😩', pool:'monday',
-    desc:'−5 WB tej tury. Każda zagrana karta: +0.2 Mult.',
+    desc:'−5 WB tej tury. Każda zagrana karta: +0.2 Eff.',
     preWbDelta: -5,
     ctxMods: { perCardMult: 0.2 },
   },
   mon_standup: {
     id:'mon_standup', name:'Sprint Kickoff', icon:'📋', pool:'monday',
-    desc:'≥2 różne archetypy tej tury: +1.0 Mult.',
+    desc:'≥2 różne archetypy tej tury: +1.0 Eff.',
     ctxMods: { archComboMult: { minTypes: 2, bonus: 1.0 } },
   },
   mon_inbox: {
@@ -31,7 +31,7 @@ export const CONTEXTS_DB = {
   },
   mon_strategy: {
     id:'mon_strategy', name:'Weekly Sync', icon:'📊', pool:'monday',
-    desc:'STRATEGY cards: Mult contribution ×2 tej tury.',
+    desc:'STRATEGY cards: Eff contribution ×2 tej tury.',
     ctxMods: { stratMultMult: 2.0 },
   },
 
@@ -47,7 +47,7 @@ export const CONTEXTS_DB = {
     desc:'Koniec tygodnia — drinksy czy zostać w biurze?',
     choices: [
       { id:'go',   label:'Idź na drinksy',   desc:'+25 WB, bez CRUNCH tej tury',  preWbDelta: 25,  blockArch: 'CRUNCH', ctxMods: {} },
-      { id:'stay', label:'Zostań i pracuj',   desc:'CRUNCH Chips ×2, −15 WB',     preWbDelta: -15, ctxMods: { crunchChipsMult: 2.0 } },
+      { id:'stay', label:'Zostań i pracuj',   desc:'CRUNCH Output ×2, −15 WB',     preWbDelta: -15, ctxMods: { crunchChipsMult: 2.0 } },
     ],
   },
   fri_release: {
@@ -58,12 +58,12 @@ export const CONTEXTS_DB = {
   },
   fri_retro: {
     id:'fri_retro', name:'Retrospective', icon:'🔄', pool:'friday',
-    desc:'≥3 zagrane karty tej tury: +800 Chips.',
+    desc:'≥3 zagrane karty tej tury: +800 Output.',
     ctxMods: { minCardsChipsBonus: { min: 3, chips: 800 } },
   },
   fri_review: {
     id:'fri_review', name:'Performance Review', icon:'📈', pool:'friday',
-    desc:'STRATEGY Mult ×2 tej tury. Dzień który liczy się dla managera.',
+    desc:'STRATEGY Eff ×2 tej tury. Dzień który liczy się dla managera.',
     ctxMods: { stratMultMult: 2.0, extraMult: 0.5 },
   },
 
@@ -75,22 +75,22 @@ export const CONTEXTS_DB = {
   },
   gen_brainstorm: {
     id:'gen_brainstorm', name:'Brainstorm Session', icon:'💡', pool:'general',
-    desc:'STRATEGY: +2.5 Mult tej tury. PRODUCTION: Chips −50%.',
+    desc:'STRATEGY: +2.5 Eff tej tury. PRODUCTION: Output −50%.',
     ctxMods: { stratExtraMult: 2.5, prodChipsMult: 0.5 },
   },
   gen_allhands: {
     id:'gen_allhands', name:'All-Hands Meeting', icon:'👥', pool:'general',
-    desc:'Każda zagrana karta: +0.4 Mult.',
+    desc:'Każda zagrana karta: +0.4 Eff.',
     ctxMods: { perCardMult: 0.4 },
   },
   gen_clientdemo: {
     id:'gen_clientdemo', name:'Client Demo', icon:'💼', pool:'general',
-    desc:'STRATEGY Chips ×2 tej tury. Brak STRATEGY: −0.5 Mult.',
+    desc:'STRATEGY Output ×2 tej tury. Brak STRATEGY: −0.5 Eff.',
     ctxMods: { stratChipsMult: 2.0, noStratMultPenalty: -0.5 },
   },
   gen_sprintreview: {
     id:'gen_sprintreview', name:'Sprint Review', icon:'⚡', pool:'general',
-    desc:'≥3 zagrane karty tej tury: +600 Chips.',
+    desc:'≥3 zagrane karty tej tury: +600 Output.',
     ctxMods: { minCardsChipsBonus: { min: 3, chips: 600 } },
   },
   gen_freelunch: {
@@ -101,7 +101,7 @@ export const CONTEXTS_DB = {
   },
   gen_officedrama: {
     id:'gen_officedrama', name:'Office Drama', icon:'🎭', pool:'general',
-    desc:'−10 WB, +0.8 Mult tej tury. Wszyscy są naelektryzowani.',
+    desc:'−10 WB, +0.8 Eff tej tury. Wszyscy są naelektryzowani.',
     preWbDelta: -10,
     ctxMods: { extraMult: 0.8 },
   },
@@ -137,7 +137,7 @@ export const CONTEXTS_DB = {
   },
   gen_pairing: {
     id:'gen_pairing', name:'Pair Programming', icon:'👯', pool:'general',
-    desc:'≥2 karty tego samego archetypu tej tury: +1.5 Mult.',
+    desc:'≥2 karty tego samego archetypu tej tury: +1.5 Eff.',
     ctxMods: { sameArchBonus: { min: 2, bonus: 1.5 } },
   },
   cho_1on1: {
@@ -145,8 +145,8 @@ export const CONTEXTS_DB = {
     isChoice: true,
     desc:'Twój manager chce porozmawiać.',
     choices: [
-      { id:'truth', label:'Powiedz prawdę',       desc:'−10 WB, +1.5 Mult tej tury', preWbDelta: -10, ctxMods: { extraMult: 1.5 } },
-      { id:'safe',  label:'Zagraj bezpiecznie',    desc:'+5 WB, +0.3 Mult',           preWbDelta:   5, ctxMods: { extraMult: 0.3 } },
+      { id:'truth', label:'Powiedz prawdę',       desc:'−10 WB, +1.5 Eff tej tury', preWbDelta: -10, ctxMods: { extraMult: 1.5 } },
+      { id:'safe',  label:'Zagraj bezpiecznie',    desc:'+5 WB, +0.3 Eff',           preWbDelta:   5, ctxMods: { extraMult: 0.3 } },
     ],
   },
   cho_scope: {
@@ -154,7 +154,7 @@ export const CONTEXTS_DB = {
     isChoice: true,
     desc:'Klient dodał wymagania w ostatniej chwili.',
     choices: [
-      { id:'accept', label:'Akceptuj',  desc:'+400 Chips, +20 TOX', preToxDelta: 20, ctxMods: { extraChips: 400 } },
+      { id:'accept', label:'Akceptuj',  desc:'+400 Output, +20 TOX', preToxDelta: 20, ctxMods: { extraChips: 400 } },
       { id:'reject', label:'Odrzuć',    desc:'−8 WB, bez bonusów',  preWbDelta:  -8, ctxMods: {} },
     ],
   },

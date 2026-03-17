@@ -38,7 +38,7 @@ export function computeAchievements(G, baseTotal, avgMult, chips) {
   if (avgMult >= 4.0)      add('🌀','Multiplier Master','pos','Avg Multiplier ≥ 4.0×',250);
   else if (avgMult >= 3.0) add('🔄','Efficiency Expert','pos','Avg Multiplier ≥ 3.0×',150);
   // chips
-  if (chips >= 15000)  add('💥','Chip Monster','pos','Total Chips ≥ 15000',150);
+  if (chips >= 15000)  add('💥','Output Monster','pos','Total Output ≥ 15000',150);
   // wellness path
   if ((G.wellnessWeeks || 0) >= 8) add('🌿','Wellness Champion','pos','8+ weeks with WB ≥ 70%',200);
   else if ((G.wellnessWeeks || 0) >= 5) add('❤','Healthy Habits','pos','5+ weeks with WB ≥ 70%',100);

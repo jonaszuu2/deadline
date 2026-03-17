@@ -790,8 +790,8 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .target-block{flex:1;display:flex;align-items:center;gap:12px}
 .tb-label{font-size:10px;color:var(--color-text-muted);font-family:var(--font-data);white-space:nowrap;letter-spacing:0.06em}
 .tb-bar-wrap{flex:1}
-.tb-bar-bg{height:7px;background:var(--color-text-ghost);border-radius:4px;overflow:hidden;position:relative}
-.tb-bar-fill{height:100%;border-radius:4px;transition:width 0.35s,background 0.35s}
+.tb-bar-bg{height:10px;background:#1a1a2e;border-radius:5px;overflow:hidden;position:relative}
+.tb-bar-fill{height:100%;border-radius:5px;transition:width 0.35s,background 0.35s}
 /* Reset old absolute positioning for #kpi-bar-inner when in topbar */
 #topbar #kpi-bar-inner{position:static !important;top:auto !important;left:auto !important;
                        box-shadow:none !important;transition:width 0.35s,background 0.35s !important}
@@ -871,6 +871,10 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .f-result .f-label{color:rgba(74,222,128,0.5)}
 .f-result .f-sub{color:rgba(74,222,128,0.3)}
 .f-warn{font-size:9px;color:var(--color-fail);font-family:var(--font-data);text-align:center;margin-top:3px}
+.f-sub.f-sub-idle{color:#5a5a7a}
+.f-sub.f-sub-pass{color:#00e090;font-weight:700}
+.f-sub.f-sub-fail{color:#ff2d55;font-weight:700}
+.f-sub.f-sub-progress{color:#ff9500}
 
 /* ── Hand label + cards area ── */
 .hand-label-new{font-size:10px;color:var(--color-text-muted);font-family:var(--font-data);
@@ -889,13 +893,13 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .card.new-card.syn-active{border-color:var(--color-system);box-shadow:0 0 12px rgba(0,229,255,.15)}
 /* archetype border tints */
 .card.new-card.PRODUCTION{border-color:rgba(124,58,237,0.35)}
-.card.new-card.PRODUCTION:hover{border-color:rgba(124,58,237,0.8)}
+.card.new-card.PRODUCTION:hover{border-color:#7c3aed}
 .card.new-card.STRATEGY{border-color:rgba(184,124,255,0.3)}
-.card.new-card.STRATEGY:hover{border-color:rgba(184,124,255,0.7)}
+.card.new-card.STRATEGY:hover{border-color:#b87cff}
 .card.new-card.CRUNCH{border-color:rgba(255,45,85,0.3)}
-.card.new-card.CRUNCH:hover{border-color:rgba(255,45,85,0.7)}
+.card.new-card.CRUNCH:hover{border-color:#ff2d55}
 .card.new-card.RECOVERY{border-color:rgba(0,224,144,0.3)}
-.card.new-card.RECOVERY:hover{border-color:rgba(0,224,144,0.7)}
+.card.new-card.RECOVERY:hover{border-color:#00e090}
 /* Selected always gets teal border regardless of archetype */
 .card.new-card.selected{border-color:var(--color-pass) !important}
 /* card innards */
@@ -944,11 +948,11 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
               transition:color 0.15s,border-color 0.15s}
 .btn-skip-new:hover{color:var(--color-text-primary);border-color:var(--color-text-primary)}
 .btn-skip-new:disabled{opacity:0.35;cursor:default}
-.btn-confirm{padding:9px 24px;background:var(--color-text-ghost);color:var(--color-text-muted);
-             border:none;border-radius:7px;font-size:12px;font-family:var(--font-mono);font-weight:700;
-             cursor:pointer;letter-spacing:0.05em;transition:background 0.2s,color 0.2s,transform 0.1s;
+.btn-confirm{padding:9px 24px;background:#1e1e38;color:#5a5a7a;
+             border:1px solid #32324a;border-radius:7px;font-size:12px;font-family:var(--font-mono);font-weight:700;
+             cursor:pointer;letter-spacing:0.05em;transition:all 0.2s ease;
              white-space:nowrap}
-.btn-confirm.ready{background:var(--color-pass);color:#001a10}
+.btn-confirm.ready{background:#00e090;color:#001a10;font-weight:700;border-color:#00e090}
 .btn-confirm.ready:hover{transform:scale(1.03)}
 .btn-confirm.ready:active{transform:scale(0.98)}
 .btn-confirm.danger{background:var(--color-fail);color:#fff}
@@ -1003,6 +1007,37 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 
 /* ── Full-width phases (shop, boss, draft, etc.) in win-body ── */
 .full-phase-wrap{width:100%;height:100%;overflow-y:auto}
+
+/* ── Desk Row (below hand cards) ── */
+.desk-row{width:100%;flex-shrink:0;padding:5px 0 0;border-top:1px solid var(--color-border-default)}
+.desk-slots{display:flex;gap:6px;width:100%}
+.desk-slot{flex:1;min-width:0;border-radius:8px;padding:6px 8px;min-height:54px;
+           border:1px solid var(--desk-tier-color,#2a2a40);background:var(--color-bg-surface);
+           position:relative;transition:border-color 0.15s,box-shadow 0.15s;overflow:hidden}
+.desk-slot-empty{display:flex;align-items:center;justify-content:center;
+                 border-style:dashed !important;color:var(--color-text-ghost);
+                 font-size:9px;font-family:var(--font-data);letter-spacing:0.06em}
+.desk-slot-icon{font-size:15px;line-height:1;margin-bottom:2px}
+.desk-slot-name{font-size:10px;font-family:var(--font-ui);font-weight:600;
+                color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.desk-slot-desc{font-size:9px;font-family:var(--font-data);color:var(--color-text-muted);
+                line-height:1.4;margin-top:1px;overflow:hidden;display:-webkit-box;
+                -webkit-line-clamp:2;-webkit-box-orient:vertical}
+.desk-slot.ds-active{border-color:#4ade80 !important}
+.desk-slot.will-activate{border-color:#00e5ff !important;box-shadow:0 0 8px rgba(0,229,255,.25)}
+@keyframes deskPulse{
+  0%  {border-color:var(--desk-tier-color,#2a2a40);box-shadow:none}
+  40% {border-color:var(--color-pass);box-shadow:0 0 10px rgba(0,224,144,.4)}
+  100%{border-color:var(--desk-tier-color,#2a2a40);box-shadow:none}
+}
+.desk-slot.activating{animation:deskPulse 0.4s ease}
+
+/* ── Pass flash animation ── */
+@keyframes passFlash {
+  0%,100%{border-color:rgba(74,222,128,0.2);background:var(--color-card-production-bg)}
+  50%{border-color:#00e090;background:#003020}
+}
+.f-result.pass-flash{animation:passFlash 0.4s ease}
 
 /* ── Scanlines overlay ── */
 body::before{content:'';position:fixed;inset:0;

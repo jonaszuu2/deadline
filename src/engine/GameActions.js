@@ -76,7 +76,7 @@ export function discardSelected() {
   if (gone.length >= 2) {
     const comboBonus = fmt1((gone.length - 1) * 0.4);
     this.discardComboMult = fmt1(this.discardComboMult + Number(comboBonus));
-    discardLog += ` ♻ Batch Discard: +${comboBonus}× Mult stacked (${this.discardComboMult}× ready).`;
+    discardLog += ` ♻ Batch Discard: +${comboBonus}× Eff stacked (${this.discardComboMult}× ready).`;
   }
   this.addLog('ch', discardLog);
   this.drawUp(); this._commit();
@@ -144,7 +144,7 @@ export function playSelected() {
       else if (c.level === 2) c.fx = {...c.fx, mult: Number(fmt1((c.fx.mult||0) + 0.2))};
       else                    { c.fx = {...c.fx, chips: (c.fx.chips||0) + 250, mult: Number(fmt1((c.fx.mult||0) + 0.1))}; }
       const stars = '★'.repeat(c.level);
-      const desc = c.level === 1 ? '+200 Chips base' : c.level === 2 ? '+0.2 Mult base' : '+250 Chips +0.1 Mult base';
+      const desc = c.level === 1 ? '+200 Output base' : c.level === 2 ? '+0.2 Eff base' : '+250 Output +0.1 Eff base';
       this.addLog('sy', `> ${stars} [${c.name}] LEVEL ${c.level}! ${desc}`);
     }
   }
@@ -254,6 +254,16 @@ export function processTurn(cards, ctxMods = {}, handSizeBeforePlay = 0) {
   this.weekCrunchCount   = result.weekCrunchCount;
   this.firstCardThisWeek = result.firstCardThisWeek;
   for (const uid of result.newExhausted) this.exhausted.add(uid);
+  // Track which desk items fired this turn (for UI pulse)
+  this.lastActivatedDeskIds = new Set();
+  for (const entry of result.log) {
+    const match = entry.t?.match(/\[([^\]]+)\]/);
+    if (match) {
+      const name = match[1].trim();
+      const item = (this.deskItems || []).find(d => d.name === name);
+      if (item) this.lastActivatedDeskIds.add(item.id);
+    }
+  }
   this.peakTox = Math.max(this.peakTox, result.tox);
   if (!result.gameOver) {
     this.totalRawChips += result.chips;
@@ -312,13 +322,13 @@ export function _checkPassiveCombos() {
   const owned = new Set(this.passives.map(p => p.itemId));
   const combos = [
     {id:'combo_ergo',     needs:['sh_chair','sh_keyboard'],
-     msg:'★ PASSIVE COMBO: Ergonomics Expert (Chair + Keyboard) — +0.5 permanent Mult',
+     msg:'★ PASSIVE COMBO: Ergonomics Expert (Chair + Keyboard) — +0.5 permanent Eff',
      apply: g => { g.permMult = fmt1((g.permMult||0)+0.5); }},
     {id:'combo_zen',      needs:['sh_plant','sh_cooler'],
      msg:'★ PASSIVE COMBO: Zen Office (Plant + Cooler) — -10% Toxicity',
      apply: g => { g.tox = clamp(g.tox-10,0,100); }},
     {id:'combo_techLead', needs:['sh_keyboard','sh_coach'],
-     msg:'★ PASSIVE COMBO: Tech Leadership (Keyboard + Coach) — +0.3 Mult, +10 WB',
+     msg:'★ PASSIVE COMBO: Tech Leadership (Keyboard + Coach) — +0.3 Eff, +10 WB',
      apply: g => { g.permMult = fmt1((g.permMult||0)+0.3); g.wb = clamp(g.wb+10,0,100); }},
   ];
   for (const c of combos) {
@@ -410,10 +420,10 @@ export function upgradeCard(uid) {
   let updater, logDesc;
   if (arch === 'PRODUCTION') {
     updater = c => ({ fx: {...c.fx, chips: (c.fx.chips || 0) + tier.chips} });
-    logDesc = `+${tier.chips} Chips`;
+    logDesc = `+${tier.chips} Output`;
   } else if (arch === 'STRATEGY' || arch === 'CRUNCH') {
     updater = c => ({ fx: {...c.fx, mult: Number(fmt1((c.fx.mult || 0) + tier.mult))} });
-    logDesc = `+${tier.mult} Mult`;
+    logDesc = `+${tier.mult} Eff`;
   } else if (arch === 'RECOVERY') {
     const wbBoost  = orig.fx.wb  > 0 ? Math.round(tier.chips / 4) : 0;
     const toxBoost = orig.fx.tox < 0 ? -Math.round(tier.chips / 4) : 0;
@@ -430,7 +440,7 @@ export function upgradeCard(uid) {
     updater = c => ({
       fx: {...c.fx, chips: (c.fx.chips || 0) + tier.chips, mult: Number(fmt1((c.fx.mult || 0) + tier.mult))}
     });
-    logDesc = `+${tier.chips} Chips, +${tier.mult} Mult`;
+    logDesc = `+${tier.chips} Output, +${tier.mult} Eff`;
   }
 
   const card = this._mutateCard(uid, c => ({...updater(c), upgrades: (c.upgrades || 0) + 1}));
