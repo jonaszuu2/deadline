@@ -10,6 +10,7 @@ import { initFinalReviewAnim, updateKpiBar, initScoringAnimation } from './anima
 import { _currentHandH, HAND_H_DEF, applyHandHeight } from './resize.js';
 import { ovGameOver, ovWin, ovFinalReview } from './overlays.js';
 import { CONTEXTS_DB } from '../data/contexts.js';
+import { buildManagerEmail, shouldShowEmail } from '../data/managerEmails.js';
 
 export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80', SHOP:'#c8b8ff'};
 
@@ -23,8 +24,7 @@ const _phaseFlashLabels = {
   play:            wk => `WEEK ${wk} — DELIVERABLES`,
   result:          ()  => 'WEEK COMPLETE',
   scoring:         ()  => 'SUBMITTING WORK',
-  draft:           ()  => 'CARD DRAFT',
-  shop:            ()  => 'CORPORATE STORE',
+  shop:            ()  => 'WEEKLY REVIEW',
   boss:            ()  => 'PERFORMANCE REVIEW',
   teammate_choice: ()  => 'STAFFING DECISION',
 };
@@ -105,9 +105,11 @@ export function renderTopbar(G) {
     return `<div class="${cls}"></div>`;
   }).join('');
 
-  const pips = Array.from({length:(G.playsMax||PLAYS)}, (_, i) =>
-    `<div class="tp-pip${i >= plays ? ' used' : ''}"></div>`
-  ).join('');
+  const pips = Array.from({length:(G.playsMax||PLAYS)}, (_, i) => {
+    if (i >= plays) return `<div class="tp-pip used"></div>`;
+    if (plays === 1) return `<div class="tp-pip last-pip"></div>`;
+    return `<div class="tp-pip"></div>`;
+  }).join('');
 
   const phase = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS', gameover:'GAME OVER',
                  win:'WIN', review:'REVIEW', draft:'DRAFT', teammate_choice:'STAFFING',
@@ -183,17 +185,18 @@ export function render(G) {
     winBody.innerHTML = `<div class="full-phase-wrap">${renderBossEncounter(G)}</div>`;
     return;
   }
-  if (G.phase === 'draft') {
-    winBody.innerHTML = `<div class="full-phase-wrap">${renderDraft(G)}</div>`;
-    return;
-  }
   if (G.phase === 'targeted_draw') {
     winBody.innerHTML = `<div class="full-phase-wrap">${renderTargetedDraw(G)}</div>`;
     return;
   }
   if (G.phase === 'scoring') {
-    winBody.innerHTML = `<div class="full-phase-wrap">${renderScoring(G)}</div>`;
-    initScoringAnimation(G);
+    try {
+      winBody.innerHTML = `<div class="full-phase-wrap">${renderScoring(G)}</div>`;
+      initScoringAnimation(G);
+    } catch(e) {
+      console.error('[DEADLINE] renderScoring failed:', e);
+      G.finishScoring();
+    }
     return;
   }
   if (G.phase === 'upgrade_result') {
@@ -394,16 +397,18 @@ function renderLeftPanel(G, preview) {
   const {wb, tox, bo} = G;
 
   // Stat bars
+  const wbDanger  = wb  < 25  ? ' wb-danger'  : '';
+  const toxDanger = tox > 80  ? ' tox-danger' : '';
   const statBars = `
     <div>
       <div class="section-title">Employee Status</div>
       <div class="lp-stat-bars">
-        <div class="lp-sb-row">
+        <div class="lp-sb-row${wbDanger}">
           <span class="lp-sb-label">Wellbeing</span>
           <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${wb}%;background:var(--color-wellbeing);"></div></div>
           <span class="lp-sb-val" style="color:var(--color-wellbeing);">${wb}%</span>
         </div>
-        <div class="lp-sb-row">
+        <div class="lp-sb-row${toxDanger}">
           <span class="lp-sb-label">Toxicity</span>
           <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${tox}%;background:var(--color-toxicity);"></div></div>
           <span class="lp-sb-val" style="color:var(--color-toxicity);">${tox}%</span>
@@ -416,28 +421,6 @@ function renderLeftPanel(G, preview) {
       </div>
     </div>`;
 
-  // Archetype counters
-  const wa = G.weekArchetypes || {};
-  const mh = G.archetypeMilestonesHit || new Set();
-  const AC = [
-    {k:'PRODUCTION', lbl:'PROD', c:'var(--color-card-production)', bg:'rgba(124,58,237,0.12)', bd:'rgba(124,58,237,0.2)'},
-    {k:'STRATEGY',   lbl:'STRA', c:'var(--color-card-strategy)',   bg:'rgba(184,124,255,0.1)', bd:'rgba(184,124,255,0.15)'},
-    {k:'CRUNCH',     lbl:'CRUN', c:'var(--color-card-crunch)',     bg:'rgba(255,45,85,0.08)',  bd:'rgba(255,45,85,0.15)'},
-    {k:'RECOVERY',   lbl:'RECO', c:'var(--color-card-recovery)',   bg:'rgba(0,224,144,0.08)',  bd:'rgba(0,224,144,0.15)'},
-  ];
-  const archGrid = `
-    <div>
-      <div class="section-title">Week Archetypes</div>
-      <div class="arch-grid">
-        ${AC.map(a => {
-          const hit = mh.has(a.k);
-          return `<div class="arch-chip" style="background:${a.bg};border:1px solid ${a.bd};" title="${a.k}: ${wa[a.k]||0}/4${hit?' ★ MILESTONE':''}">
-            <span class="arch-name" style="color:${a.c};">${a.lbl}</span>
-            <span class="arch-val" style="color:${hit?'var(--color-currency)':a.c};">${hit?'★':(wa[a.k]||0)}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
 
   // Calendar / context days
   let calHtml = '';
@@ -476,38 +459,45 @@ function renderLeftPanel(G, preview) {
                  :              {cls:'tier-pro',      lbl:'✅ PROFESSIONAL', color:'var(--color-pass)'};
   const tierBadge = `<div class="lp-tox-tier" style="color:${tierInfo.color};border-color:${tierInfo.color};">${tierInfo.lbl}</div>`;
 
-  return `<div class="left-panel">${statBars}${archGrid}${calHtml}${tierBadge}</div>`;
+  const recentLog = (G.log || []).slice(-8);
+  const miniLog = recentLog.length ? `
+    <div>
+      <div class="section-title">Activity Log</div>
+      <div class="mini-log">
+        ${recentLog.map(e => `<div class="mini-log-entry ${e.cls||''}">${e.t}</div>`).join('')}
+      </div>
+    </div>` : '';
+
+  return `<div class="left-panel">${statBars}${calHtml}${tierBadge}${miniLog}</div>`;
 }
 
 function renderFormulaRow(preview, wscore, target, G) {
-  const hasP    = !!preview;
-  const projTotal = wscore + (preview ? preview.score : 0);
-  const willPass  = projTotal >= target;
-  const need = Math.max(0, target - wscore);
+  const hasP   = !!preview;
+  const isResult = G.phase === 'result';
 
-  const chipsVal = hasP ? preview.chips.toLocaleString() : (wscore > 0 ? '—' : '—');
+  // OUTPUT — always visible when cards selected (additive, no surprise)
+  const chipsVal = hasP ? preview.chips.toLocaleString() : '—';
+  const chipsCls = hasP ? 'f-val live chips' : 'f-val';
+
+  // EFFICIENCY — visible (helps planning), REVENUE — hidden until scoring animation
+  // In result phase, show actuals from accumulated wscore
   const multVal  = hasP ? preview.mult.toFixed(2) + '×' : '—';
-  const scoreVal = hasP ? '$' + preview.score.toLocaleString() : (wscore > 0 ? '$' + wscore.toLocaleString() : '$0');
+  const scoreVal = isResult ? '$' + wscore.toLocaleString() : (hasP ? '?' : '$0');
+  const multCls  = hasP ? 'f-val live mult' : 'f-val';
+  const scoreCls = isResult ? (wscore >= target ? 'f-val live score win' : 'f-val live score') : (hasP ? 'f-val mystery' : 'f-val');
 
-  const chipsCls  = hasP ? 'f-val live chips' : 'f-val';
-  const multCls   = hasP ? 'f-val live mult'  : 'f-val';
-  const scoreCls  = hasP ? (willPass ? 'f-val live score win' : 'f-val live score') : 'f-val';
-
-  const toxWarn = hasP && preview.toxChecks > 0
+  const toxWarn = hasP && !isResult && preview.toxChecks > 0
     ? `<div class="f-warn">☣ up to −${preview.maxToxDmg} WB risk</div>` : '';
 
   let weekProgress;
-  if (G.phase === 'result') {
+  if (isResult) {
     weekProgress = wscore >= target
       ? `<div class="f-sub f-sub-pass">✓ cel osiągnięty</div>`
       : `<div class="f-sub f-sub-fail">✗ brakuje $${(target - wscore).toLocaleString()}</div>`;
   } else if (!hasP) {
     weekProgress = `<div class="f-sub f-sub-idle">wybierz karty</div>`;
   } else {
-    const projTotal = wscore + preview.score;
-    weekProgress = projTotal >= target
-      ? `<div class="f-sub f-sub-pass">✓ cel osiągnięty</div>`
-      : `<div class="f-sub f-sub-progress">potrzebujesz $${(target - projTotal).toLocaleString()} więcej</div>`;
+    weekProgress = `<div class="f-sub f-sub-idle">${preview.cards?.length || ''} kart — zatwierdź</div>`;
   }
 
   return `<div class="formula-row">
@@ -575,16 +565,12 @@ function renderActionBarNew(G, preview) {
     hintText = 'No plays remaining';
     hintCls  = 'bad';
   } else if (preview) {
-    const projTotal = wscore + preview.score;
-    const willPass  = projTotal >= target;
-    const scoreStr  = '+$' + preview.score.toLocaleString();
-    const pm = willPass ? ' ✓' : '';
     const risk = preview.riskLevel;
-    if      (risk === 'LETHAL')  { confirmBtn = `<button class="btn-confirm danger"  onclick="_animatedPlay()">💀 DESPERATE (${scoreStr}${pm})</button>`; hintCls = 'bad'; }
-    else if (risk === 'RISKY')   { confirmBtn = `<button class="btn-confirm risky"   onclick="_animatedPlay()">⚡ RISKY (${scoreStr}${pm})</button>`;      hintCls = 'warn'; }
-    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="_animatedPlay()">⚠ CAUTION (${scoreStr}${pm})</button>`;    hintCls = 'warn'; }
-    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="_animatedPlay()">Zatwierdź (${scoreStr}${pm})</button>`;   hintCls = willPass ? 'ok' : ''; }
-    hintText = `${sel.length} card(s) — $${preview.score.toLocaleString()} revenue · ${risk}`;
+    if      (risk === 'LETHAL')  { confirmBtn = `<button class="btn-confirm danger"  onclick="_animatedPlay()">💀 DESPERATE MOVE</button>`; hintCls = 'bad'; }
+    else if (risk === 'RISKY')   { confirmBtn = `<button class="btn-confirm risky"   onclick="_animatedPlay()">⚡ RISKY PLAY</button>`;      hintCls = 'warn'; }
+    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="_animatedPlay()">⚠ CAUTION</button>`;          hintCls = 'warn'; }
+    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="_animatedPlay()">Zatwierdź wybór</button>`;    hintCls = ''; }
+    hintText = `${sel.length} card${sel.length > 1 ? 's' : ''} selected · ${risk}`;
   } else {
     confirmBtn = `<button class="btn-confirm ready" onclick="_animatedPlay()">Zatwierdź (${sel.length} cards)</button>`;
     hintText = `${sel.length} card(s) selected`;
@@ -1533,7 +1519,6 @@ export function renderScoring(G) {
   const d = G.scoringDisplay;
   if (!d) return '';
 
-  const {wb, tox, bo, log, hand, passives, exhausted} = G;
   const wscore = d.prevWscore; // show OLD score during animation — suspense!
   const target = G.kpi();
 
@@ -1591,12 +1576,34 @@ export function renderScoring(G) {
       </div>
     </div>`;
 
+  // Build manager email — only when passing or out of plays
+  const showEmail = shouldShowEmail(G, d);
+  const email = showEmail ? buildManagerEmail(G, d) : null;
+  const emailHtml = email ? `
+    <div id="manager-email" class="mgr-email">
+      <div class="mgr-titlebar">
+        <span class="mgr-titlebar-icon">✉</span>
+        <span class="mgr-titlebar-text">Outlook — New Message</span>
+        <span class="mgr-titlebar-close" onclick="_dismissManagerEmail(event)">✕</span>
+      </div>
+      <div class="mgr-headers">
+        <div class="mgr-hrow"><span class="mgr-hlbl">From:</span><span class="mgr-hval">${esc(email.mgr.name)} &lt;${esc(email.mgr.email)}&gt;</span></div>
+        <div class="mgr-hrow"><span class="mgr-hlbl">To:</span><span class="mgr-hval">you@deadline-corp.com</span></div>
+        <div class="mgr-hrow"><span class="mgr-hlbl">Date:</span><span class="mgr-hval">${email.dayName}, Week ${G.week}</span></div>
+        <div class="mgr-hrow mgr-subj-row"><span class="mgr-hlbl">Subject:</span><span class="mgr-hval mgr-subj ${email.passed ? '' : 'mgr-tier-fail'}">${esc(email.subject)}</span></div>
+      </div>
+      <div class="mgr-sep"></div>
+      <div class="mgr-body">
+        <p>${esc(email.body)}</p>
+        ${email.ps ? `<p class="mgr-ps">${esc(email.ps)}</p>` : ''}
+        <p class="mgr-sign">— ${esc(email.mgr.name)}<br><span class="mgr-title">${esc(email.mgr.title)}</span></p>
+      </div>
+    </div>` : '';
+
   // Scoring uses a centered layout (no 3-col — scoring machine takes center stage)
-  return `<div style="display:flex;flex-direction:column;height:100%;align-items:center;justify-content:center;gap:16px;padding:20px">
+  return `<div style="display:flex;flex-direction:column;height:100%;align-items:center;justify-content:center;padding:20px;position:relative">
     ${scoringMachine}
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;max-width:700px">
-      ${hand.map(c => renderCard(c, [], null, passives, {})).join('')}
-    </div>
+    ${emailHtml}
   </div>`;
 }
 
@@ -1750,6 +1757,46 @@ export function renderShop(G) {
     return renderDeskItemOffer(G);
   }
 
+  // ── Draft section (embedded when player passed this week) ───
+  let draftSectionHtml = '';
+  if (G.draftPool && G.draftPool.length > 0) {
+    const draftCards = G.draftPool.map(c => {
+      const fxLines = [
+        c.fx.chips ? `🔵 +${c.fx.chips} Output` : '',
+        c.fx.mult  ? `🔴 +${c.fx.mult}× Eff` : '',
+        c.fx.tox > 0 ? `☣ +${c.fx.tox}% Tox` : '',
+        c.fx.tox < 0 ? `☣ ${c.fx.tox}% Tox` : '',
+        c.fx.wb > 0  ? `❤ +${c.fx.wb} WB` : '',
+        c.fx.wb < 0  ? `❤ ${c.fx.wb} WB` : '',
+      ].filter(Boolean).join('<br>');
+      const synDesc = c.synergies?.[0]?.desc ? `<div class="dr-syn">★ ${esc(c.synergies[0].desc)}</div>` : '';
+      const synBadge = c.synergyWith ? `<div class="dr-syn-badge">🔗 ENABLES: ${esc(c.synergyWith)}</div>` : '';
+      const hint = _draftBuildHint(c, G);
+      return `<div class="dr-card ${c.archetype}" onclick="G.claimDraftCard('${c.id}')">
+        <div class="dr-arch">${c.archetype}</div>
+        <div class="dr-rarity">${c.rarity}</div>
+        <div class="dr-name">${esc(c.name)}</div>
+        <div class="dr-flavor">"${esc(c.flavor)}"</div>
+        <div class="dr-fx">${fxLines}</div>
+        ${synDesc}${synBadge}
+        <div class="dr-hint ${hint.cls}">▸ ${hint.text}</div>
+        <button class="dr-pick-btn">＋ Add to Deck</button>
+      </div>`;
+    }).join('');
+    const deckFull = G.deckSize() >= 24;
+    draftSectionHtml = `
+      <div class="sh-draft-section">
+        <div class="sh-draft-header">
+          <span>📋 CARD DRAFT — choose 1 to add permanently</span>
+          <span style="color:${deckFull?'#ff8040':'var(--dim)'}">Deck: ${G.deckSize()}/24${deckFull?' — FULL':''}</span>
+        </div>
+        <div class="dr-cards">${draftCards}</div>
+        <div class="dr-skip-row">
+          <button class="dr-skip-btn" onclick="G.skipDraft()">✗ Skip — keep deck lean</button>
+        </div>
+      </div>`;
+  }
+
   const {week, coins, shopItems, wscore, passives} = G;
   const passed = wscore >= G.kpi();
   const wbColor = G.wb >= 70 ? '#70ff78' : G.wb >= 40 ? '#ffdd44' : '#ff7070';
@@ -1805,7 +1852,7 @@ export function renderShop(G) {
   const nextLabel = week >= TOTAL_WEEKS ? '✓ FINAL RESULTS' : `▶ START WEEK ${week + 1}`;
   return `<div class="draft-screen">
     <div class="dr-header">
-      <div class="dr-title">🏪 CORPO-SHOP — WEEK ${week}</div>
+      <div class="dr-title">📊 WEEKLY REVIEW — WEEK ${week}</div>
       <div class="dr-sub" style="color:${passed ? '#70ff78' : '#ff7070'};font-weight:bold">${passed ? `✓ PASSED — ${wscore} / ${G.kpi()}` : `✗ FAILED — ${wscore} / ${G.kpi()}`}</div>
       <div class="sh2-stats">
         <span style="color:${wbColor}">❤ WB ${G.wb}%</span>
@@ -1814,6 +1861,7 @@ export function renderShop(G) {
         <span style="color:#ffdd44">💰 ${coins} CC</span>
       </div>
     </div>
+    ${draftSectionHtml}
     ${meltdownAdvisory}
     <div class="dr-cards">${cardsHtml || '<div style="color:var(--dim);padding:20px;font:12px Courier New">Shop is empty.</div>'}</div>
     <div class="sh2-actions">

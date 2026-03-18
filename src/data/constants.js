@@ -4,7 +4,7 @@ export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // ═══════════════════════════════════════════════════════
 //  GAME CONSTANTS & KPI
 // ═══════════════════════════════════════════════════════
-export const KPI = [2400, 3550, 4850, 6350, 7350, 8500, 11900, 13650, 15450, 17300];
+export const KPI = [2400, 3550, 4850, 6350, 7350, 8500, 10200, 12400, 14800, 17300];
 export const TOTAL_WEEKS = 10;
 export const PLAYS = 5;
 export const DISCS = 3;

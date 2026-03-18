@@ -8,7 +8,7 @@ export const DB = {
     fx:{chips:250,mult:0.1,tox:0,wb:0},synergies:[]},
   prod_002:{id:'prod_002',name:'Data Entry',archetype:'PRODUCTION',rarity:'COMMON',tier:0,
     flavor:'Copy. Paste. Ctrl+Z is your only friend.',
-    fx:{chips:125,mult:0,tox:0,wb:0},
+    fx:{chips:200,mult:0,tox:0,wb:0},
     synergies:[{id:'syn_flow',trigger:'ON_SCORE',desc:'Mindless Flow: +600 Output if ≥2 Data Entry played',
       conds:[{type:'CARD_COUNT',p:{id:'prod_002',min:2}}],eff:{type:'ADD_CHIPS',p:{v:600}}}]},
   prod_003:{id:'prod_003',name:'Client Presentation',archetype:'PRODUCTION',rarity:'UNCOMMON',tier:2,
@@ -98,7 +98,7 @@ export const DB = {
   // ── RECOVERY ──────────────────────────────────────────
   recov_001:{id:'recov_001',name:'Coffee Break',archetype:'RECOVERY',rarity:'COMMON',tier:0,
     flavor:'Machine broken. Perfect excuse.',
-    fx:{chips:50,mult:0,tox:-15,wb:5},synergies:[]},
+    fx:{chips:75,mult:0,tox:-15,wb:5},synergies:[]},
   recov_002:{id:'recov_002',name:'Power Nap',archetype:'RECOVERY',rarity:'COMMON',tier:1,
     flavor:'Under the desk. Again.',
     fx:{chips:150,mult:0.2,tox:0,wb:20},

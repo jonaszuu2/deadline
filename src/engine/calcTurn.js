@@ -204,7 +204,7 @@ export function calcTurn(cards, ctx) {
     else if (tmTier === 3) { acc.mult += 0.8; lg('mu', `  👻 [Sarah T3 — Gone] Lean team bonus — +0.8 Eff`); }
   }
   if (teammate === 'alex') {
-    const alexChips = tmTier === 1 ? 40 : tmTier === 3 ? 250 : 100;
+    const alexChips = tmTier === 1 ? 75 : tmTier === 3 ? 450 : 200;
     const ab = cards.length * alexChips;
     acc.chips += ab;
     lg('ch', `  🦈 [Alex T${tmTier}] +${ab} Output (${cards.length} card${cards.length > 1 ? 's' : ''} × ${alexChips})`);
@@ -220,7 +220,7 @@ export function calcTurn(cards, ctx) {
 
   // ── Toxicity tier (based on starting tox) ────────────
   const toxTier = tox >= 91 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
-  if (toxTier === 4) { acc.mult *= 2; lg('sy', `  ☣ [Meltdown Zone] All Eff ×2 → ${fmt1(acc.mult)}×`); }
+  if (toxTier === 4) { acc.mult *= 1.5; lg('sy', `  ☣ [Meltdown Zone] All Eff ×1.5 → ${fmt1(acc.mult)}×`); }
 
   // ── Card loop ─────────────────────────────────────────
   for (const card of cards) {
@@ -263,10 +263,10 @@ export function calcTurn(cards, ctx) {
     // Context per-card mult
     if (ctxMods.perCardMult) { acc.mult += ctxMods.perCardMult; }
 
-    // Gary T1: +25 Output per card
+    // Gary T1: +100 Output per card
     if (teammate === 'gary' && tmTier === 1) {
-      acc.chips += 25;
-      lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +25 Output`, true);
+      acc.chips += 100;
+      lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +100 Output`, true);
     }
     // CHIPS_PER_PLAY passive: +passiveVal Output per card played
     for (const p of passives) {
@@ -291,19 +291,19 @@ export function calcTurn(cards, ctx) {
       }
     }
 
-    // Marcus: PRODUCTION chips / STRATEGY tox
-    if (teammate === 'marcus') {
+    // Derek: PRODUCTION chips / STRATEGY tox
+    if (teammate === 'derek') {
       if (card.archetype === 'PRODUCTION') {
-        const mc = tmTier === 3 ? 200 : 100;
+        const mc = tmTier === 3 ? 300 : 150;
         acc.chips += mc;
-        lg('ch', `  📋 [Marcus T${tmTier}] Deliverable approved — +${mc} Output`, true);
-        if (tmTier === 1) { wb = clamp(wb + 5, 0, 100); lg('wg', `  📋 [Marcus T1] Good work noted — +5 WB → ${wb}%`, true); }
-        if (tmTier === 3) { bo = clamp(bo + 3, 0, 100); lg('bo', `  📋 [Marcus T3] Running you ragged — +3 Burnout → ${bo}%`, true); }
+        lg('ch', `  📋 [Derek T${tmTier}] Deliverable approved — +${mc} Output`, true);
+        if (tmTier === 1) { wb = clamp(wb + 5, 0, 100); lg('wg', `  📋 [Derek T1] Good work noted — +5 WB → ${wb}%`, true); }
+        if (tmTier === 3) { bo = clamp(bo + 3, 0, 100); lg('bo', `  📋 [Derek T3] Running you ragged — +3 Burnout → ${bo}%`, true); }
       }
       if (card.archetype === 'STRATEGY' && tmTier >= 2) {
         const mt = tmTier === 3 ? 15 : 8;
         tox = clamp(tox + mt, 0, 100);
-        lg('tg', `  📋 [Marcus T${tmTier}] "Why are we planning?!" — +${mt}% Tox → ${tox}%`, true);
+        lg('tg', `  📋 [Derek T${tmTier}] "Why are we planning?!" — +${mt}% Tox → ${tox}%`, true);
       }
     }
     // Priya: STRATEGY mult / RECOVERY modifier

@@ -38,7 +38,10 @@ export function start() {
   const yearLabel = this.promotionRun ? ` — YEAR ${this.promotionYear}` : '';
   const kpiLabel  = this.promotionRun ? ` [KPI ×${this.kpiMultiplier.toFixed(2)}]` : '';
   this.addLog('d', `> DEADLINE™ v0.5${yearLabel} — Week 1/${TOTAL_WEEKS}. KPI target: ${this.kpi()}${kpiLabel}`);
-  this.prepareTeammateChoice();
+  this.addLog('i', `> 👥 Solo week — a teammate will join you from Week 2.`);
+  this.teammate = null;
+  this.phase = 'play';
+  this._commit();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -136,10 +139,9 @@ export function openShop() {
   const passed = this.weekHistory[this.weekHistory.length - 1]?.passed;
   if (passed) {
     this.draftPool = this._buildCardDraftPool();
-    this.transition('draft');
-    this._commit();
     if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
-    return;
+  } else {
+    this.draftPool = [];
   }
   const bossId = {2:'early', 5:'midgame', 8:'late'}[this.week];
   if (bossId && !this.bossEncountersDone.has(this.week)) {
@@ -195,7 +197,12 @@ export function startNextWeek() {
   }
   this.drawUp();
   this.addLog('d', `> Week ${this.week}/${TOTAL_WEEKS}. KPI target: ${this.kpi()}`);
-  this.prepareTeammateChoice();
+  if (this.week >= 2) {
+    this.prepareTeammateChoice();
+  } else {
+    this.transition('play');
+    this._commit();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -321,26 +328,14 @@ export function claimDraftCard(cardId) {
   const at = Math.floor(Math.random() * (this.deck.length + 1));
   this.deck.splice(at, 0, newCard);
   this.addLog('ok', `> 📋 Draft: ${cardDef.name} added to deck. (${this.deckSize()}/24)`);
-  this._openShopAfterDraft();
+  this.draftPool = [];
+  this._commit();
 }
 
 export function skipDraft() {
   this.addLog('ok', '> ✗ Draft skipped — deck unchanged.');
-  this._openShopAfterDraft();
-}
-
-export function _openShopAfterDraft() {
   this.draftPool = [];
-  const bossId = {2:'early', 5:'midgame', 8:'late'}[this.week];
-  if (bossId && !this.bossEncountersDone.has(this.week)) {
-    this.transition('boss'); this.bossPhase = 'question'; this.bossQIdx = 0;
-    this.bossAnswerLog = []; this.currentBoss = bossId;
-    this._commit(); return;
-  }
-  this.shopItems = this._buildShopItems();
-  this.transition('shop'); this._commit();
-  if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
-  ui.checkFirstShopTutorial?.();
+  this._commit();
 }
 
 export function _buildCardDraftPool() {

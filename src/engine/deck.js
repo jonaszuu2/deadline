@@ -3,16 +3,10 @@ import { SHOP_DB } from '../data/shop.js';
 import { shuffle, nextUid, getUnlockedTier, isCardUnlocked, fmt1 } from './utils.js';
 
 export const DECK_BLUEPRINT = {
-  prod_001:3, prod_002:3, prod_005:2,
-  strat_001:3, strat_002:2, strat_005:2,
+  prod_001:2, prod_002:2, prod_005:2,
+  strat_001:2, strat_002:2, strat_005:1,
   crunch_001:2, crunch_004:1,
   recov_001:2, recov_004:2,
-  // tier 1
-  prod_004:2, strat_006:1, crunch_002:1, crunch_005:1, recov_002:1, recov_006:1,
-  // tier 2
-  prod_003:1, prod_007:1, strat_004:2, strat_007:1, crunch_006:1, recov_003:1,
-  // tier 3
-  strat_003:1, crunch_003:1,
 };
 
 export function makeDeck() {

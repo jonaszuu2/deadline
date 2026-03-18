@@ -779,16 +779,76 @@
 .sc-card-badge.sc-cb-crunch{color:var(--color-card-crunch);border-color:rgba(255,45,85,.35)}
 .sc-card-badge.sc-cb-recovery{color:var(--color-card-recovery);border-color:rgba(0,224,144,.35)}
 /* Score machine scoring mode overrides */
-.sm-scoring-mode{flex:1;min-width:0;cursor:pointer;animation:be-in .2s ease-out;user-select:none;
-  border:1px solid rgba(255,221,68,.25)}
+.sm-scoring-mode{flex:1;min-width:0;cursor:pointer;animation:be-in .2s ease-out;user-select:none}
 .sm-scoring-mode #score-machine{display:flex;flex-direction:column;align-items:center;
-  gap:6px;padding:8px 0 4px}
+  gap:6px;padding:8px 0 4px;border:none !important;background:transparent !important;box-shadow:none !important}
 .sm-scoring-mode .sm-displays{justify-content:center;gap:10px}
 /* Make score display bigger for impact */
 .sm-scoring-mode #sc-score-block .sm-display{font-size:52px!important;min-width:130px}
 /* sc-deltas inside sm-bottom */
 .sm-scoring-mode .sc-deltas{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .sm-scoring-mode .sc-hint{display:block;text-align:center;margin-top:2px}
+/* ══ MANAGER EMAIL ══ */
+@keyframes mgrSlideIn{
+  from{opacity:0;transform:translateY(24px) scale(0.97)}
+  to  {opacity:1;transform:translateY(0)    scale(1)}}
+@keyframes mgrSlideOut{
+  from{opacity:1;transform:translateY(0)    scale(1)}
+  to  {opacity:0;transform:translateY(16px) scale(0.96)}}
+
+.mgr-email{
+  position:absolute;bottom:32px;right:32px;
+  width:420px;max-width:calc(100vw - 48px);
+  background:#c0c0c0;
+  border:2px solid;border-color:#ffffff #808080 #808080 #ffffff;
+  box-shadow:2px 2px 0 #000, inset 1px 1px 0 #dfdfdf;
+  font-family:'Courier New',monospace;
+  opacity:0;pointer-events:none;
+  transform:translateY(24px) scale(0.97)}
+.mgr-email.mgr-visible{
+  opacity:1;pointer-events:auto;
+  animation:mgrSlideIn 0.3s cubic-bezier(.22,.68,0,1.2) forwards}
+.mgr-email.mgr-dismissing{
+  animation:mgrSlideOut 0.25s ease-in forwards;pointer-events:none}
+
+/* Title bar */
+.mgr-titlebar{
+  background:linear-gradient(90deg,#000080,#1084d0);
+  color:#fff;
+  display:flex;align-items:center;gap:6px;
+  padding:3px 4px 3px 6px;
+  font:bold 11px 'Courier New',monospace;
+  letter-spacing:0.02em;user-select:none}
+.mgr-titlebar-icon{font-size:12px;opacity:0.9}
+.mgr-titlebar-text{flex:1}
+.mgr-titlebar-close{
+  background:#c0c0c0;color:#000;
+  border:1px solid;border-color:#fff #808080 #808080 #fff;
+  width:16px;height:14px;display:flex;align-items:center;justify-content:center;
+  font-size:9px;cursor:pointer;font-weight:700}
+
+/* Header rows */
+.mgr-headers{padding:6px 8px 4px;display:flex;flex-direction:column;gap:2px}
+.mgr-hrow{display:flex;gap:0;font-size:11px}
+.mgr-hlbl{color:#000;min-width:56px;font-weight:700}
+.mgr-hval{color:#000040;word-break:break-all}
+.mgr-subj{font-weight:700;color:#000}
+.mgr-tier-fail  .mgr-subj, .mgr-subj.mgr-tier-fail  {color:#cc0000}
+.mgr-subj.mgr-tier-scrape {color:#884400}
+.mgr-subj.mgr-tier-exceed {color:#005500}
+.mgr-subj.mgr-tier-crush  {color:#000080;font-style:italic}
+
+/* Separator — toolbar divider look */
+.mgr-sep{height:2px;background:#808080;border-top:1px solid #fff;margin:0}
+
+/* Body */
+.mgr-body{padding:10px 12px 10px;font-size:11px;color:#000;line-height:1.6;background:#fff;border-top:1px solid #dfdfdf}
+.mgr-body p{margin:0 0 8px}
+.mgr-body p:last-child{margin-bottom:0}
+.mgr-ps{color:#aa4400;font-size:10px;border-top:1px dotted #ccc;padding-top:6px;margin-top:4px !important}
+.mgr-sign{color:#000040;font-style:italic;font-size:10px;margin-top:6px !important}
+.mgr-title{color:#666;font-style:normal}
+
 /* ══ PASSIVE SKILL TREE ══ */
 .tree-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;display:flex;align-items:center;justify-content:center}
 .tree-win{background:#1a1a1a;border:2px solid #444;box-shadow:0 0 30px #000;width:min(98vw,860px);max-height:92vh;display:flex;flex-direction:column}

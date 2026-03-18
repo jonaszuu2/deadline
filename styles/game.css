@@ -825,14 +825,14 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .lp-stat-bars{display:flex;flex-direction:column;gap:7px}
 .lp-sb-row{display:flex;align-items:center;gap:7px}
 .lp-sb-label{font-size:11px;color:var(--color-text-muted);width:62px;flex-shrink:0;font-family:var(--font-data)}
-.lp-sb-track{flex:1;height:5px;background:var(--color-text-ghost);border-radius:3px;overflow:hidden}
+.lp-sb-track{flex:1;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden}
 .lp-sb-fill{height:100%;border-radius:3px;transition:width .4s}
 .lp-sb-val{font-size:11px;font-family:var(--font-data);width:30px;text-align:right}
 /* Archetype counters */
 .arch-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .arch-chip{border-radius:5px;padding:5px 7px;display:flex;align-items:center;justify-content:space-between}
 .arch-name{font-size:9px;text-transform:uppercase;letter-spacing:0.08em;font-family:var(--font-data)}
-.arch-val{font-size:15px;font-weight:700;font-family:var(--font-data)}
+.arch-val{font-size:18px;font-weight:700;font-family:var(--font-data)}
 /* Calendar in left panel */
 .lp-cal-row{display:flex;gap:4px}
 .lp-cal-day{flex:1;border-radius:5px;padding:5px 3px;text-align:center;
@@ -919,11 +919,11 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .card.new-card.RECOVERY:hover{border-color:#00e090}
 /* Selected always gets teal border regardless of archetype (already set above) */
 /* card innards */
-.c-type{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;
+.c-type{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;
         font-family:var(--font-data);margin-bottom:6px}
 .c-name{font-size:15px;font-weight:600;color:var(--color-text-primary);margin-bottom:8px;
         line-height:1.2;font-family:var(--font-ui)}
-.c-main{font-size:13px;font-family:var(--font-data);font-weight:700;margin-bottom:2px}
+.c-main{font-size:15px;font-family:var(--font-data);font-weight:700;margin-bottom:2px}
 .c-cost{font-size:11px;font-family:var(--font-data);margin-bottom:6px;opacity:0.85}
 .c-divider{height:1px;background:var(--color-border-default);margin:7px 0}
 .c-passive{font-size:10px;color:var(--color-text-muted);font-family:var(--font-data);
@@ -1032,13 +1032,13 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 /* ── Desk Row (below hand cards) ── */
 .desk-row{width:100%;flex-shrink:0;padding:5px 0 0;border-top:1px solid var(--color-border-default)}
 .desk-slots{display:flex;gap:6px;width:100%}
-.desk-slot{flex:1;min-width:0;border-radius:8px;padding:6px 8px;min-height:54px;
+.desk-slot{flex:1;min-width:0;border-radius:8px;padding:6px 8px;min-height:66px;
            border:1px solid var(--desk-tier-color,#2a2a40);background:var(--color-bg-surface);
            position:relative;transition:border-color 0.15s,box-shadow 0.15s;overflow:hidden}
 .desk-slot-empty{display:flex;align-items:center;justify-content:center;
                  border-style:dashed !important;color:var(--color-text-ghost);
                  font-size:9px;font-family:var(--font-data);letter-spacing:0.06em}
-.desk-slot-icon{font-size:15px;line-height:1;margin-bottom:2px}
+.desk-slot-icon{font-size:19px;line-height:1;margin-bottom:3px}
 .desk-slot-name{font-size:10px;font-family:var(--font-ui);font-weight:600;
                 color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .desk-slot-desc{font-size:9px;font-family:var(--font-data);color:var(--color-text-muted);
@@ -1059,6 +1059,9 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 }
 .log-slide{animation:logSlideIn 0.15s ease-out}
 
+/* ── Mystery value (hidden until scoring) ── */
+.f-val.mystery{color:var(--color-text-ghost);letter-spacing:0.15em;opacity:0.5}
+
 /* ── Pass flash animation ── */
 @keyframes passFlash {
   0%  {border-color:rgba(0,224,144,0.2)}
@@ -1071,3 +1074,76 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 body::before{content:'';position:fixed;inset:0;
              background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.04) 3px,rgba(0,0,0,0.04) 4px);
              pointer-events:none;z-index:9999}
+
+/* ══════════════════════════════════════════════════════
+   10/10 DESIGN UPGRADE BLOCK
+   ══════════════════════════════════════════════════════ */
+
+/* ── Card archetype left stripe ── */
+.card.new-card::before{
+  content:'';position:absolute;left:0;top:12%;bottom:12%;
+  width:3px;border-radius:0 2px 2px 0;opacity:0;
+  transition:opacity 0.15s ease}
+.card.new-card.PRODUCTION::before{background:#7c3aed;opacity:0.5}
+.card.new-card.STRATEGY::before {background:#b87cff;opacity:0.4}
+.card.new-card.CRUNCH::before   {background:#ff2d55;opacity:0.5}
+.card.new-card.RECOVERY::before {background:#00e090;opacity:0.45}
+.card.new-card:hover::before,.card.new-card.selected::before{opacity:1}
+
+/* ── Card archetype gradient backgrounds ── */
+.card.new-card.PRODUCTION{background:linear-gradient(160deg,#141428 70%,rgba(124,58,237,0.06) 100%)}
+.card.new-card.STRATEGY  {background:linear-gradient(160deg,#141428 70%,rgba(184,124,255,0.05) 100%)}
+.card.new-card.CRUNCH    {background:linear-gradient(160deg,#141428 70%,rgba(255,45,85,0.05) 100%)}
+.card.new-card.RECOVERY  {background:linear-gradient(160deg,#141428 70%,rgba(0,224,144,0.05) 100%)}
+
+/* ── Card archetype hover glows ── */
+.card.new-card.PRODUCTION:hover{box-shadow:0 6px 24px rgba(124,58,237,0.2),0 2px 8px rgba(0,0,0,0.4)}
+.card.new-card.STRATEGY:hover  {box-shadow:0 6px 24px rgba(184,124,255,0.18),0 2px 8px rgba(0,0,0,0.4)}
+.card.new-card.CRUNCH:hover    {box-shadow:0 6px 24px rgba(255,45,85,0.2),0 2px 8px rgba(0,0,0,0.4)}
+.card.new-card.RECOVERY:hover  {box-shadow:0 6px 24px rgba(0,224,144,0.2),0 2px 8px rgba(0,0,0,0.4)}
+
+/* ── Card selected box-shadow per archetype ── */
+.card.new-card.PRODUCTION.selected{box-shadow:0 8px 28px rgba(124,58,237,0.3),0 0 0 1px #7c3aed}
+.card.new-card.STRATEGY.selected  {box-shadow:0 8px 28px rgba(184,124,255,0.28),0 0 0 1px #b87cff}
+.card.new-card.CRUNCH.selected    {box-shadow:0 8px 28px rgba(255,45,85,0.3),0 0 0 1px #ff2d55}
+.card.new-card.RECOVERY.selected  {box-shadow:0 8px 28px rgba(0,224,144,0.28),0 0 0 1px #00e090}
+
+/* ── Stat bar fill refinement ── */
+.lp-sb-fill{height:100%;border-radius:5px;transition:width 0.3s ease}
+
+/* ── Stat bar danger pulses ── */
+@keyframes wbDanger{
+  0%,100%{box-shadow:none;opacity:1}
+  50%    {box-shadow:0 0 8px rgba(255,45,85,0.6);opacity:0.85}}
+@keyframes toxDanger{
+  0%,100%{box-shadow:none}
+  50%    {box-shadow:0 0 8px rgba(255,149,0,0.6)}}
+.lp-sb-row.wb-danger .lp-sb-fill {animation:wbDanger 1.4s ease-in-out infinite}
+.lp-sb-row.tox-danger .lp-sb-fill{animation:toxDanger 1.4s ease-in-out infinite}
+.lp-sb-row.wb-danger .lp-sb-val  {color:#ff2d55 !important}
+.lp-sb-row.tox-danger .lp-sb-val {color:#ff9500 !important}
+
+/* ── Last play pip warning ── */
+@keyframes lastPipPulse{
+  0%,100%{background:var(--color-pass);box-shadow:none}
+  50%    {background:#ff9500;box-shadow:0 0 6px rgba(255,149,0,0.8)}}
+.tp-pip.last-pip{animation:lastPipPulse 1s ease-in-out infinite}
+
+/* ── Formula row pass glow ── */
+.f-result.projecting-pass{
+  background:rgba(0,224,144,0.06) !important;
+  border-color:rgba(0,224,144,0.5) !important;
+  box-shadow:0 0 16px rgba(0,224,144,0.12)}
+.f-result.projecting-pass .f-label{color:var(--color-pass)}
+
+/* ── Mini log feed (left panel) ── */
+.mini-log{display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.mini-log-entry{font-size:9px;font-family:var(--font-data);color:var(--color-text-muted);
+                line-height:1.4;padding:1px 0;border-left:2px solid transparent;padding-left:6px;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-log-entry.ok  {color:var(--color-pass);border-left-color:rgba(0,224,144,0.4)}
+.mini-log-entry.pass{color:var(--color-pass);border-left-color:rgba(0,224,144,0.6)}
+.mini-log-entry.fail{color:var(--color-fail);border-left-color:rgba(255,45,85,0.4)}
+.mini-log-entry.warn{color:var(--color-warning);border-left-color:rgba(255,149,0,0.4)}
+.mini-log-entry.sys {color:var(--color-system);border-left-color:rgba(0,229,255,0.3)}
+.mini-log-entry.new {animation:logSlideIn 0.15s ease-out}

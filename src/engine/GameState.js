@@ -11,10 +11,9 @@ const VALID_TRANSITIONS = {
   teammate_choice: ['play'],
   play:            ['scoring'],
   scoring:         ['play', 'result', 'review'],
-  result:          ['draft', 'boss', 'shop', 'review'],
-  draft:           ['boss', 'shop'],
+  result:          ['boss', 'shop', 'review'],
   boss:            ['shop'],
-  shop:            ['teammate_choice', 'upgrade_result'],
+  shop:            ['teammate_choice', 'upgrade_result', 'play'],
   upgrade_result:  ['shop'],
   review:          [],
 };

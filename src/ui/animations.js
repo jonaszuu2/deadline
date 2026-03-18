@@ -242,6 +242,19 @@ function _countUpRedline(el, to, duration, prevWscore, target, onDone) {
   requestAnimationFrame(tick);
 }
 
+function _showManagerEmail() {
+  const el = document.getElementById('manager-email');
+  if (el) el.classList.add('mgr-visible');
+}
+
+export function dismissManagerEmail(event) {
+  if (event) event.stopPropagation();
+  const el = document.getElementById('manager-email');
+  if (!el) return;
+  el.classList.add('mgr-dismissing');
+  setTimeout(() => el.remove(), 250);
+}
+
 export function initScoringAnimation(G) {
   const d = G.scoringDisplay;
   if (!d) return;
@@ -263,8 +276,21 @@ export function initScoringAnimation(G) {
   const show = el => { if (el) el.classList.add('sc-show'); };
 
   let done = false;
-  const finish = () => { if (done) return; done = true; clearTimeout(autoTimer); G.finishScoring(); };
-  const autoTimer = setTimeout(finish, 3600);
+  const _dismissEmail = () => {
+    const el = document.getElementById('manager-email');
+    if (el && el.classList.contains('mgr-visible') && !el.classList.contains('mgr-dismissing')) {
+      el.classList.add('mgr-dismissing');
+      setTimeout(() => el.remove(), 250);
+      return true;
+    }
+    return false;
+  };
+  const finish = () => {
+    if (done) return;
+    if (_dismissEmail()) return; // first click dismisses email, second advances
+    done = true; clearTimeout(autoTimer); G.finishScoring();
+  };
+  const autoTimer = setTimeout(finish, 12000); // generous — email needs reading time
   if (screen) screen.onclick = finish;
 
   // Phase 1: chips count up
@@ -289,10 +315,14 @@ export function initScoringAnimation(G) {
               const totalEl = document.getElementById('sc-combo-total');
               _countUp(totalEl, d.baseScore, d.score, 450, () => {
                 show(hint);
+                setTimeout(_showManagerEmail, 600);
               });
             }, 250);
           } else {
-            setTimeout(() => show(hint), 200);
+            setTimeout(() => {
+              show(hint);
+              setTimeout(_showManagerEmail, 600);
+            }, 200);
           }
         });
       }, 280);

@@ -68,6 +68,13 @@
              letter-spacing:1px;transition:all .1s}
 .dr-skip-btn:hover{color:var(--text);border-color:var(--text)}
 
+/* ── Embedded draft section inside shop ── */
+.sh-draft-section{width:100%;max-width:900px;margin-bottom:20px;
+                  border-bottom:1px solid var(--border);padding-bottom:18px}
+.sh-draft-header{display:flex;justify-content:space-between;align-items:center;
+                 font:bold 11px 'Courier New',monospace;color:#ffdd44;letter-spacing:2px;
+                 margin-bottom:12px;padding:0 4px}
+
 /* ── Shop v2 — matches draft screen style ── */
 .sh2-stats{display:flex;gap:16px;justify-content:center;margin-top:6px;font:bold 11px 'Courier New',monospace}
 .sh2-card{width:200px;background:var(--surf);border:2px solid var(--border);padding:14px 12px;
