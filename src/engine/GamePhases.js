@@ -9,7 +9,7 @@ import { DESK_ITEMS_BY_RARITY, DESK_ITEMS_LIST } from '../data/deskItems.js';
 import { makeDeck, pickShopItems } from './deck.js';
 import { calculateFinalScore } from './scoring.js';
 import { TEAMMATES_DB } from '../data/content.js';
-import { SHOP_DB } from '../data/shop.js';
+import { SHOP_DB, PACK_DB, NEGATIVE_ITEMS } from '../data/shop.js';
 import { DB } from '../data/cards.js';
 import { shouldShowEmail, buildManagerEmail } from '../data/managerEmails.js';
 import { ui } from './uiStore.js';
@@ -141,12 +141,9 @@ export function openShop() {
     const email = buildManagerEmail(this, emailCtx);
     this.inbox.unshift({ ...email, id: Date.now(), unread: true, storedWeek: this.week });
   }
-  if (passed) {
-    this.draftPool = this._buildCardDraftPool();
-    if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
-  } else {
-    this.draftPool = [];
-  }
+  if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
+  this.shopPackIds = shuffle(Object.keys(PACK_DB)).slice(0, 3);
+  this.shopPacksBought = 0;
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
   if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
@@ -169,6 +166,12 @@ export function startNextWeek() {
   this.week++; this.wscore = 0;
   this.playsMax = PLAYS;
   this.plays = this.playsMax;
+  if (this.nextWeekPlaysBonus !== 0) {
+    this.plays = Math.max(1, this.plays + this.nextWeekPlaysBonus);
+    this.playsMax = this.plays;
+    if (this.nextWeekPlaysBonus < 0) this.addLog('ng', `> 📢 [All-Hands] -${Math.abs(this.nextWeekPlaysBonus)} play this week → ${this.plays}`);
+    this.nextWeekPlaysBonus = 0;
+  }
   this.discs = DISCS;
   // Toxicity Tier 3: Toxic Culture — -1 Discard
   if (this.tox >= 61 && this.tox < 91) {
@@ -180,6 +183,21 @@ export function startNextWeek() {
   this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
   this.archetypeMilestonesHit = new Set(); this.pressureReleaseUsed = false;
   this.firstCardThisWeek = true; this.firstCrunchUsed = false;
+  this.stratCarryMult = 0;
+  // flex_schedule: +1 play per week
+  if ((this.deskItems||[]).some(d => d.id === 'flex_schedule')) {
+    this.plays++;
+    this.playsMax++;
+    this.addLog('ok', `> 🗓️ [Flex Schedule] +1 play this week → ${this.plays}`);
+  }
+  // sick_day_policy: max 4 plays per week
+  if ((this.deskItems||[]).some(d => d.id === 'sick_day_policy')) {
+    if (this.plays > 4) {
+      this.plays = 4;
+      this.playsMax = 4;
+      this.addLog('ok', `> 🤒 [Sick Day Policy] Max 4 plays this week`);
+    }
+  }
   // Held cards from Overtime Briefcase
   if (this.heldCards.length) {
     for (const c of this.heldCards) this.addLog('ok', `> 💼 [${c.name}] retrieved from briefcase.`);
@@ -266,6 +284,18 @@ export function _processEndOfWeekStats() {
   }
   // ── Desk Item end-of-week effects ─────────────────────
   this._processDeskItemWeekEnd(passed);
+  // kpi_dashboard: PRODUCTION cards +15 chips on pass, -10 on fail
+  if ((this.deskItems||[]).some(d => d.id === 'kpi_dashboard')) {
+    const delta = passed ? 15 : -10;
+    const allCards = [...this.deck, ...this.pile, ...this.hand];
+    for (const c of allCards) {
+      if (c.archetype === 'PRODUCTION') {
+        c.fx = {...c.fx, chips: Math.max(50, (c.fx.chips||0) + delta)};
+      }
+    }
+    if (passed) this.addLog('sy', `> 📊 [KPI Dashboard] KPI passed — all PRODUCTION cards +15 chips`);
+    else this.addLog('ng', `> 📊 [KPI Dashboard] KPI failed — all PRODUCTION cards −10 chips`);
+  }
   // ── Desk Item offer: WB ≥75% (always, pass or fail) ──
   if (this.wb >= 75 && (this.deskItems || []).length < 4) {
     this.deskItemOffer = this._buildDeskItemOffer(['COMMON', 'UNCOMMON']);
@@ -305,29 +335,6 @@ export function checkRunUnlocks() {
 // ═══════════════════════════════════════════════════════
 //  DRAFT
 // ═══════════════════════════════════════════════════════
-
-export function claimDraftCard(cardId) {
-  const cardDef = DB[cardId];
-  if (!cardDef) return;
-  if (this.deckSize() >= 24) {
-    this.pendingDraftCard = cardId;
-    this.pendingRemove = true;
-    this.addLog('ng', `> ⚠ Deck full (${this.deckSize()}/24) — shred a card first, then draft card will be added.`);
-    this._commit(); return;
-  }
-  const newCard = {...cardDef, uid:`${cardId}_${nextUid()}`};
-  const at = Math.floor(Math.random() * (this.deck.length + 1));
-  this.deck.splice(at, 0, newCard);
-  this.addLog('ok', `> 📋 Draft: ${cardDef.name} added to deck. (${this.deckSize()}/24)`);
-  this.draftPool = [];
-  this._commit();
-}
-
-export function skipDraft() {
-  this.addLog('ok', '> ✗ Draft skipped — deck unchanged.');
-  this.draftPool = [];
-  this._commit();
-}
 
 export function _buildCardDraftPool() {
   const tier = getUnlockedTier();
@@ -418,14 +425,182 @@ export function startRemoval() {
   this._commit();
 }
 
-export function _buildShopItems() {
-  const ownedIds = this.passives.map(p => p.itemId);
-  const items = pickShopItems(ownedIds);
-  // Add a desk item slot if desk isn't full
-  if ((this.deskItems || []).length < 4) {
-    items.push('shop_desk_item');
+export function _buildShopItems() { return []; }
+
+// ═══════════════════════════════════════════════════════
+//  PACK SYSTEM
+// ═══════════════════════════════════════════════════════
+
+export function buyPack(packId) {
+  const pack = PACK_DB[packId];
+  if (!pack) return;
+  const hasBudgetFreeze = (this.deskItems||[]).some(d => d.id === 'budget_freeze');
+  // budget_freeze: max 1 pack per shop
+  if (hasBudgetFreeze && (this.shopPacksBought||0) >= 1) {
+    this.addLog('ng', `> 🧊 [Budget Freeze] Only 1 pack per shop visit.`);
+    return;
   }
-  return items;
+  const cost = hasBudgetFreeze ? 0 : pack.cost;
+  if (this.coins < cost) return;
+  this.coins -= cost;
+  this.purchasedThisShop = true;
+  this.shopPacksBought = (this.shopPacksBought||0) + 1;
+  const items = this._rollPackItems(packId);
+  this.openedPack = { packId, items };
+  this.addLog('ok', `> 📦 [${pack.name}] opened${hasBudgetFreeze ? ' (FREE — Budget Freeze)' : ''} — choose 1 of 3`);
+  this._commit();
+}
+
+export function claimPackItem(idx) {
+  if (!this.openedPack || idx < 0 || idx >= this.openedPack.items.length) return;
+  const item = this.openedPack.items[idx];
+  this.openedPack = null;
+  this._applyPackItem(item);
+  this._commit();
+}
+
+export function skipPackItem() {
+  if (!this.openedPack) return;
+  this.addLog('ok', '> ✗ Pack contents skipped.');
+  this.openedPack = null;
+  this._commit();
+}
+
+export function _rollPackItems(packId) {
+  if (packId === 'wellness') {
+    const pool = ['sh_espresso','sh_aspirin','sh_headphones','sh_salad','sh_therapy','sh_pizza'];
+    return shuffle([...pool]).slice(0, 3).map(id => this._packifyShopItem(id)).filter(Boolean);
+  }
+  if (packId === 'office_supply') {
+    const ownedIds = new Set((this.deskItems||[]).map(d => d.id));
+    const pool = DESK_ITEMS_LIST.filter(d => ['COMMON','UNCOMMON'].includes(d.rarity) && !ownedIds.has(d.id));
+    const picks = shuffle([...pool]).slice(0, 3);
+    if (picks.length < 3) {
+      const extras = shuffle([...pool]).slice(0, 3 - picks.length);
+      picks.push(...extras);
+    }
+    return picks.slice(0,3).map(d => ({ type:'DESK_ITEM', id:d.id, name:d.name, icon:d.icon, rarity:d.rarity, desc:d.effect||d.desc||'', negative:false, data:d }));
+  }
+  if (packId === 'talent_acq') {
+    const cards = this._buildCardDraftPool().slice(0, 2).map(c => this._packifyCard(c));
+    const holdItem = { type:'HOLD_CARD', id:'hold_card', name:'Overtime Briefcase', icon:'💼', rarity:'UNCOMMON', desc:'Hold 1 card from discard pile for next week\'s opening hand.', negative:false, data:{} };
+    return shuffle([...cards, holdItem]).slice(0, 3);
+  }
+  if (packId === 'executive') {
+    const ownedIds = new Set((this.deskItems||[]).map(d => d.id));
+    const rareDeskPool = DESK_ITEMS_LIST.filter(d => ['RARE','LEGENDARY'].includes(d.rarity) && !ownedIds.has(d.id));
+    const ownedPassiveIds = new Set(this.passives.map(p => p.itemId));
+    const passiveIds = ['sh_chair','sh_plant','sh_keyboard','sh_cooler','sh_coach','sh_compound','sh_hostile','sh_perf_bonus','sh_crisis_mode','sh_grinder_perk','sh_strategist_perk','sh_survivor_perk'];
+    const passiveItems = passiveIds.filter(id => !ownedPassiveIds.has(id)).map(id => this._packifyShopItem(id)).filter(Boolean);
+    const upgradeItem = { type:'UPGRADE_CARD', id:'upgrade_card', name:'Performance Upgrade', icon:'⬆️', rarity:'RARE', desc:'Permanently upgrade 1 card: +80 Output & +0.3 Eff added to base stats.', negative:false, data:{} };
+    const rareDesks = shuffle([...rareDeskPool]).slice(0,2).map(d => ({ type:'DESK_ITEM', id:d.id, name:d.name, icon:d.icon, rarity:d.rarity, desc:d.effect||d.desc||'', negative:false, data:d }));
+    const pool = shuffle([...rareDesks, ...passiveItems, upgradeItem]);
+    while (pool.length < 3) pool.push(upgradeItem);
+    return pool.slice(0, 3);
+  }
+  if (packId === 'restructuring') {
+    const items = [];
+    const otherPacks = ['wellness','office_supply','talent_acq','executive'];
+    for (let i = 0; i < 3; i++) {
+      if (Math.random() < 0.25) {
+        items.push({...shuffle([...NEGATIVE_ITEMS])[0]});
+      } else {
+        const op = otherPacks[Math.floor(Math.random() * otherPacks.length)];
+        const rolled = this._rollPackItems(op);
+        items.push(rolled[Math.floor(Math.random() * rolled.length)]);
+      }
+    }
+    return items;
+  }
+  return [];
+}
+
+export function _packifyShopItem(id) {
+  const item = SHOP_DB[id];
+  if (!item) return null;
+  return {
+    type: item.type,
+    id,
+    name: item.name,
+    icon: item.icon,
+    rarity: item.type === 'PASSIVE' ? 'UNCOMMON' : 'COMMON',
+    desc: item.desc,
+    negative: false,
+    data: item,
+  };
+}
+
+export function _packifyCard(c) {
+  const archIcons = { PRODUCTION:'🔵', STRATEGY:'🔴', CRUNCH:'🔥', RECOVERY:'💚' };
+  const fxParts = [];
+  if (c.fx.chips) fxParts.push(`+${c.fx.chips} Output`);
+  if (c.fx.mult)  fxParts.push(`+${c.fx.mult}× Eff`);
+  if (c.fx.tox > 0) fxParts.push(`+${c.fx.tox}% Tox`);
+  if (c.fx.wb < 0)  fxParts.push(`${c.fx.wb} WB`);
+  return {
+    type: 'CARD',
+    id: c.id,
+    name: c.name,
+    icon: archIcons[c.archetype] || '🃏',
+    rarity: c.rarity || 'COMMON',
+    desc: fxParts.join(' · ') || 'Special effect',
+    negative: false,
+    data: c,
+    archetype: c.archetype,
+    flavor: c.flavor,
+  };
+}
+
+export function _applyPackItem(item) {
+  if (item.type === 'CONSUMABLE') {
+    const fx = item.data.effects;
+    if (fx.wb)  this.wb  = clamp(this.wb  + fx.wb,  0, 100);
+    if (fx.tox) this.tox = clamp(this.tox + fx.tox, 0, 100);
+    if (fx.bo)  this.bo  = clamp(this.bo  + fx.bo,  0, 100);
+    this.addLog(fx.logCls, `> ${fx.logMsg}`);
+  } else if (item.type === 'PASSIVE') {
+    if (!this.passives.some(p => p.itemId === item.id)) {
+      this.passives.push({ itemId:item.id, name:item.name, passiveType:item.data.passiveType, passiveVal:item.data.passiveVal });
+      this.addLog('ok', `> ✓ [${item.name}] passive installed.`);
+    } else {
+      this.coins += Math.floor(item.data.cost / 2);
+      this.addLog('ok', `> [${item.name}] already owned — refunded ${Math.floor(item.data.cost/2)} CC.`);
+    }
+  } else if (item.type === 'DESK_ITEM') {
+    if ((this.deskItems||[]).length < 5) {
+      this.deskItems = [...(this.deskItems||[]), item.data];
+      this.addLog('ok', `> 🗂️ [${item.name}] placed on desk.`);
+    } else {
+      this.addLog('ng', `> ⚠ Desk full — [${item.name}] lost.`);
+    }
+  } else if (item.type === 'CARD') {
+    const cardDef = DB[item.id];
+    if (!cardDef) return;
+    if (this.deckSize() >= 24) {
+      this.pendingDraftCard = item.id;
+      this.pendingRemove = true;
+      this.addLog('ng', `> ⚠ Deck full (${this.deckSize()}/24) — shred a card first.`);
+      return;
+    }
+    const newCard = {...cardDef, uid:`${item.id}_${nextUid()}`};
+    const at = Math.floor(Math.random() * (this.deck.length + 1));
+    this.deck.splice(at, 0, newCard);
+    this.addLog('ok', `> ✓ [${cardDef.name}] added to deck. (${this.deckSize()}/24)`);
+  } else if (item.type === 'HOLD_CARD') {
+    this.pendingHold = true;
+    this.addLog('ok', `> 💼 Overtime Briefcase — choose a card to hold for next week.`);
+  } else if (item.type === 'UPGRADE_CARD') {
+    this.pendingUpgrade = true;
+    this.addLog('ok', `> ⬆️ Performance Upgrade — choose a card to improve.`);
+  } else if (item.type === 'NEGATIVE') {
+    const fx = item.effect;
+    if (fx.playsNext)     { this.nextWeekPlaysBonus = (this.nextWeekPlaysBonus||0) + fx.playsNext; this.addLog('ng', `> 📢 [${item.name}] — applied for next week`); }
+    if (fx.coins != null) { this.coins = Math.max(0, this.coins + fx.coins); this.addLog('ng', `> 🧊 [${item.name}] — ${fx.coins > 0 ? '+' : ''}${fx.coins} CC → ${this.coins} CC`); }
+    if (fx.resetLoyalty)  { this.consecutiveSameTeammate = 0; this.loyaltyTeammateId = null; this.addLog('ng', `> 🤵 [${item.name}] — teammate loyalty reset`); }
+    if (fx.removeDeskItem && this.deskItems?.length) { const ri = Math.floor(Math.random()*this.deskItems.length); const rm = this.deskItems.splice(ri,1)[0]; this.addLog('ng', `> 🗃️ [${item.name}] — [${rm.name}] removed from desk`); }
+    if (fx.tox) { this.tox = clamp(this.tox + fx.tox, 0, 100); this.addLog('tg', `> 📋 [${item.name}] — +${fx.tox}% Tox → ${this.tox}%`); }
+    if (fx.bo)  { this.bo  = clamp(this.bo  + fx.bo,  0, 100); this.addLog('ng', `> 🔥 [${item.name}] — +${fx.bo}% BO → ${this.bo}%`); }
+  }
 }
 
 
@@ -461,24 +636,19 @@ export function _processDeskItemWeekEnd(passed) {
     const wa = this.weekArchetypes || {};
     const allFour = ['PRODUCTION','STRATEGY','CRUNCH','RECOVERY'].every(a => (wa[a] || 0) >= 1);
     if (allFour) {
-      this.permMult = fmt1((this.permMult || 0) + 0.3);
-      this.addLog('sy', `> 🖊️ [Whiteboard] All 4 archetypes used this week — +0.3 perm Eff → ${this.permMult}×`);
+      this.permMult = fmt1((this.permMult || 0) + 0.5);
+      this.addLog('sy', `> 🖊️ [Whiteboard] All 4 archetypes used this week — +0.5 perm Eff → ${this.permMult}×`);
     }
   }
-  // nameplate: pass → +5 coins
-  if (desk('nameplate') && passed) {
-    this.coins += 5;
-    this.addLog('ok', `> 🪪 [Nameplate] KPI passed — +5 CC → ${this.coins} CC`);
-  }
-  // company_mug: pass → +0.1 perm mult
+  // company_mug: pass → +0.2 perm mult
   if (desk('company_mug') && passed) {
-    this.permMult = fmt1((this.permMult || 0) + 0.1);
-    this.addLog('sy', `> 🏆 [Company Mug] KPI passed — +0.1 perm Eff → ${this.permMult}×`);
+    this.permMult = fmt1((this.permMult || 0) + 0.2);
+    this.addLog('sy', `> 🏆 [Company Mug] KPI passed — +0.2 perm Eff → ${this.permMult}×`);
   }
-  // mouse_pad: tox ≤ 10 → +0.5 perm mult
-  if (desk('mouse_pad') && this.tox <= 10) {
-    this.permMult = fmt1((this.permMult || 0) + 0.5);
-    this.addLog('sy', `> 🖱️ [Mouse Pad] Clean week (Tox ${this.tox}%) — +0.5 perm Eff → ${this.permMult}×`);
+  // mouse_pad: tox ≤ 20 → +0.8 perm mult
+  if (desk('mouse_pad') && this.tox <= 20) {
+    this.permMult = fmt1((this.permMult || 0) + 0.8);
+    this.addLog('sy', `> 🖱️ [Mouse Pad] Clean week (Tox ${this.tox}%) — +0.8 perm Eff → ${this.permMult}×`);
   }
 }
 

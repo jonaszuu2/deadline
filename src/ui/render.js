@@ -1,5 +1,6 @@
 import { clamp, KPI, TOTAL_WEEKS, PLAYS, MAX_SEL, CAREER_DB, UPGRADE_TIERS } from '../data/constants.js';
-import { SHOP_DB } from '../data/shop.js';
+import { SHOP_DB, PACK_DB } from '../data/shop.js';
+import { detectMeeting, getMeetingUpgradeHint, MEETING_TIER_COLORS, BASE_MEETINGS, SECRET_MEETINGS } from '../data/meetingTypes.js';
 import { TEAMMATES_DB } from '../data/content.js';
 import { DB } from '../data/cards.js';
 import { getEffectiveFx, simulateTurn } from '../engine/calcTurn.js';
@@ -204,6 +205,7 @@ export function render(G) {
   }
   if (G.phase === 'shop') {
     winBody.innerHTML = `<div class="full-phase-wrap">${renderShop(G)}</div>`;
+    if (G.openedPack) setTimeout(() => window._initPackReveal?.(), 50);
     return;
   }
   // Desk item offer can appear during result phase
@@ -220,7 +222,7 @@ export function render(G) {
 
   winBody.innerHTML = `
     <div class="main-3col">
-      ${renderLeftPanel(G, preview)}
+      ${renderLeftPanel(G, preview, selCards)}
       <div class="center-panel">
         ${renderFormulaRow(preview, wscore, target, G)}
         <div class="hand-label-new">HAND (${hand.length}) · ${sel.length ? `${sel.length} selected` : `select 1–${G.maxSel()}`}</div>
@@ -360,6 +362,51 @@ window._deskUnhover = function() {
   document.querySelectorAll('.desk-slot.will-activate').forEach(el => el.classList.remove('will-activate'));
 };
 
+// ── Meeting type tooltip ──────────────────────────────
+window._showMeetingTooltip = function(event, meetingId) {
+  event.stopPropagation();
+  document.querySelector('.meeting-tooltip')?.remove();
+
+  const allMeetings = [...BASE_MEETINGS, ...SECRET_MEETINGS];
+  const m = allMeetings.find(x => x.id === meetingId);
+  if (!m) return;
+
+  const color = MEETING_TIER_COLORS[m.tier] || '#888';
+  const secretHtml = m.secret
+    ? `<div class="mtt-secret">✦ SECRET — requires desk item</div>`
+    : '';
+  const bonusHtml = m.bonusDesc
+    ? `<div class="mtt-bonus">${esc(m.bonusDesc)}</div>`
+    : (m.desc ? `<div class="mtt-bonus">${esc(m.desc)}</div>` : '');
+
+  const tt = document.createElement('div');
+  tt.className = 'meeting-tooltip';
+  tt.style.setProperty('--mc', color);
+  tt.innerHTML = `
+    <div class="mtt-header">
+      <span class="mtt-icon">${m.icon}</span>
+      <span class="mtt-name">${esc(m.name)}</span>
+    </div>
+    <div class="mtt-req">${esc(m.desc)}</div>
+    ${bonusHtml}
+    ${secretHtml}
+    ${m.flavor ? `<div class="mtt-flavor">${esc(m.flavor)}</div>` : ''}
+  `;
+  document.body.appendChild(tt);
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const ttW = 200;
+  let left = rect.left + rect.width / 2 - ttW / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - ttW - 8));
+  tt.style.left = left + 'px';
+  tt.style.top  = (rect.top - 4) + 'px';
+  tt.style.transform = 'translateY(-100%)';
+
+  setTimeout(() => {
+    document.addEventListener('click', () => document.querySelector('.meeting-tooltip')?.remove(), { once: true });
+  }, 0);
+};
+
 // Step 1: card fly-off → then play (intercepted confirm handler)
 window._animatedPlay = function() {
   const G = window.G;
@@ -389,8 +436,69 @@ window._animatedPlay = function() {
 //  NEW 3-COL LAYOUT HELPERS
 // ═══════════════════════════════════════════════════════
 
-function renderLeftPanel(G, preview) {
+// ── Meeting list groups (highest tier first = aspiration at top) ──
+const _MEETING_GROUPS = [
+  { label: 'PRODUCTION', ids: ['sprint_review', 'status_update', 'quick_email'] },
+  { label: 'STRATEGY',   ids: ['board_meeting', 'strategy_session', 'one_on_one'] },
+  { label: 'MIXED',      ids: ['all_hands', 'cross_functional', 'crunch_time', 'wellness_check'] },
+];
+
+function renderMeetingList(G, activeMeetingId) {
+  const meetingById = {};
+  for (const m of BASE_MEETINGS)   meetingById[m.id] = m;
+  for (const m of SECRET_MEETINGS) meetingById[m.id] = m;
+
+  const deskIds = new Set((G.deskItems || []).map(d => d.id));
+
+  const groupsHtml = _MEETING_GROUPS.map(group => {
+    const items = group.ids.map(id => {
+      const m = meetingById[id];
+      if (!m) return '';
+      const isActive = activeMeetingId === id;
+      const color = MEETING_TIER_COLORS[m.tier] || '#555';
+      const activeCls = isActive ? ' lpm-active' : '';
+      return `<div class="lpm-item${activeCls}" style="--mc:${color}">
+        <span class="lpm-icon">${m.icon}</span>
+        <span class="lpm-name">${esc(m.name)}</span>
+        <span class="lpm-bonus">${esc(m.bonusDesc || '')}</span>
+      </div>`;
+    }).join('');
+    return `<div class="lpm-group">
+      <div class="lpm-group-label">${group.label}</div>
+      ${items}
+    </div>`;
+  }).join('');
+
+  // Secret meetings: show only if required desk item is present
+  const unlockedSecrets = SECRET_MEETINGS.filter(sm => deskIds.has(sm.requires));
+  const secretsHtml = unlockedSecrets.length ? `
+    <div class="lpm-group">
+      <div class="lpm-group-label lpm-secret-label">✦ UNLOCKED</div>
+      ${unlockedSecrets.map(sm => {
+        const isActive = activeMeetingId === sm.id;
+        const activeCls = isActive ? ' lpm-active lpm-secret-active' : ' lpm-secret';
+        return `<div class="lpm-item${activeCls}" style="--mc:#fbbf24">
+          <span class="lpm-icon">${sm.icon}</span>
+          <span class="lpm-name">${esc(sm.name)}</span>
+          <span class="lpm-bonus">${esc(sm.desc)}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  return `<div class="lpm-wrap">
+    <div class="section-title">Meeting Types</div>
+    ${groupsHtml}
+    ${secretsHtml}
+  </div>`;
+}
+
+function renderLeftPanel(G, preview, selCards = []) {
   const {wb, tox, bo} = G;
+
+  // Detect active meeting from current selection
+  const activeMeeting = selCards.length
+    ? detectMeeting(selCards, G.deskItems || [], { lastMeetingType: G.lastMeetingType || null, stratCarryMult: G.stratCarryMult || 0 })
+    : null;
 
   // Stat bars
   const wbDanger  = wb  < 25  ? ' wb-danger'  : '';
@@ -417,15 +525,15 @@ function renderLeftPanel(G, preview) {
       </div>
     </div>`;
 
-
-  // Calendar / context days
-  const tierInfo = tox >= 91 ? {cls:'tier-meltdown', lbl:'☣ MELTDOWN', color:'var(--color-fail)'}
-                 : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC',   color:'var(--color-warning)'}
-                 : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 PASSIVE-AGG', color:'var(--color-text-muted)'}
-                 :              {cls:'tier-pro',      lbl:'✅ PROFESSIONAL', color:'var(--color-pass)'};
+  const tierInfo = tox >= 91 ? {lbl:'☣ MELTDOWN', color:'var(--color-fail)'}
+                 : tox >= 61 ? {lbl:'⚡ TOXIC',   color:'var(--color-warning)'}
+                 : tox >= 31 ? {lbl:'😶 PASSIVE-AGG', color:'var(--color-text-muted)'}
+                 :              {lbl:'✅ PROFESSIONAL', color:'var(--color-pass)'};
   const tierBadge = `<div class="lp-tox-tier" style="color:${tierInfo.color};border-color:${tierInfo.color};">${tierInfo.lbl}</div>`;
 
-  const recentLog = (G.log || []).slice(-8);
+  const meetingList = renderMeetingList(G, activeMeeting?.id || null);
+
+  const recentLog = (G.log || []).slice(-5);
   const miniLog = recentLog.length ? `
     <div>
       <div class="section-title">Activity Log</div>
@@ -434,7 +542,7 @@ function renderLeftPanel(G, preview) {
       </div>
     </div>` : '';
 
-  return `<div class="left-panel">${statBars}${tierBadge}${miniLog}</div>`;
+  return `<div class="left-panel">${statBars}${tierBadge}${meetingList}${miniLog}</div>`;
 }
 
 function renderFormulaRow(preview, wscore, target, G) {
@@ -485,6 +593,91 @@ function renderFormulaRow(preview, wscore, target, G) {
       ${weekProgress}
       ${toxWarn}
     </div>
+  </div>`;
+}
+
+// Meeting type rows: always-visible reference ladder (like poker hand list in Balatro)
+const _MEETING_ROWS = [
+  // PRODUCTION ladder
+  [
+    { id: 'quick_email',    req: '1 PROD' },
+    { id: 'status_update',  req: '2 PROD' },
+    { id: 'sprint_review',  req: '3 PROD' },
+  ],
+  // STRATEGY ladder
+  [
+    { id: 'one_on_one',       req: '1 STRAT' },
+    { id: 'strategy_session', req: '2 STRAT' },
+    { id: 'board_meeting',    req: '3 STRAT' },
+  ],
+  // Mixed + special
+  [
+    { id: 'cross_functional', req: 'PROD+STRAT' },
+    { id: 'crunch_time',      req: 'CRUNCH' },
+    { id: 'wellness_check',   req: 'RECOVERY' },
+    { id: 'all_hands',        req: '3 arch' },
+  ],
+];
+
+function renderMeetingBadge(selCards, G) {
+  const ctx = { lastMeetingType: G.lastMeetingType || null, stratCarryMult: G.stratCarryMult || 0 };
+  const deskItems = G.deskItems || [];
+  const activeMeeting = selCards.length ? detectMeeting(selCards, deskItems, ctx) : null;
+  const deskIds = new Set(deskItems.map(d => d.id));
+
+  // Lookup map for fast access
+  const meetingById = {};
+  for (const m of BASE_MEETINGS) meetingById[m.id] = m;
+  for (const m of SECRET_MEETINGS) meetingById[m.id] = m;
+
+  // Build ladder rows
+  const rowsHtml = _MEETING_ROWS.map(row => {
+    const pills = row.map(({ id, req }) => {
+      const m = meetingById[id];
+      if (!m) return '';
+      const isActive = activeMeeting?.id === id;
+      const color = MEETING_TIER_COLORS[m.tier] || '#555';
+      // Check if this meeting has a secret upgrade available
+      const hasSecret = SECRET_MEETINGS.some(sm => sm.requires && deskIds.has(sm.requires) &&
+        // Secret meeting for same base pattern
+        (sm.id === 'agile_sprint' && id === 'sprint_review' ||
+         sm.id === 'executive_brief' && id === 'board_meeting' ||
+         sm.id === 'mental_health_day' && id === 'wellness_check' ||
+         sm.id === 'death_march' && id === 'crunch_time'));
+      return `<div class="mr-pill${isActive ? ' mr-pill-active' : ''}" style="--mc:${color}" onclick="window._showMeetingTooltip(event,'${id}')">
+        <span class="mr-icon">${m.icon}</span>
+        <span class="mr-name">${esc(m.name)}</span>
+        <span class="mr-req">${req}</span>
+        ${hasSecret ? `<span class="mr-secret-dot">✦</span>` : ''}
+      </div>`;
+    }).join('');
+    return `<div class="mr-row">${pills}</div>`;
+  }).join('');
+
+  // If a secret meeting is active, show a special header instead
+  let secretBanner = '';
+  if (activeMeeting?.secret) {
+    const hint = getMeetingUpgradeHint(activeMeeting, deskItems, ctx);
+    secretBanner = `<div class="mr-secret-banner">
+      <span>${activeMeeting.icon} ${esc(activeMeeting.name)}</span>
+      <span class="meeting-secret-tag">SECRET</span>
+      <span class="mr-secret-desc">${esc(activeMeeting.desc)}</span>
+    </div>`;
+  }
+
+  // Near-miss hint when cards are selected but no secret
+  let hintRow = '';
+  if (activeMeeting && !activeMeeting.secret) {
+    const hint = getMeetingUpgradeHint(activeMeeting, deskItems, ctx);
+    if (hint) {
+      hintRow = `<div class="mr-hint${hint.special ? ' mr-hint-special' : ''}">${esc(hint.text)}</div>`;
+    }
+  }
+
+  return `<div class="meeting-ref">
+    ${secretBanner}
+    ${rowsHtml}
+    ${hintRow}
   </div>`;
 }
 
@@ -1232,71 +1425,6 @@ export function renderTeammateChoice(G) {
 }
 
 
-function _draftBuildHint(card, G) {
-  const allCards = [...(G.deck||[]), ...(G.hand||[]), ...(G.pile||[])];
-  const counts = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
-  for (const c of allCards) if (counts[c.archetype] !== undefined) counts[c.archetype]++;
-  const total = allCards.length || 1;
-  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
-  const [domArch, domCnt] = sorted[0];
-  const domPct = domCnt / total;
-  const cardArch = card.archetype;
-  const ownCnt = counts[cardArch] || 0;
-  const existingSynIds = new Set(allCards.flatMap(c => (c.synergies||[]).map(s => s.id)));
-  const hasSynOverlap = (card.synergies||[]).some(s => existingSynIds.has(s.id));
-  if (cardArch === domArch && domPct >= 0.35) {
-    return {text:`Reinforces your ${domArch} build (${ownCnt+1}/${total+1})`, cls:'hint-good'};
-  }
-  if (hasSynOverlap) {
-    return {text:'Synergy overlap with existing cards', cls:'hint-good'};
-  }
-  if (ownCnt === 0) {
-    return {text:`New archetype — diversifies your deck`, cls:'hint-neutral'};
-  }
-  if (ownCnt <= 1) {
-    return {text:`Weak fit — only ${ownCnt} ${cardArch} in deck`, cls:'hint-weak'};
-  }
-  return {text:`${ownCnt} ${cardArch} already — situational`, cls:'hint-neutral'};
-}
-
-export function renderDraft(G) {
-  const cardsHtml = G.draftPool.map(c => {
-    const fxLines = [
-      c.fx.chips ? `🔵 +${c.fx.chips} Output` : '',
-      c.fx.mult  ? `🔴 +${c.fx.mult}× Eff` : '',
-      c.fx.tox > 0 ? `☣ +${c.fx.tox}% Tox` : '',
-      c.fx.tox < 0 ? `☣ ${c.fx.tox}% Tox` : '',
-      c.fx.wb > 0  ? `❤ +${c.fx.wb} WB` : '',
-      c.fx.wb < 0  ? `❤ ${c.fx.wb} WB` : '',
-    ].filter(Boolean).join('<br>');
-    const synDesc = c.synergies?.[0]?.desc ? `<div class="dr-syn">★ ${esc(c.synergies[0].desc)}</div>` : '';
-    const synBadge = c.synergyWith ? `<div class="dr-syn-badge">🔗 ENABLES: ${esc(c.synergyWith)}</div>` : '';
-    const hint = _draftBuildHint(c, G);
-    return `<div class="dr-card ${c.archetype}" onclick="G.claimDraftCard('${c.id}')">
-      <div class="dr-arch">${c.archetype}</div>
-      <div class="dr-rarity">${c.rarity}</div>
-      <div class="dr-name">${esc(c.name)}</div>
-      <div class="dr-flavor">"${esc(c.flavor)}"</div>
-      <div class="dr-fx">${fxLines}</div>
-      ${synDesc}
-      ${synBadge}
-      <div class="dr-hint ${hint.cls}">▸ ${hint.text}</div>
-      <button class="dr-pick-btn">＋ Add to Deck</button>
-    </div>`;
-  }).join('');
-
-  return `<div class="draft-screen">
-    <div class="dr-header">
-      <div class="dr-title">📋 WEEKLY CARD DRAFT</div>
-      <div class="dr-sub">Week ${G.week} passed — choose 1 card to add to your deck permanently</div>
-      <div class="dr-sub" style="margin-top:3px;color:${(G.deck.length+G.hand.length+G.pile.length)>=24?'#ff8040':'var(--dim)'}">Deck: ${G.deck.length+G.hand.length+G.pile.length} / 24 cards${(G.deck.length+G.hand.length+G.pile.length)>=24?' — FULL: adding will require shredding one card':''}</div>
-    </div>
-    <div class="dr-cards">${cardsHtml}</div>
-    <div class="dr-skip-row">
-      <button class="dr-skip-btn" onclick="G.skipDraft()">✗ Skip — keep deck lean</button>
-    </div>
-  </div>`;
-}
 
 export function renderTargetedDraw(G) {
   const cardsHtml = (G.targetedDrawOptions || []).map(c => {
@@ -1575,6 +1703,7 @@ export function renderInbox(G) {
 }
 
 export function renderShop(G) {
+  // ── Pending overlays (same as before) ──
   if (G.pendingUpgrade) {
     const allCards = [...G.deck, ...G.pile];
     return `<div class="draft-screen">
@@ -1609,87 +1738,85 @@ export function renderShop(G) {
       <div class="dr-skip-row"><button class="dr-skip-btn" onclick="G.cancelAction()">✕ Cancel</button></div>
     </div>`;
   }
-  // Desk item offer takes priority — show picker
   if (G.deskItemOffer && G.deskItemOffer.length) {
     return renderDeskItemOffer(G);
   }
-
-  // ── Draft section (embedded when player passed this week) ───
-  let draftSectionHtml = '';
-  if (G.draftPool && G.draftPool.length > 0) {
-    const draftCards = G.draftPool.map(c => {
-      const fxLines = [
-        c.fx.chips ? `🔵 +${c.fx.chips} Output` : '',
-        c.fx.mult  ? `🔴 +${c.fx.mult}× Eff` : '',
-        c.fx.tox > 0 ? `☣ +${c.fx.tox}% Tox` : '',
-        c.fx.tox < 0 ? `☣ ${c.fx.tox}% Tox` : '',
-        c.fx.wb > 0  ? `❤ +${c.fx.wb} WB` : '',
-        c.fx.wb < 0  ? `❤ ${c.fx.wb} WB` : '',
-      ].filter(Boolean).join('<br>');
-      const synDesc = c.synergies?.[0]?.desc ? `<div class="dr-syn">★ ${esc(c.synergies[0].desc)}</div>` : '';
-      const synBadge = c.synergyWith ? `<div class="dr-syn-badge">🔗 ENABLES: ${esc(c.synergyWith)}</div>` : '';
-      const hint = _draftBuildHint(c, G);
-      return `<div class="dr-card ${c.archetype}" onclick="G.claimDraftCard('${c.id}')">
-        <div class="dr-arch">${c.archetype}</div>
-        <div class="dr-rarity">${c.rarity}</div>
-        <div class="dr-name">${esc(c.name)}</div>
-        <div class="dr-flavor">"${esc(c.flavor)}"</div>
-        <div class="dr-fx">${fxLines}</div>
-        ${synDesc}${synBadge}
-        <div class="dr-hint ${hint.cls}">▸ ${hint.text}</div>
-        <button class="dr-pick-btn">＋ Add to Deck</button>
-      </div>`;
-    }).join('');
-    const deckFull = G.deckSize() >= 24;
-    draftSectionHtml = `
-      <div class="sh-draft-section">
-        <div class="sh-draft-header">
-          <span>📋 CARD DRAFT — choose 1 to add permanently</span>
-          <span style="color:${deckFull?'#ff8040':'var(--dim)'}">Deck: ${G.deckSize()}/24${deckFull?' — FULL':''}</span>
-        </div>
-        <div class="dr-cards">${draftCards}</div>
-        <div class="dr-skip-row">
-          <button class="dr-skip-btn" onclick="G.skipDraft()">✗ Skip — keep deck lean</button>
-        </div>
-      </div>`;
+  if (G.openedPack) {
+    return renderPackReveal(G);
   }
+  return renderPackShop(G);
+}
 
-  const {week, coins, shopItems, wscore, passives} = G;
-  const passed = wscore >= G.kpi();
-  const wbColor = G.wb >= 70 ? '#70ff78' : G.wb >= 40 ? '#ffdd44' : '#ff7070';
-  const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
-  const boColor = G.bo >= 90 ? '#ff2020' : G.bo >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
-  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
-  const cardsHtml = shopItems.map(id => {
-    // Special desk item shop slot
-    if (id === 'shop_desk_item') {
-      const canAfford = coins >= 5;
-      return `<div class="sh2-card sh2-desk-slot${canAfford ? ' sh2-buyable' : ''}" ${canAfford ? "onclick=\"G.buyItem('shop_desk_item')\"" : ''}>
-        <div class="sh2-type">DESK ITEM</div>
-        <div class="sh2-icon">🗂️</div>
-        <div class="sh2-name">Mystery Desk Item</div>
-        <div class="sh2-desc">Pick 1 of 3 random Common/Uncommon desk items for your office desk.</div>
-        <button class="sh2-buy-btn${canAfford ? '' : ' sh2-cant'}" ${canAfford ? '' : 'disabled'} onclick="event.stopPropagation();G.buyItem('shop_desk_item')">${canAfford ? 'BUY — 5 CC' : '5 CC — INSUFFICIENT'}</button>
-      </div>`;
-    }
-    const item = SHOP_DB[id];
-    if (!item) return '';
-    const isOwned = item.unique && passives.some(p => p.itemId === id);
-    const canAfford = coins >= item.cost;
-    let btnExtra = '', btnLabel, disabled = '';
-    if (isOwned)        { btnLabel = 'OWNED'; disabled = 'disabled'; btnExtra = ' sh2-owned'; }
-    else if (!canAfford){ btnLabel = `${item.cost} CC — INSUFFICIENT`; disabled = 'disabled'; btnExtra = ' sh2-cant'; }
-    else                { btnLabel = `BUY — ${item.cost} CC`; }
-    const clickable = !isOwned && canAfford;
-    const isClassPerk = !!item.classExclusive;
-    return `<div class="sh2-card${clickable ? ' sh2-buyable' : ''}${isClassPerk ? ' sh2-class-perk' : ''}" ${clickable ? `onclick="G.buyItem('${id}')"` : ''}>
-      <div class="sh2-type">${isClassPerk ? '★ CLASS PERK' : item.type.replace('_', ' ')}</div>
-      <div class="sh2-icon">${item.icon}</div>
-      <div class="sh2-name">${item.name}</div>
-      <div class="sh2-desc">${item.desc}</div>
-      <button class="sh2-buy-btn${btnExtra}" ${disabled} onclick="event.stopPropagation();G.buyItem('${id}')">${btnLabel}</button>
+export function renderPackReveal(G) {
+  const pack = PACK_DB[G.openedPack.packId];
+  const items = G.openedPack.items;
+  const rarityColors = { COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700' };
+  const archColors = { PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80' };
+
+  const slots = items.map((item, i) => {
+    const isNeg = item.negative;
+    const rc = rarityColors[item.rarity] || '#aaaaaa';
+    const negBadge = isNeg ? `<div class="ps-neg-badge">⚠ NEGATIVE</div>` : '';
+    const archBadge = item.archetype ? `<div class="ps-arch" style="color:${archColors[item.archetype]||'#aaa'}">${item.archetype}</div>` : '';
+    const flavorHtml = item.flavor ? `<div class="ps-flavor">"${esc(item.flavor)}"</div>` : '';
+    return `<div class="pack-slot pack-slot-spinning${isNeg ? ' pack-slot-neg' : ''}" id="pack-slot-${i}" style="--pack-color:${pack.color}">
+      <div class="ps-spin-face"><span class="ps-spin-icon">${pack.icon}</span></div>
+      <div class="ps-content">
+        ${negBadge}
+        <div class="ps-rarity" style="color:${rc}">${item.rarity || item.type}</div>
+        ${archBadge}
+        <div class="ps-icon">${item.icon}</div>
+        <div class="ps-name">${esc(item.name)}</div>
+        <div class="ps-desc">${esc(item.desc)}</div>
+        ${flavorHtml}
+        <button class="ps-pick-btn" disabled onclick="G.claimPackItem(${i})">
+          ${isNeg ? '⚠ ACCEPT' : '✓ PICK THIS'}
+        </button>
+      </div>
     </div>`;
   }).join('');
+
+  return `<div class="pack-reveal-screen" id="pack-reveal-root">
+    <div class="pr-header">
+      <span class="pr-pack-icon">${pack.icon}</span>
+      <span class="pr-pack-name">${esc(pack.name)}</span>
+      <span class="pr-instruction">— CHOOSE ONE —</span>
+    </div>
+    <div class="pr-slots">${slots}</div>
+    <div class="pr-skip-row">
+      <button class="dr-skip-btn" onclick="G.skipPackItem()">✗ Take nothing</button>
+    </div>
+  </div>`;
+}
+
+export function renderPackShop(G) {
+  const { week, coins, wscore, passives } = G;
+  const passed = wscore >= G.kpi();
+  const wbColor  = G.wb  >= 70 ? '#70ff78' : G.wb  >= 40 ? '#ffdd44' : '#ff7070';
+  const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
+  const boColor  = G.bo  >= 90 ? '#ff2020' : G.bo  >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
+
+  // Packs grid — 3 of 5 rolled each week
+  const packsHtml = (G.shopPackIds || []).map(id => PACK_DB[id]).filter(Boolean).map(pack => {
+    const canAfford = coins >= pack.cost;
+    const poolDesc = {
+      wellness:      'Consumables: WB recovery, Tox cleanse',
+      office_supply: 'Desk Items: Common & Uncommon tier',
+      talent_acq:    'Cards for deck + Overtime Briefcase',
+      executive:     'Rare Desk Items, passives, Upgrade Card',
+      restructuring: 'Anything — including negatives. High risk.',
+    }[pack.id] || '';
+    return `<div class="pack-card${canAfford ? ' pack-buyable' : ' pack-broke'}" ${canAfford ? `onclick="G.buyPack('${pack.id}')"` : ''} style="--pack-color:${pack.color}">
+      <div class="pk-icon">${pack.icon}</div>
+      <div class="pk-name">${esc(pack.name)}</div>
+      <div class="pk-tagline">${esc(pack.tagline)}</div>
+      <div class="pk-pool">${poolDesc}</div>
+      <button class="pk-buy-btn${canAfford ? '' : ' pk-cant'}" ${canAfford ? '' : 'disabled'} onclick="event.stopPropagation();G.buyPack('${pack.id}')">
+        ${canAfford ? `OPEN — ${pack.cost} CC` : `${pack.cost} CC — CAN'T AFFORD`}
+      </button>
+    </div>`;
+  }).join('');
+
   const shopPassives = passives.filter(p => !p.isComp);
   const passiveList = shopPassives.length
     ? `<div class="sh2-installed">Installed: ${shopPassives.map(p => `<span class="sp-tag">${SHOP_DB[p.itemId]?.icon || '•'} ${p.name}</span>`).join('')}</div>`
@@ -1697,16 +1824,18 @@ export function renderShop(G) {
   const heldList = G.heldCards && G.heldCards.length
     ? `<div class="sh2-installed" style="color:#80ffa8">💼 Held: ${G.heldCards.map(c => `<span class="sp-tag">${c.name}</span>`).join('')}</div>`
     : '';
-  const meltdownAdvisory = G.tox >= 91
-    ? `<div class="meltdown-advisory" style="margin:6px 0 10px">☣ MELTDOWN ZONE — Efficiency ×2 all plays · 20% auto-exhaust risk per card</div>`
-    : '';
+
   const shredCost = G.freeRemovalUsed ? 3 : 0;
-  const canAffordShred = shredCost === 0 || G.coins >= shredCost;
+  const canAffordShred = shredCost === 0 || coins >= shredCost;
   const shredLabel = shredCost === 0 ? '🗑️ SHRED A CARD — FREE (1st use)' : `🗑️ SHRED A CARD — ${shredCost} CC`;
   const upgradeCost = SHOP_DB.sh_upgrade.cost;
   const canAffordUpgrade = coins >= upgradeCost;
   const upgradeLabel = `⬆️ UPGRADE A CARD — ${upgradeCost} CC`;
   const nextLabel = week >= TOTAL_WEEKS ? '✓ FINAL RESULTS' : `▶ START WEEK ${week + 1}`;
+  const meltdownAdvisory = G.tox >= 91
+    ? `<div class="meltdown-advisory" style="margin:6px 0 10px">☣ MELTDOWN ZONE — Efficiency ×2 all plays · 20% auto-exhaust risk per card</div>`
+    : '';
+
   return `<div class="draft-screen">
     <div class="dr-header">
       <div class="dr-title">📊 WEEKLY REVIEW — WEEK ${week}</div>
@@ -1718,9 +1847,11 @@ export function renderShop(G) {
         <span style="color:#ffdd44">💰 ${coins} CC</span>
       </div>
     </div>
-    ${draftSectionHtml}
     ${meltdownAdvisory}
-    <div class="dr-cards">${cardsHtml || '<div style="color:var(--dim);padding:20px;font:12px Courier New">Shop is empty.</div>'}</div>
+    <div class="pack-shop-section">
+      <div class="section-title" style="margin-bottom:8px">AVAILABLE PACKS</div>
+      <div class="pack-grid">${packsHtml}</div>
+    </div>
     <div class="sh2-actions">
       <button class="dr-skip-btn" ${canAffordShred ? '' : 'disabled'} onclick="G.startRemoval()">${shredLabel}</button>
       <button class="sh2-upgrade-btn" ${canAffordUpgrade ? '' : 'disabled'} onclick="G.buyItem('sh_upgrade')" title="+80 Output &amp; +0.3 Eff added permanently to 1 card">${upgradeLabel}</button>

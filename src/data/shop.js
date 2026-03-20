@@ -103,3 +103,20 @@ export const SHOP_DB = {
     desc:'Passive: Each card played this turn +75 Output',
     passiveType:'CHIPS_PER_PLAY',passiveVal:75},
 };
+
+export const PACK_DB = {
+  wellness:      { id:'wellness',      name:'Wellness Package',        tagline:'"HR cares. Allegedly."',                              icon:'🧘', cost:3, color:'#60cc60' },
+  office_supply: { id:'office_supply', name:'Office Supply Order',     tagline:'"Estimated delivery: 3-5 business years."',           icon:'📦', cost:5, color:'#c0c0c0' },
+  talent_acq:    { id:'talent_acq',    name:'Talent Acquisition',      tagline:'"We\'re a family here. A dysfunctional one."',        icon:'👔', cost:6, color:'#6ab4ff' },
+  executive:     { id:'executive',     name:'Executive Perks',         tagline:'"Not available to all employees."',                   icon:'💼', cost:9, color:'#ffd700' },
+  restructuring: { id:'restructuring', name:'Surprise Restructuring',  tagline:'"Change is the only constant. Except for meetings."', icon:'🎲', cost:4, color:'#ff6030' },
+};
+
+export const NEGATIVE_ITEMS = [
+  { id:'neg_allhands',  name:'Mandatory All-Hands', icon:'📢', desc:'"Quick sync — won\'t take long." Next week: −1 play.',     negative:true, type:'NEGATIVE', effect:{ playsNext:-1 } },
+  { id:'neg_freeze',    name:'Budget Freeze',        icon:'🧊', desc:'"Effective end of quarter." −3 CC immediately.',           negative:true, type:'NEGATIVE', effect:{ coins:-3 } },
+  { id:'neg_manager',   name:'New Manager',          icon:'🤵', desc:'"Fresh start for the team." Teammate loyalty reset.',     negative:true, type:'NEGATIVE', effect:{ resetLoyalty:true } },
+  { id:'neg_cleardesk', name:'Desk Cleared',         icon:'🗃️', desc:'"Hot-desking initiative." Lose 1 random desk item.',      negative:true, type:'NEGATIVE', effect:{ removeDeskItem:true } },
+  { id:'neg_audit',     name:'Compliance Audit',     icon:'📋', desc:'"We found some things." +15% Toxicity immediately.',      negative:true, type:'NEGATIVE', effect:{ tox:15 } },
+  { id:'neg_overtime',  name:'Mandatory Overtime',   icon:'🔥', desc:'"The deadline moved up." +10% Burnout immediately.',      negative:true, type:'NEGATIVE', effect:{ bo:10 } },
+];

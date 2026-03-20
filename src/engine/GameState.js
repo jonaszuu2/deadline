@@ -23,6 +23,8 @@ export class GameState {
     this.wscore = 0; this.playsMax = PLAYS; this.plays = PLAYS; this.discs = DISCS; this.coins = 0;
     this.passives = []; this.exhausted = new Set(); this.shopItems = [];
     this.purchasedThisShop = false;
+    this.openedPack = null;       // { packId, items:[{type,id,name,icon,rarity,desc,negative,data,archetype?,flavor?}] } | null
+    this.nextWeekPlaysBonus = 0;  // applied at start of next week
 
     this.phase = 'play'; this.deck = []; this.pile = []; this.hand = [];
     this.sel = []; this.log = []; this.lastScore = null; this.weekCrunched = false; this.weekCrunchCount = 0;
@@ -56,8 +58,14 @@ export class GameState {
     // Permanent multiplier (desk items, breakthroughs)
     this.permMult = 0;
 
-    // Draft state
-    this.draftPool = []; this.pendingDraftCard = null;
+    // Draft state (pendingDraftCard still used when deck is full during pack claim)
+    this.pendingDraftCard = null;
+
+    // Meeting type tracking
+    this.lastMeetingType = null;  // id of the last meeting played (for secret meeting detection)
+
+    // Shop pack selection (3 of 5 rolled each week)
+    this.shopPackIds = [];
 
     // Economy state
     this.freeRemovalUsed = false;
@@ -95,6 +103,10 @@ export class GameState {
     // Wellness tracking
     this.wellnessWeeks = 0;
 
+    // Desk item carry state
+    this.stratCarryMult = 0;  // consultants_notes: Eff carry from previous play
+    this.shopPacksBought = 0; // budget_freeze: 1 pack per shop limit
+
   }
 
   // ── Queries ──────────────────────────────────────────
@@ -104,12 +116,17 @@ export class GameState {
     const benMult = this.teammate === 'ben'
       ? (this.getTeammateTier() === 1 ? 0.88 : this.getTeammateTier() === 3 ? 0.75 : 0.92)
       : 1.0;
-    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier);
+    const pipMult = (this.deskItems||[]).some(d => d.id === 'performance_improvement_plan') ? 0.75 : 1.0;
+    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier * pipMult);
   }
 
-  handLimit() { return HAND; }
+  handLimit() {
+    return HAND + ((this.deskItems||[]).some(d => d.id === 'flex_schedule') ? -1 : 0);
+  }
   maxSel() {
-    return MAX_SEL + (this.tox >= 61 && this.tox < 91 ? 1 : 0);
+    const strategyDeck = (this.deskItems||[]).some(d => d.id === 'strategy_deck');
+    const toxBonus = this.tox >= 61 && this.tox < 91 ? 1 : 0;
+    return (strategyDeck ? 2 : MAX_SEL) + toxBonus;
   }
   deckSize() { return this.deck.length + this.hand.length + this.pile.length; }
 

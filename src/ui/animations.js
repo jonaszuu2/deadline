@@ -329,3 +329,20 @@ export function initScoringAnimation(G) {
     }, 280);
   });
 }
+
+export function initPackReveal() {
+  const slots = Array.from(document.querySelectorAll('.pack-slot'));
+  if (!slots.length) return;
+  // Stagger each slot landing: 800ms, 1400ms, 2000ms
+  const timings = [800, 1400, 2000];
+  slots.forEach((slot, i) => {
+    setTimeout(() => {
+      slot.classList.remove('pack-slot-spinning');
+      slot.classList.add('pack-slot-landed');
+    }, timings[i]);
+  });
+  // Enable pick buttons after all land
+  setTimeout(() => {
+    document.querySelectorAll('.ps-pick-btn').forEach(btn => btn.removeAttribute('disabled'));
+  }, 2200);
+}

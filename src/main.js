@@ -1,6 +1,6 @@
 import { Game, _setUIFunctions } from './game.js';
 import { render, zoomIn, zoomOut } from './ui/render.js';
-import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, startUpgradeSpin, dismissManagerEmail } from './ui/animations.js';
+import { scrollLog, showScorePopup, animateWscore, showWbDamage, showComboAnnouncer, triggerKpiFlash, startUpgradeSpin, dismissManagerEmail, initPackReveal } from './ui/animations.js';
 import { dismissTeammateModal, initStatTooltip, initCardTooltip, openHelp } from './ui/modals.js';
 import { restoreHandHeight, startHandResize } from './ui/resize.js';
 import { showStartupScreen, dismissStartup, showHowToPlay, _advanceTutorial, _skipTutorial, _advanceIntroTutorial, _skipIntroTutorial, checkFirstShopTutorial, _advanceShopTutorial, _skipShopTutorial, showContextualTip, resetCtxTips, showGuideTip } from './ui/tutorial.js';
@@ -54,6 +54,7 @@ window._advanceIntroTutorial = _advanceIntroTutorial;
 window._skipIntroTutorial   = _skipIntroTutorial;
 window.openHelp             = openHelp;
 window._dismissManagerEmail = dismissManagerEmail;
+window._initPackReveal = initPackReveal;
 
 // Desk Item actions (called from inline onclick handlers)
 window.claimDeskItem    = (id) => window.G.claimDeskItem(id);

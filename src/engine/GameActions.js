@@ -66,12 +66,25 @@ export function toggle(uid) {
 // ═══════════════════════════════════════════════════════
 
 export function discardSelected() {
-  if (this.discs <= 0 || !this.sel.length) return;
+  const hasPIP = (this.deskItems||[]).some(d => d.id === 'performance_improvement_plan');
+  const hasUPTO = (this.deskItems||[]).some(d => d.id === 'unlimited_pto');
+  if (hasPIP) {
+    this.addLog('ng', `> 📋 [Performance Improvement Plan] Discards disabled.`);
+    return;
+  }
+  if (!hasUPTO && this.discs <= 0) return;
+  if (!this.sel.length) return;
   const gone = this.hand.filter(c => this.sel.includes(c.uid));
   this.hand = this.hand.filter(c => !this.sel.includes(c.uid));
-  this.pile.push(...gone); this.sel = []; this.discs--;
+  this.pile.push(...gone); this.sel = [];
+  if (!hasUPTO) this.discs--;
+  // unlimited_pto: +5 tox per card discarded
+  if (hasUPTO && gone.length > 0) {
+    const toxGain = gone.length * 5;
+    this.tox = clamp(this.tox + toxGain, 0, 100);
+    this.addLog('tg', `> 🏖️ [Unlimited PTO] ${gone.length} card(s) discarded — +${toxGain}% Tox → ${this.tox}%`);
+  }
   let discardLog = `> Discarded ${gone.length} card(s).`;
-
   // Batch Discard Combo: 2+ cards stacks Mult on next play
   if (gone.length >= 2) {
     const comboBonus = fmt1((gone.length - 1) * 0.4);
@@ -97,6 +110,24 @@ export function playSelected() {
   if (cards.some(c => c.archetype === 'CRUNCH')) { this.weekCrunched = true; }
   for (const card of cards) {
     if (card.exhaust) this.exhausted.add(card.uid);
+  }
+
+  // quarterly_roadmap: STRATEGY cards permanently +0.05 Eff
+  if ((this.deskItems||[]).some(d => d.id === 'quarterly_roadmap')) {
+    for (const c of cards) {
+      if (c.archetype === 'STRATEGY') {
+        this._mutateCard(c.uid, card => ({ fx: {...card.fx, mult: Number(fmt1((card.fx.mult||0) + 0.05))} }));
+        this.addLog('sy', `> 📑 [Quarterly Roadmap] [${c.name}] gained +0.05 Eff permanently`, true);
+      }
+    }
+  }
+  // red_stapler: first PRODUCTION card played each week → +20 chips permanently
+  if (this.firstCardThisWeek && (this.deskItems||[]).some(d => d.id === 'red_stapler')) {
+    const firstProd = cards.find(c => c.archetype === 'PRODUCTION');
+    if (firstProd) {
+      this._mutateCard(firstProd.uid, card => ({ fx: {...card.fx, chips: (card.fx.chips||0) + 20} }));
+      this.addLog('sy', `> ❤️ [Red Stapler] [${firstProd.name}] gained +20 chips permanently`);
+    }
   }
 
   // Gary penalty: "presents" cards before scoring (tier-aware)
@@ -221,12 +252,18 @@ export function processTurn(cards, _unused = {}, handSizeBeforePlay = 0) {
     deskItems:               this.deskItems || [],
     handSize:                handSizeBeforePlay,
     totalPlayCount:          this.totalPlayCount || 0,
+    stratCarryMult:          this.stratCarryMult || 0,
+    lastMeetingType:         this.lastMeetingType || null,
     mode: 'real',
   });
   this.discardComboMult = 0;
   this.firstCrunchUsed   = result.firstCrunchUsed;
   this.weekCrunchCount   = result.weekCrunchCount;
   this.firstCardThisWeek = result.firstCardThisWeek;
+  // Update stratCarryMult from consultants_notes
+  this.stratCarryMult = result.newStratCarryMult || 0;
+  // Update lastMeetingType for secret meeting detection
+  this.lastMeetingType = result.meetingType?.id || null;
   for (const uid of result.newExhausted) this.exhausted.add(uid);
   // Track which desk items fired this turn (for UI pulse)
   this.lastActivatedDeskIds = new Set();
