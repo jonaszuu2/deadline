@@ -1,7 +1,6 @@
 import { clamp, KPI, TOTAL_WEEKS, PLAYS, MAX_SEL, CAREER_DB, UPGRADE_TIERS } from '../data/constants.js';
 import { SHOP_DB } from '../data/shop.js';
 import { TEAMMATES_DB } from '../data/content.js';
-import { BOSS_DB } from '../data/boss.js';
 import { DB } from '../data/cards.js';
 import { getEffectiveFx, simulateTurn } from '../engine/calcTurn.js';
 import { calculateFinalScore, predictCareerTier } from '../engine/scoring.js';
@@ -9,7 +8,6 @@ import { esc, fmt1 } from '../engine/utils.js';
 import { initFinalReviewAnim, updateKpiBar, initScoringAnimation } from './animations.js';
 import { _currentHandH, HAND_H_DEF, applyHandHeight } from './resize.js';
 import { ovGameOver, ovWin, ovFinalReview } from './overlays.js';
-import { CONTEXTS_DB } from '../data/contexts.js';
 import { buildManagerEmail, shouldShowEmail } from '../data/managerEmails.js';
 
 export const ARCH_COLORS = {PRODUCTION:'#6ab4ff', STRATEGY:'#ff9090', CRUNCH:'#ff6030', RECOVERY:'#60ff80', SHOP:'#c8b8ff'};
@@ -25,7 +23,6 @@ const _phaseFlashLabels = {
   result:          ()  => 'WEEK COMPLETE',
   scoring:         ()  => 'SUBMITTING WORK',
   shop:            ()  => 'WEEKLY REVIEW',
-  boss:            ()  => 'PERFORMANCE REVIEW',
   teammate_choice: ()  => 'STAFFING DECISION',
 };
 
@@ -55,7 +52,7 @@ export function renderStatusBar(G) {
                   : lastEntry?.cls === 'sy' ? 'warn' : '';
   const dayNames  = ['MON','TUE','WED','THU','FRI'];
   const dayName   = dayNames[G.dayIndex ?? 0] || 'MON';
-  const phase     = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS', gameover:'GAME OVER',
+  const phase     = {play:'PLAY', result:'RESULT', shop:'SHOP', gameover:'GAME OVER',
                      win:'WIN', review:'REVIEW', draft:'DRAFT', teammate_choice:'STAFFING',
                      targeted_draw:'DRAW', scoring:'SCORING'}[G.phase] || G.phase.toUpperCase();
 
@@ -111,7 +108,7 @@ export function renderTopbar(G) {
     return `<div class="tp-pip"></div>`;
   }).join('');
 
-  const phase = {play:'PLAY', result:'RESULT', shop:'SHOP', boss:'BOSS', gameover:'GAME OVER',
+  const phase = {play:'PLAY', result:'RESULT', shop:'SHOP', gameover:'GAME OVER',
                  win:'WIN', review:'REVIEW', draft:'DRAFT', teammate_choice:'STAFFING',
                  targeted_draw:'DRAW', scoring:'SCORING'}[G.phase] || G.phase.toUpperCase();
 
@@ -143,6 +140,7 @@ export function renderTopbar(G) {
         <span class="cc-label">CC</span>
       </div>
       <span class="discards-info">DISCARD: ${discs}</span>
+      <button class="inbox-topbar-btn" onclick="G.openInbox()" title="Open Inbox">${(() => { const u = (G.inbox||[]).filter(e=>e.unread).length; return u > 0 ? `📬 <span class="inbox-unread-badge">${u}</span>` : '📭'; })()}</button>
       <div class="topbar-phase">${phase}</div>
     </div>`;
 }
@@ -177,12 +175,13 @@ export function render(G) {
 
   const winBody = document.getElementById('win-body');
 
-  if (G.phase === 'teammate_choice') {
-    winBody.innerHTML = `<div class="full-phase-wrap">${renderTeammateChoice(G)}</div>`;
+  if (G.inboxOpen) {
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderInbox(G)}</div>`;
     return;
   }
-  if (G.phase === 'boss') {
-    winBody.innerHTML = `<div class="full-phase-wrap">${renderBossEncounter(G)}</div>`;
+
+  if (G.phase === 'teammate_choice') {
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderTeammateChoice(G)}</div>`;
     return;
   }
   if (G.phase === 'targeted_draw') {
@@ -226,10 +225,7 @@ export function render(G) {
         ${renderFormulaRow(preview, wscore, target, G)}
         <div class="hand-label-new">HAND (${hand.length}) · ${sel.length ? `${sel.length} selected` : `select 1–${G.maxSel()}`}</div>
         <div class="cards-area-new">
-          ${G.pendingChoice
-            ? `<div style="width:100%">${renderContextChoice(G)}</div>`
-            : hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount, maxSel: G.maxSel()})).join('')
-          }
+          ${hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount, maxSel: G.maxSel()})).join('')}
         </div>
         ${renderDeskRow(G)}
         ${renderActionBarNew(G, preview)}
@@ -423,36 +419,6 @@ function renderLeftPanel(G, preview) {
 
 
   // Calendar / context days
-  let calHtml = '';
-  if (G.weekContexts?.length) {
-    const idx = G.dayIndex ?? 0;
-    const dayNames = ['MON','TUE','WED','THU','FRI'];
-    const days = G.weekContexts.map((ctxId, i) => {
-      const ctx = CONTEXTS_DB[ctxId];
-      if (!ctx) return '';
-      const done    = i < idx;
-      const today   = i === idx;
-      const visible = i <= idx + 1;
-      let cls = 'lp-cal-day';
-      if (done)  cls += ' lp-day-done';
-      else if (today) cls += ' lp-day-active';
-      else cls += ' lp-day-unknown';
-      const icon = visible ? (done ? '✓' : ctx.icon) : '?';
-      const title = visible ? esc(ctx.name) : '???';
-      return `<div class="${cls}" title="${title}">
-        <div class="lp-cd-label">${dayNames[i]}</div>
-        <div class="lp-cd-icon">${icon}</div>
-      </div>`;
-    }).join('');
-    const todayCtx = CONTEXTS_DB[G.weekContexts[idx]];
-    const todayDesc = todayCtx ? `<div style="font-size:9px;color:var(--color-text-muted);font-family:var(--font-data);margin-top:5px;line-height:1.5">${todayCtx.icon} <b style="color:var(--color-text-primary)">${esc(todayCtx.name)}</b><br>${esc(todayCtx.desc)}</div>` : '';
-    calHtml = `<div>
-      <div class="section-title">Week Calendar</div>
-      <div class="lp-cal-row">${days}</div>
-      ${todayDesc}
-    </div>`;
-  }
-
   const tierInfo = tox >= 91 ? {cls:'tier-meltdown', lbl:'☣ MELTDOWN', color:'var(--color-fail)'}
                  : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC',   color:'var(--color-warning)'}
                  : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 PASSIVE-AGG', color:'var(--color-text-muted)'}
@@ -468,7 +434,7 @@ function renderLeftPanel(G, preview) {
       </div>
     </div>` : '';
 
-  return `<div class="left-panel">${statBars}${calHtml}${tierBadge}${miniLog}</div>`;
+  return `<div class="left-panel">${statBars}${tierBadge}${miniLog}</div>`;
 }
 
 function renderFormulaRow(preview, wscore, target, G) {
@@ -1055,55 +1021,7 @@ export function renderCard(c, sel, preview, passives, ctx = {}) {
   </div>`;
 }
 
-// ═══════════════════════════════════════════════════════
-//  DAILY CONTEXT CALENDAR
-// ═══════════════════════════════════════════════════════
-
 const DAY_NAMES = ['MON','TUE','WED','THU','FRI'];
-
-export function renderContextStrip(G) {
-  if (!G.weekContexts?.length) return '';
-  const idx = G.dayIndex ?? 0;
-  const days = G.weekContexts.map((ctxId, i) => {
-    const ctx = CONTEXTS_DB[ctxId];
-    if (!ctx) return '';
-    const done    = i < idx;
-    const today   = i === idx;
-    const visible = i <= idx + 1; // today + tomorrow visible
-    let cls = 'ctx-day';
-    if (done)  cls += ' ctx-done';
-    if (today) cls += ' ctx-today';
-    if (!done && !today) cls += ' ctx-upcoming';
-    const label = visible
-      ? `<span class="ctx-day-icon">${ctx.icon}</span><span class="ctx-day-name-lbl">${esc(ctx.name)}</span>`
-      : `<span class="ctx-day-icon">?</span>`;
-    return `<div class="${cls}" title="${visible ? esc(ctx.desc) : '???'}">
-      <div class="ctx-day-hdr">${DAY_NAMES[i]}</div>
-      ${done ? '<div class="ctx-day-check">✓</div>' : label}
-    </div>`;
-  }).join('');
-
-  const todayCtx = CONTEXTS_DB[G.weekContexts[idx]];
-  const todayDesc = todayCtx ? `<div class="ctx-today-desc">${todayCtx.icon} <b>${esc(todayCtx.name)}</b> — ${esc(todayCtx.desc)}</div>` : '';
-
-  return `<div class="ctx-strip">${days}</div>${todayDesc}`;
-}
-
-export function renderContextChoice(G) {
-  if (!G.pendingChoice) return '';
-  const ctx = CONTEXTS_DB[G.pendingChoice];
-  if (!ctx?.isChoice) return '';
-  const btns = ctx.choices.map(c => `
-    <button class="btn ctx-choice-btn" onclick="G.resolveContextChoice('${c.id}')">
-      <div class="ctx-choice-label">${esc(c.label)}</div>
-      <div class="ctx-choice-detail">${esc(c.desc)}</div>
-    </button>`).join('');
-  return `<div class="ctx-choice-panel">
-    <div class="ctx-choice-hdr">${ctx.icon} ${esc(ctx.name)}</div>
-    <div class="ctx-choice-sub">${esc(ctx.desc)}</div>
-    <div class="ctx-choice-opts">${btns}</div>
-  </div>`;
-}
 
 export function renderActions(G, preview) {
   const {sel, plays, discs, phase, wscore, week} = G;
@@ -1189,113 +1107,6 @@ export function renderLog(log, preview) {
   return `<div id="log-wrap">
     <div id="log-hdr">TURN LOG</div>
     <div id="log-body">${logHtml}${previewLine}</div>
-  </div>`;
-}
-
-export function _fxBadges(fx) {
-  const parts = [];
-  if (fx.wb)       parts.push([`${fx.wb > 0 ? '+' : ''}${fx.wb} WB`,       fx.wb   > 0]);
-  if (fx.tox)      parts.push([`${fx.tox > 0 ? '+' : ''}${fx.tox}% Tox`,   fx.tox  < 0]);
-  if (fx.bo)       parts.push([`${fx.bo > 0 ? '+' : ''}${fx.bo}% BO`,       fx.bo   < 0]);
-  if (fx.coins)    parts.push([`${fx.coins > 0 ? '+' : ''}${fx.coins} CC`,  fx.coins > 0]);
-  if (fx.kpiMult)  parts.push([`KPI ×${fx.kpiMult}`,                         fx.kpiMult < 1]);
-  if (fx.permMult) parts.push([`+${fx.permMult}× Perm Eff`,                  true]);
-  return parts.map(([txt, good]) => `<span class="boss-fx-${good ? 'pos' : 'neg'}">${txt}</span>`).join('');
-}
-
-export function renderBossEncounter(G) {
-  const boss = BOSS_DB[G.currentBoss] || BOSS_DB.midgame;
-  const cssVars = `--bc:${boss.color};--bce:${boss.colorEnd}`;
-
-  const identityPanel = `
-    <div class="be-left">
-      <div class="be-portrait">${boss.portrait}</div>
-      <div class="be-name">${esc(boss.name)}</div>
-      <div class="be-title">${esc(boss.title)}</div>
-      <div class="be-id-stats">
-        <div class="be-id-stat${G.tox >= 60 ? ' be-id-warn' : ''}">☣ TOX <b>${G.tox}%</b></div>
-        <div class="be-id-stat${G.wb <= 30 ? ' be-id-warn' : ''}">❤ WB <b>${G.wb}%</b></div>
-        <div class="be-id-stat">🔥 BO <b>${G.bo}%</b></div>
-      </div>
-    </div>`;
-
-  let rightPanel;
-
-  if (G.bossPhase === 'question') {
-    const q    = boss.questions[G.bossQIdx];
-    const dots = boss.questions.map((_, i) => {
-      const cls = i < G.bossQIdx ? ' be-dot-done' : i === G.bossQIdx ? ' be-dot-cur' : '';
-      return `<span class="be-dot${cls}">${i < G.bossQIdx ? '◆' : i === G.bossQIdx ? '◈' : '◇'}</span>`;
-    }).join('');
-    const intro = G.bossQIdx === 0
-      ? `<div class="be-intro">${esc(boss.intro)}</div>` : '';
-    const opts = q.options.map((o, i) =>
-      `<button class="be-opt" onclick="G.answerBossQuestion(${i})">
-        <span class="be-opt-key">${String.fromCharCode(65 + i)}</span>
-        <span class="be-opt-label">${esc(o.label)}</span>
-      </button>`
-    ).join('');
-    rightPanel = `
-      <div class="be-right">
-        <div class="be-progress">${dots}<span class="be-prog-lbl">Q${G.bossQIdx + 1} / ${boss.questions.length}</span></div>
-        ${intro}
-        <div class="be-q-text">${esc(q.text)}</div>
-        <div class="be-opts">${opts}</div>
-      </div>`;
-
-  } else if (G.bossPhase === 'result') {
-    const entry  = G.bossAnswerLog[G.bossAnswerLog.length - 1];
-    const isLast = G.bossQIdx >= boss.questions.length - 1;
-    const badges = _fxBadges(entry.fx);
-    rightPanel = `
-      <div class="be-right be-right-result">
-        <div class="be-result-lbl">RESPONSE</div>
-        <div class="be-flavor">${esc(entry.opt.flavor)}</div>
-        ${badges ? `<div class="be-fx-row">${badges}</div>` : ''}
-        <button class="be-next-btn" onclick="G.advanceBoss()">${isLast ? 'Review complete →' : 'Next question →'}</button>
-      </div>`;
-
-  } else {
-    const rewards = G.bossRewardPool.map(r =>
-      `<div class="be-reward" onclick="G.claimBossReward('${r.id}')">
-        <div class="be-rw-icon">${r.icon}</div>
-        <div class="be-rw-label">${esc(r.label)}</div>
-        <div class="be-rw-desc">${esc(r.desc)}</div>
-      </div>`
-    ).join('');
-    return `<div class="be-root" style="${cssVars}">
-      <div class="be-banner">
-        <span class="be-banner-ico">⚠</span>
-        <span class="be-banner-week">WEEK ${G.week}</span>
-        <span class="be-banner-sep">·</span>
-        <span class="be-banner-enc">${esc(boss.encounter)}</span>
-      </div>
-      <div class="be-reward-screen">
-        <div class="be-rw-header">
-          <div class="be-rw-portrait">${boss.portrait}</div>
-          <div>
-            <div class="be-rw-complete">REVIEW COMPLETE</div>
-            <div class="be-rw-sub">${esc(boss.name)} closes their notebook. Select your performance bonus.</div>
-          </div>
-        </div>
-        <div class="be-reward-grid">${rewards}</div>
-      </div>
-    </div>`;
-  }
-
-  return `<div class="be-root" style="${cssVars}">
-    <div class="be-banner">
-      <span class="be-banner-ico">⚠</span>
-      <span class="be-banner-week">WEEK ${G.week}</span>
-      <span class="be-banner-sep">·</span>
-      <span class="be-banner-enc">${esc(boss.encounter)}</span>
-      <span class="be-banner-sep">·</span>
-      <span class="be-banner-name">${esc(boss.name.toUpperCase())}</span>
-    </div>
-    <div class="be-body">
-      ${identityPanel}
-      ${rightPanel}
-    </div>
   </div>`;
 }
 
@@ -1713,6 +1524,52 @@ export function renderDeskItemOffer(G) {
     <div class="desk-offer-grid">${cardsHtml}</div>
     <div class="dr-skip-row">
       <button class="dr-skip-btn" onclick="skipDeskOffer()">✕ Skip — keep desk lean</button>
+    </div>
+  </div>`;
+}
+
+export function renderInbox(G) {
+  const emails = G.inbox || [];
+  const sel = emails[G.inboxSelected || 0];
+
+  const listHtml = emails.length === 0
+    ? `<div class="ibx-empty">No messages.</div>`
+    : emails.map((e, i) => {
+        const active = i === (G.inboxSelected || 0);
+        const unread = e.unread;
+        return `<div class="ibx-row${active ? ' ibx-row-active' : ''}${unread ? ' ibx-row-unread' : ''}" onclick="G.selectInboxEmail(${i})">
+          <div class="ibx-row-from">${esc(e.mgr.name)}</div>
+          <div class="ibx-row-subj">${esc(e.subject)}</div>
+          <div class="ibx-row-meta">Week ${e.storedWeek} · ${esc(e.dayName)}</div>
+        </div>`;
+      }).join('');
+
+  const previewHtml = sel ? `
+    <div class="ibx-msg-header">
+      <div class="ibx-msg-field"><span class="ibx-msg-lbl">From:</span> ${esc(sel.mgr.name)} &lt;${esc(sel.mgr.email)}&gt;</div>
+      <div class="ibx-msg-field"><span class="ibx-msg-lbl">To:</span> employee@deadline-corp.com</div>
+      <div class="ibx-msg-field"><span class="ibx-msg-lbl">Subject:</span> ${esc(sel.subject)}</div>
+      <div class="ibx-msg-field"><span class="ibx-msg-lbl">Date:</span> ${esc(sel.dayName)}, Week ${sel.storedWeek}</div>
+    </div>
+    <div class="ibx-msg-body">
+      <p>${esc(sel.body)}</p>
+      ${sel.ps ? `<p class="ibx-msg-ps">${esc(sel.ps)}</p>` : ''}
+    </div>
+    <div class="ibx-msg-sig">
+      <div class="ibx-sig-name">${esc(sel.mgr.name)}</div>
+      <div class="ibx-sig-title">${esc(sel.mgr.title)}</div>
+      <div class="ibx-sig-email">${esc(sel.mgr.email)}</div>
+    </div>
+  ` : `<div class="ibx-empty">Select a message to read.</div>`;
+
+  return `<div class="ibx-screen">
+    <div class="ibx-titlebar">
+      <div class="ibx-title">📬 DEADLINE Corp — Internal Mail</div>
+      <button class="ibx-close-btn" onclick="G.closeInbox()">✕ Close</button>
+    </div>
+    <div class="ibx-layout">
+      <div class="ibx-list">${listHtml}</div>
+      <div class="ibx-preview">${previewHtml}</div>
     </div>
   </div>`;
 }

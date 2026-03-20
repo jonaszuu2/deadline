@@ -9,10 +9,9 @@ import { DESK_ITEMS_BY_RARITY, DESK_ITEMS_LIST } from '../data/deskItems.js';
 import { makeDeck, pickShopItems } from './deck.js';
 import { calculateFinalScore } from './scoring.js';
 import { TEAMMATES_DB } from '../data/content.js';
-import { BOSS_DB } from '../data/boss.js';
 import { SHOP_DB } from '../data/shop.js';
 import { DB } from '../data/cards.js';
-import { CONTEXTS_DB, CONTEXTS_MONDAY, CONTEXTS_FRIDAY, CONTEXTS_GENERAL } from '../data/contexts.js';
+import { shouldShowEmail, buildManagerEmail } from '../data/managerEmails.js';
 import { ui } from './uiStore.js';
 
 // ═══════════════════════════════════════════════════════
@@ -33,7 +32,6 @@ export function start() {
     const at = Math.floor(Math.random() * (this.deck.length + 1));
     this.deck.splice(at, 0, this.legacyCard);
   }
-  this._drawWeekContexts();
   this.drawUp();
   const yearLabel = this.promotionRun ? ` — YEAR ${this.promotionYear}` : '';
   const kpiLabel  = this.promotionRun ? ` [KPI ×${this.kpiMultiplier.toFixed(2)}]` : '';
@@ -137,17 +135,17 @@ export function openShop() {
   if (!this._processEndOfWeekStats()) return;
   const bt = this.justBreakthrough; this.justBreakthrough = false;
   const passed = this.weekHistory[this.weekHistory.length - 1]?.passed;
+  // Store email in inbox
+  const emailCtx = { prevWscore: this.wscore, score: 0 };
+  if (shouldShowEmail(this, emailCtx)) {
+    const email = buildManagerEmail(this, emailCtx);
+    this.inbox.unshift({ ...email, id: Date.now(), unread: true, storedWeek: this.week });
+  }
   if (passed) {
     this.draftPool = this._buildCardDraftPool();
     if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
   } else {
     this.draftPool = [];
-  }
-  const bossId = {2:'early', 5:'midgame', 8:'late'}[this.week];
-  if (bossId && !this.bossEncountersDone.has(this.week)) {
-    this.transition('boss'); this.bossPhase = 'question'; this.bossQIdx = 0;
-    this.bossAnswerLog = []; this.currentBoss = bossId;
-    this._commit(); return;
   }
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
@@ -169,7 +167,6 @@ export function skipShop() {
 
 export function startNextWeek() {
   this.week++; this.wscore = 0;
-  this._drawWeekContexts();
   this.playsMax = PLAYS;
   this.plays = this.playsMax;
   this.discs = DISCS;
@@ -183,12 +180,6 @@ export function startNextWeek() {
   this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
   this.archetypeMilestonesHit = new Set(); this.pressureReleaseUsed = false;
   this.firstCardThisWeek = true; this.firstCrunchUsed = false;
-  // Boss extra play reward
-  if (this.bossExtraPlay > 0) {
-    this.plays += this.bossExtraPlay; this.playsMax += this.bossExtraPlay;
-    this.addLog('ok', `> ⏱️ Boss Overtime — +${this.bossExtraPlay} play(s) this week.`);
-    this.bossExtraPlay = 0;
-  }
   // Held cards from Overtime Briefcase
   if (this.heldCards.length) {
     for (const c of this.heldCards) this.addLog('ok', `> 💼 [${c.name}] retrieved from briefcase.`);
@@ -437,124 +428,6 @@ export function _buildShopItems() {
   return items;
 }
 
-// ═══════════════════════════════════════════════════════
-//  BOSS
-// ═══════════════════════════════════════════════════════
-
-export function answerBossQuestion(optionIdx) {
-  const boss = BOSS_DB[this.currentBoss];
-  const q = boss.questions[this.bossQIdx];
-  const opt = q.options[optionIdx];
-  const fx = opt.fx;
-  if (fx.wb)      this.wb     = clamp(this.wb     + fx.wb,     0, 100);
-  if (fx.tox)     this.tox    = clamp(this.tox    + fx.tox,    0, 100);
-  if (fx.bo)      this.bo     = clamp(this.bo     + fx.bo,     0, 100);
-  if (fx.coins)   this.coins  = Math.max(0, this.coins + fx.coins);
-  if (fx.kpiMult) this.kpiMult = fmt1(this.kpiMult * fx.kpiMult);
-  const fxParts = [];
-  if (fx.wb)      fxParts.push(`${fx.wb > 0 ? '+' : ''}${fx.wb} WB`);
-  if (fx.tox)     fxParts.push(`${fx.tox > 0 ? '+' : ''}${fx.tox}% Tox`);
-  if (fx.bo)      fxParts.push(`${fx.bo > 0 ? '+' : ''}${fx.bo}% BO`);
-  if (fx.coins)   fxParts.push(`${fx.coins > 0 ? '+' : ''}${fx.coins} CC`);
-  if (fx.kpiMult) fxParts.push(`KPI ×${fx.kpiMult}`);
-  this.addLog('i', `> [${boss.name} Q${this.bossQIdx + 1}] "${opt.label}" — ${fxParts.join(', ')}`);
-  this.bossAnswerLog.push({qId: q.id, optIdx: optionIdx, opt, fx});
-  this.bossPhase = 'result';
-  this._commit();
-}
-
-export function advanceBoss() {
-  const boss = BOSS_DB[this.currentBoss];
-  if (this.bossQIdx < boss.questions.length - 1) {
-    this.bossQIdx++; this.bossPhase = 'question';
-  } else {
-    this.bossPhase = 'reward';
-    this.bossRewardPool = this._buildBossRewardPool();
-  }
-  this._commit();
-}
-
-export function claimBossReward(rewardId) {
-  // Special case: boss desk item offer
-  if (rewardId === 'boss_desk_item') {
-    const offer = this._buildDeskItemOfferRare();
-    if (offer && offer.length && (this.deskItems || []).length < 4) {
-      this.deskItemOffer = offer;
-      this.addLog('ok', `> 🎁 Boss Reward: Rare Desk Item — choose one!`);
-    }
-    this.bossEncountersDone.add(this.week);
-    this.bossChosenRewards.push(rewardId);
-    this.shopItems = this._buildShopItems();
-    this.transition('shop'); this._commit();
-    if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
-    ui.checkFirstShopTutorial?.();
-    return;
-  }
-  const reward = this.bossRewardPool.find(r => r.id === rewardId);
-  if (!reward) return;
-  if (reward.type === 'STAT_BOOST') {
-    const fx = reward.fx;
-    if (fx.wb)       this.wb       = clamp(this.wb      + fx.wb,       0, 100);
-    if (fx.tox)      this.tox      = clamp(this.tox     + fx.tox,      0, 100);
-    if (fx.bo)       this.bo       = clamp(this.bo      + fx.bo,       0, 100);
-    if (fx.coins)    this.coins    = Math.max(0, this.coins + fx.coins);
-    if (fx.permMult) this.permMult = fmt1((this.permMult || 0) + fx.permMult);
-    this.addLog('ok', `> 🎁 Boss Reward claimed: ${reward.label}`);
-  } else if (reward.type === 'EXTRA_PLAY') {
-    const extra = reward.fx.extraPlays || 1;
-    this.bossExtraPlay = (this.bossExtraPlay || 0) + extra;
-    this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — +${extra} play(s) next week!`);
-  } else if (reward.type === 'PASSIVE') {
-    this.passives.push({itemId: reward.id, name: reward.label, passiveType: reward.passiveType, passiveVal: reward.passiveVal});
-    this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} passive installed.`);
-  } else if (reward.type === 'ADD_CARD') {
-    const cardDef = DB[reward.cardId];
-    if (cardDef) {
-      const newCard = {...cardDef, uid:`${reward.cardId}_${nextUid()}`};
-      const at = Math.floor(Math.random() * (this.deck.length + 1));
-      this.deck.splice(at, 0, newCard);
-      this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} added to deck.`);
-    }
-  } else if (reward.type === 'REMOVE') {
-    this.pendingRemove = true;
-    this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — choose a card to remove.`);
-  } else if (reward.type === 'UPGRADE') {
-    this.pendingUpgrade = true;
-    this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — choose a card to upgrade.`);
-  } else if (reward.type === 'REMOVE_ADD') {
-    this.pendingRemove = true;
-    this.pendingDraftCard = true;
-    this.addLog('ok', `> 🎁 Boss Reward: ${reward.label} — remove a card, then draft a replacement.`);
-  }
-  this.bossEncountersDone.add(this.week);
-  this.bossChosenRewards.push(rewardId);
-  this.shopItems = this._buildShopItems();
-  this.transition('shop'); this._commit();
-  if (this.week === 1) setTimeout(() => ui.showContextualTip?.('week_end_first'), 300);
-  ui.checkFirstShopTutorial?.();
-}
-
-export function _buildBossRewardPool() {
-  const pool = [...BOSS_DB[this.currentBoss].rewardPool];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const rewards = pool.slice(0, 2);
-  // Add desk item option if desk isn't full
-  if ((this.deskItems || []).length < 4) {
-    rewards.push({
-      id: 'boss_desk_item',
-      type: 'DESK_ITEM',
-      icon: '🗂️',
-      label: 'Rare Desk Item',
-      desc: 'Pick 1 of 3 Rare/Legendary office items for your desk.',
-    });
-  } else if (rewards.length < 3) {
-    rewards.push(pool[2]);
-  }
-  return rewards;
-}
 
 // ═══════════════════════════════════════════════════════
 //  TARGETED DRAW
@@ -572,80 +445,6 @@ export function claimTargetedDraw(uid) {
   this._commit();
 }
 
-// ═══════════════════════════════════════════════════════
-//  DAILY CONTEXT SYSTEM
-// ═══════════════════════════════════════════════════════
-
-export function _drawWeekContexts() {
-  const mon = shuffle([...CONTEXTS_MONDAY])[0];
-  const fri = shuffle([...CONTEXTS_FRIDAY])[0];
-  // Fill Tue/Wed/Thu from general pool — max 1 choice event per week
-  const pool = shuffle([...CONTEXTS_GENERAL]);
-  const middle = [];
-  let choiceCount = 0;
-  for (const id of pool) {
-    if (middle.length >= 3) break;
-    const ctx = CONTEXTS_DB[id];
-    if (ctx.isChoice && choiceCount >= 1) continue;
-    middle.push(id);
-    if (ctx.isChoice) choiceCount++;
-  }
-  this.weekContexts = [mon, ...middle, fri];
-  this.dayIndex = 0;
-  this.pendingChoice = null;
-  this.activeContextMods = {};
-  this.activeContextPre  = {};
-  this.activeContextPost = {};
-  this.ctxMaxCards  = null;
-  this.ctxBlockArch = null;
-  this._setupDay(0);
-}
-
-export function _setupDay(idx) {
-  const ctxId = this.weekContexts?.[idx];
-  if (!ctxId) return;
-  const ctx = CONTEXTS_DB[ctxId];
-  if (!ctx) return;
-  // Reset per-day overrides
-  this.ctxMaxCards  = ctx.maxCardsPlay ?? null;
-  this.ctxBlockArch = null;
-  this.activeContextMods = {};
-  this.activeContextPre  = {};
-  this.activeContextPost = {};
-
-  if (ctx.isChoice) {
-    this.pendingChoice = ctxId;
-    this._commit();
-    return;
-  }
-  // Apply week-level effects immediately
-  if (ctx.weekDiscExtra) {
-    this.discs = Math.min(this.discs + ctx.weekDiscExtra, 7);
-    this.addLog('ok', `> 📋 [${ctx.name}] +${ctx.weekDiscExtra} Discard tej tury → ${this.discs}`);
-  }
-  // Store pre/post effects and ctxMods for playSelected to use
-  this.activeContextPre  = { preWbDelta: ctx.preWbDelta || 0, preToxDelta: ctx.preToxDelta || 0 };
-  this.activeContextPost = { postCoins: ctx.postCoins || 0 };
-  this.activeContextMods = ctx.ctxMods || {};
-  this.addLog('sy', `> 📋 [${ctx.name}] ${ctx.desc}`);
-}
-
-export function resolveContextChoice(choiceId) {
-  const ctxId = this.pendingChoice;
-  if (!ctxId) return;
-  const ctx = CONTEXTS_DB[ctxId];
-  if (!ctx?.isChoice) return;
-  const choice = ctx.choices.find(c => c.id === choiceId);
-  if (!choice) return;
-  this.pendingChoice = null;
-  this.ctxMaxCards   = choice.maxCardsPlay ?? (ctx.maxCardsPlay ?? null);
-  this.ctxBlockArch  = choice.blockArch ?? null;
-  this.activeContextPre  = { preWbDelta: choice.preWbDelta || 0, preToxDelta: choice.preToxDelta || 0 };
-  this.activeContextPost = { postCoins: choice.postCoins || 0 };
-  this.activeContextMods = choice.ctxMods || {};
-  this.addLog('sy', `> 📋 [${ctx.name}] → "${choice.label}" — ${choice.desc}`);
-  this._commit();
-}
 
 // ═══════════════════════════════════════════════════════
 //  RUN END

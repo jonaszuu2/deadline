@@ -11,8 +11,7 @@ const VALID_TRANSITIONS = {
   teammate_choice: ['play'],
   play:            ['scoring'],
   scoring:         ['play', 'result', 'review'],
-  result:          ['boss', 'shop', 'review'],
-  boss:            ['shop'],
+  result:          ['shop', 'review'],
   shop:            ['teammate_choice', 'upgrade_result', 'play'],
   upgrade_result:  ['shop'],
   review:          [],
@@ -54,11 +53,8 @@ export class GameState {
     // Strategic mechanics
     this.pendingRemove = false; this.pendingHold = false; this.heldCards = [];
 
-    // Boss encounter
-    this.bossEncountersDone = new Set(); this.currentBoss = null;
-    this.bossPhase = 'question'; this.bossQIdx = 0;
-    this.bossAnswerLog = []; this.bossChosenRewards = []; this.bossRewardPool = [];
-    this.bossExtraPlay = 0; this.permMult = 0;
+    // Permanent multiplier (desk items, breakthroughs)
+    this.permMult = 0;
 
     // Draft state
     this.draftPool = []; this.pendingDraftCard = null;
@@ -83,6 +79,9 @@ export class GameState {
     // Power Progression
     this.justBreakthrough = false;
 
+    // Inbox
+    this.inbox = []; this.inboxOpen = false; this.inboxSelected = 0;
+
     // UI state
     this.overlaySort = 'name'; this._busy = false;
 
@@ -96,15 +95,6 @@ export class GameState {
     // Wellness tracking
     this.wellnessWeeks = 0;
 
-    // Daily Context System
-    this.weekContexts = [];    // array of 5 context IDs [mon,tue,wed,thu,fri]
-    this.dayIndex = 0;         // 0=Mon … 4=Fri
-    this.pendingChoice = null; // context ID awaiting player choice, or null
-    this.activeContextMods = {};  // ctxMods passed to calcTurn this play
-    this.activeContextPre  = {};  // {preWbDelta, preToxDelta} applied before calcTurn
-    this.activeContextPost = {};  // {postCoins} applied after calcTurn
-    this.ctxMaxCards = null;      // override maxSel for current play
-    this.ctxBlockArch = null;     // archetype blocked for current play
   }
 
   // ── Queries ──────────────────────────────────────────
@@ -119,7 +109,6 @@ export class GameState {
 
   handLimit() { return HAND; }
   maxSel() {
-    if (this.ctxMaxCards !== null) return this.ctxMaxCards;
     return MAX_SEL + (this.tox >= 61 && this.tox < 91 ? 1 : 0);
   }
   deckSize() { return this.deck.length + this.hand.length + this.pile.length; }

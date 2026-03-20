@@ -88,24 +88,9 @@ export function discardSelected() {
 
 export function playSelected() {
   if (this._busy || this.plays <= 0 || !this.sel.length || this.phase !== 'play') return;
-  if (this.pendingChoice) return; // must resolve context choice first
-
-  // Block archetype check
-  if (this.ctxBlockArch) {
-    const blocked = this.sel.map(uid => this.hand.find(c => c.uid === uid)).filter(Boolean);
-    if (blocked.some(c => c.archetype === this.ctxBlockArch)) {
-      this.addLog('ng', `> ⛔ [Context] ${this.ctxBlockArch} zablokowane dziś.`);
-      this._commit(); return;
-    }
-  }
-
   this._busy = true;
   const cards = this.sel.map(uid => this.hand.find(c => c.uid === uid)).filter(Boolean);
 
-  // Apply context pre-effects (WB/TOX delta before calcTurn)
-  const pre = this.activeContextPre || {};
-  if (pre.preWbDelta)  { this.wb  = clamp(this.wb  + pre.preWbDelta,  0, 100); this.addLog(pre.preWbDelta  > 0 ? 'wg' : 'wl', `> 📋 [Context] ${pre.preWbDelta > 0 ? '+' : ''}${pre.preWbDelta} WB → ${this.wb}%`); }
-  if (pre.preToxDelta) { this.tox = clamp(this.tox + pre.preToxDelta, 0, 100); this.addLog(pre.preToxDelta > 0 ? 'tg' : 'tl', `> 📋 [Context] ${pre.preToxDelta > 0 ? '+' : ''}${pre.preToxDelta}% TOX → ${this.tox}%`); }
   const handSizeBeforePlay = this.hand.length - cards.length; // cards already removed below
   this.hand = this.hand.filter(c => !this.sel.includes(c.uid));
   this.pile.push(...cards); this.sel = []; this.plays--;
@@ -126,7 +111,7 @@ export function playSelected() {
     }
   }
 
-  const res = this.processTurn(cards, this.activeContextMods || {}, handSizeBeforePlay);
+  const res = this.processTurn(cards, {}, handSizeBeforePlay);
   const prevWscore = this.wscore;
   const prevWb    = this.wb;
   const prevPassed = this.wscore >= this.kpi();
@@ -201,16 +186,6 @@ export function finishScoring() {
   if (d.crossedKpi) ui.triggerKpiFlash();
   const announceLabel = d.scaleLabel || d.comboLabel;
   if ((d.intensity === 'epic' || d.intensity === 'great') && announceLabel) ui.showComboAnnouncer(announceLabel);
-  // Context post-effects (coins) + advance to next day
-  const post = this.activeContextPost || {};
-  if (post.postCoins) { this.coins += post.postCoins; this.addLog('ok', `> 📋 [Context] +${post.postCoins} CC → ${this.coins} CC`); }
-  this.activeContextMods = {}; this.activeContextPre = {}; this.activeContextPost = {};
-  this.ctxMaxCards = null; this.ctxBlockArch = null;
-  if (d.nextPhase !== 'review' && d.nextPhase !== 'result') {
-    this.dayIndex = Math.min((this.dayIndex || 0) + 1, 4);
-    this._setupDay(this.dayIndex);
-  }
-
   this._busy = false;
   if (d.nextPhase === 'review') { this.isTerminated = true; this.transition('review'); }
   else if (d.nextPhase === 'result') this.transition('result');
@@ -230,7 +205,7 @@ export function finishScoring() {
 //  TURN ENGINE WRAPPER
 // ═══════════════════════════════════════════════════════
 
-export function processTurn(cards, ctxMods = {}, handSizeBeforePlay = 0) {
+export function processTurn(cards, _unused = {}, handSizeBeforePlay = 0) {
   this.updateTeammateBehavior();
   const result = calcTurn(cards, {
     wb: this.wb, tox: this.tox, bo: this.bo,
@@ -243,7 +218,6 @@ export function processTurn(cards, ctxMods = {}, handSizeBeforePlay = 0) {
     firstCrunchUsed:         this.firstCrunchUsed,
     weekCrunchCount:         this.weekCrunchCount,
     permMult:                this.permMult,
-    ctxMods,
     deskItems:               this.deskItems || [],
     handSize:                handSizeBeforePlay,
     totalPlayCount:          this.totalPlayCount || 0,
@@ -499,6 +473,23 @@ export function holdCard(uid) {
   this.heldCards.push(card);
   this.pendingHold = false;
   this.addLog('ok', `> 💼 [${card.name}] secured in briefcase — ready next week.`);
+  this._commit();
+}
+
+export function openInbox() {
+  this.inbox.forEach(e => { e.unread = false; });
+  this.inboxSelected = 0;
+  this.inboxOpen = true;
+  this._commit();
+}
+
+export function closeInbox() {
+  this.inboxOpen = false;
+  this._commit();
+}
+
+export function selectInboxEmail(idx) {
+  this.inboxSelected = idx;
   this._commit();
 }
 

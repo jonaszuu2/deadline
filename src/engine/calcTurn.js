@@ -85,7 +85,6 @@ export function calcTurn(cards, ctx) {
     passives = [], teammate = null,
     discardComboMult = 0, permMult = 0,
     mode = 'preview',
-    ctxMods = {},
     deskItems = [],
     handSize = 0,
     totalPlayCount = 0,
@@ -116,11 +115,8 @@ export function calcTurn(cards, ctx) {
   }
   if (permMult > 0) {
     acc.mult += permMult;
-    lg('sy', `  ★ [Boss Bonus] +${fmt1(permMult)}× Permanent Eff`);
+    lg('sy', `  ★ [Breakthrough] +${fmt1(permMult)}× Permanent Eff`);
   }
-  // Context flat bonuses
-  if (ctxMods.extraMult)  { acc.mult  += ctxMods.extraMult;  lg('sy', `  📋 [Context] +${fmt1(ctxMods.extraMult)}× Eff`); }
-  if (ctxMods.extraChips) { acc.chips += ctxMods.extraChips; lg('ch', `  📋 [Context] +${ctxMods.extraChips} Output`); }
 
   // ── Desk Item pre-play effects ────────────────────────
   if (desk('desk_fan') && tox >= 50) {
@@ -251,17 +247,11 @@ export function calcTurn(cards, ctx) {
     }
 
     // Context archetype modifiers
-    if (ctxMods.stratChipsMult && card.archetype === 'STRATEGY'  && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.stratChipsMult);
-    if (ctxMods.prodChipsMult  && card.archetype === 'PRODUCTION' && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.prodChipsMult);
-    if (ctxMods.crunchChipsMult && card.archetype === 'CRUNCH'   && fx.chips > 0) fx.chips = Math.round(fx.chips * ctxMods.crunchChipsMult);
-    if (ctxMods.stratMultMult  && card.archetype === 'STRATEGY'  && fx.mult  > 0) fx.mult  = fmt1(fx.mult  * ctxMods.stratMultMult);
-    if (ctxMods.stratExtraMult && card.archetype === 'STRATEGY')                   fx.mult  = fmt1((fx.mult || 0) + ctxMods.stratExtraMult);
 
     if (fx.chips) { acc.chips += fx.chips; lg('ch', `  [${card.name}] +${fx.chips} Output`, true); }
     if (fx.chips && card.archetype === 'PRODUCTION') prodChips += fx.chips;
     if (fx.mult)  { acc.mult  += fx.mult;  lg('mu', `  [${card.name}] +${fx.mult.toFixed(2)} Eff`, true); }
     // Context per-card mult
-    if (ctxMods.perCardMult) { acc.mult += ctxMods.perCardMult; }
 
     // Gary T1: +100 Output per card
     if (teammate === 'gary' && tmTier === 1) {
@@ -444,31 +434,6 @@ export function calcTurn(cards, ctx) {
       lg('sy', `  🔵 [PRODUCTION CHAIN] ${prodCardCount} PROD cards — +${chainBonus} Combo Output (+${(prodCardCount-1)*10}%)`);
     }
 
-    // ── Context post-loop effects ─────────────────────
-    if (ctxMods.archComboMult) {
-      const types = new Set(cards.map(c => c.archetype)).size;
-      if (types >= ctxMods.archComboMult.minTypes) {
-        acc.mult += ctxMods.archComboMult.bonus;
-        lg('sy', `  📋 [Context] ${types} archetypy → +${ctxMods.archComboMult.bonus} Eff`);
-      }
-    }
-    if (ctxMods.sameArchBonus) {
-      const cnts = {}; for (const c of cards) cnts[c.archetype] = (cnts[c.archetype]||0)+1;
-      const maxSame = Math.max(...Object.values(cnts));
-      if (maxSame >= ctxMods.sameArchBonus.min) {
-        acc.mult += ctxMods.sameArchBonus.bonus;
-        lg('sy', `  📋 [Context] ${maxSame}× sam archetype → +${ctxMods.sameArchBonus.bonus} Eff`);
-      }
-    }
-    if (ctxMods.noStratMultPenalty && !cards.some(c => c.archetype === 'STRATEGY')) {
-      acc.mult += ctxMods.noStratMultPenalty;
-      lg('mu', `  📋 [Context] Brak STRATEGY — ${ctxMods.noStratMultPenalty} Eff`);
-    }
-    if (ctxMods.minCardsChipsBonus && cards.length >= ctxMods.minCardsChipsBonus.min) {
-      acc.chips += ctxMods.minCardsChipsBonus.chips;
-      lg('ch', `  📋 [Context] ${cards.length} karty → +${ctxMods.minCardsChipsBonus.chips} Output`);
-    }
-
     // Toxicity Tier Transition announcement (real only)
     if (mode === 'real') {
       const tierBefore = ctx.tox >= 91 ? 4 : ctx.tox >= 61 ? 3 : ctx.tox >= 31 ? 2 : 1;
@@ -489,14 +454,6 @@ export function calcTurn(cards, ctx) {
 
     const baseScore = Math.floor(acc.chips * acc.mult);
     let score = comboMult > 1.0 ? Math.floor(baseScore * comboMult) : baseScore;
-    if (ctxMods.scoreMult && ctxMods.scoreMult !== 1.0) {
-      score = Math.floor(score * ctxMods.scoreMult);
-      lg('sc', `  📋 [Context] Revenue ×${ctxMods.scoreMult} → $${score.toLocaleString()}`);
-    }
-    if (ctxMods.singleCardScoreMult && cards.length === 1) {
-      score = Math.floor(score * ctxMods.singleCardScoreMult);
-      lg('sc', `  📋 [Context] 1 karta → Revenue ×${ctxMods.singleCardScoreMult} → $${score.toLocaleString()}`);
-    }
     // Desk Item: hourglass — last play of week → Chips ×1.5
     if (desk('hourglass') && ctx.plays === 1) {
       const hbefore = score;
@@ -554,7 +511,6 @@ export function simulateTurn(cards, G) {
     firstCrunchUsed:         G.firstCrunchUsed || false,
     weekCrunchCount:         G.weekCrunchCount || 0,
     permMult:                G.permMult || 0,
-    ctxMods:                 G.activeContextMods || {},
     deskItems:               G.deskItems || [],
     handSize:                G.hand ? G.hand.length - cards.length : 0,
     totalPlayCount:          G.totalPlayCount || 0,
