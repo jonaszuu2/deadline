@@ -142,7 +142,7 @@ export function openShop() {
     this.inbox.unshift({ ...email, id: Date.now(), unread: true, storedWeek: this.week });
   }
   if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
-  this.shopPackIds = shuffle(Object.keys(PACK_DB)).slice(0, 3);
+  this.shopPackIds = Object.keys(PACK_DB); // all 3 always available
   this.shopPacksBought = 0;
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
@@ -173,17 +173,21 @@ export function startNextWeek() {
     this.nextWeekPlaysBonus = 0;
   }
   this.discs = DISCS;
-  // Toxicity Tier 3: Toxic Culture — -1 Discard
-  if (this.tox >= 61 && this.tox < 91) {
+  // Toxicity Zone 3 (81%+): Toxic Culture — -1 Discard
+  if (this.tox >= 81) {
     this.discs = Math.max(0, this.discs - 1);
-    this.addLog('ng', `> ⚡ [Toxic Culture] Środowisko toksyczne — -1 Discard → ${this.discs}`);
+    this.addLog('ng', `> ⚡ [Toxic Culture] Środowisko krytycznie toksyczne — -1 Discard → ${this.discs}`);
+  }
+  // Critical Burnout (80%+): -1 play this week
+  if (this.bo >= 80) {
+    this.plays = Math.max(1, this.plays - 1);
+    this.playsMax = this.plays;
+    this.addLog('ng', `> 🔥 [Critical Burnout] BO ${this.bo}% ≥ 80% — -1 play this week → ${this.plays}`);
   }
   this.weekCrunched = false; this.weekCrunchCount = 0; this.lastScore = null;
-  this.exhausted = new Set(); this.discardComboMult = 0; this.firstDraw = true; this.supportInjected = false;
+  this.exhausted = new Set(); this.firstDraw = true; this.supportInjected = false;
   this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
-  this.archetypeMilestonesHit = new Set(); this.pressureReleaseUsed = false;
   this.firstCardThisWeek = true; this.firstCrunchUsed = false;
-  this.stratCarryMult = 0;
   // flex_schedule: +1 play per week
   if ((this.deskItems||[]).some(d => d.id === 'flex_schedule')) {
     this.plays++;
@@ -276,7 +280,6 @@ export function _processEndOfWeekStats() {
       this.addLog('tl', `> ${p.name}: -${p.passiveVal}% Toxicity`);
     }
   }
-  this._checkPassiveCombos();
   if (this.tox <= 30) {
     const bonus = 4;
     this.wb = clamp(this.wb + bonus, 0, 100);
@@ -467,19 +470,15 @@ export function skipPackItem() {
 }
 
 export function _rollPackItems(packId) {
-  if (packId === 'wellness') {
-    const pool = ['sh_espresso','sh_aspirin','sh_headphones','sh_salad','sh_therapy','sh_pizza'];
-    return shuffle([...pool]).slice(0, 3).map(id => this._packifyShopItem(id)).filter(Boolean);
-  }
-  if (packId === 'office_supply') {
+  if (packId === 'standard') {
+    // Standard Issue: consumables or common desk items
+    const consumables = ['sh_espresso','sh_aspirin','sh_headphones','sh_salad','sh_therapy','sh_pizza'];
     const ownedIds = new Set((this.deskItems||[]).map(d => d.id));
-    const pool = DESK_ITEMS_LIST.filter(d => ['COMMON','UNCOMMON'].includes(d.rarity) && !ownedIds.has(d.id));
-    const picks = shuffle([...pool]).slice(0, 3);
-    if (picks.length < 3) {
-      const extras = shuffle([...pool]).slice(0, 3 - picks.length);
-      picks.push(...extras);
-    }
-    return picks.slice(0,3).map(d => ({ type:'DESK_ITEM', id:d.id, name:d.name, icon:d.icon, rarity:d.rarity, desc:d.effect||d.desc||'', negative:false, data:d }));
+    const deskPool = DESK_ITEMS_LIST.filter(d => ['COMMON','UNCOMMON'].includes(d.rarity) && !ownedIds.has(d.id));
+    const deskItems = shuffle([...deskPool]).slice(0,2).map(d => ({ type:'DESK_ITEM', id:d.id, name:d.name, icon:d.icon, rarity:d.rarity, desc:d.effect||d.desc||'', negative:false, data:d }));
+    const consumableItems = shuffle([...consumables]).slice(0,2).map(id => this._packifyShopItem(id)).filter(Boolean);
+    const pool = shuffle([...deskItems, ...consumableItems]);
+    return pool.slice(0, 3);
   }
   if (packId === 'talent_acq') {
     const cards = this._buildCardDraftPool().slice(0, 2).map(c => this._packifyCard(c));
@@ -497,20 +496,6 @@ export function _rollPackItems(packId) {
     const pool = shuffle([...rareDesks, ...passiveItems, upgradeItem]);
     while (pool.length < 3) pool.push(upgradeItem);
     return pool.slice(0, 3);
-  }
-  if (packId === 'restructuring') {
-    const items = [];
-    const otherPacks = ['wellness','office_supply','talent_acq','executive'];
-    for (let i = 0; i < 3; i++) {
-      if (Math.random() < 0.25) {
-        items.push({...shuffle([...NEGATIVE_ITEMS])[0]});
-      } else {
-        const op = otherPacks[Math.floor(Math.random() * otherPacks.length)];
-        const rolled = this._rollPackItems(op);
-        items.push(rolled[Math.floor(Math.random() * rolled.length)]);
-      }
-    }
-    return items;
   }
   return [];
 }

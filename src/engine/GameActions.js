@@ -85,11 +85,11 @@ export function discardSelected() {
     this.addLog('tg', `> 🏖️ [Unlimited PTO] ${gone.length} card(s) discarded — +${toxGain}% Tox → ${this.tox}%`);
   }
   let discardLog = `> Discarded ${gone.length} card(s).`;
-  // Batch Discard Combo: 2+ cards stacks Mult on next play
+  // Batch Discard: 2+ cards immediately reduce Tox by 10%
   if (gone.length >= 2) {
-    const comboBonus = fmt1((gone.length - 1) * 0.4);
-    this.discardComboMult = fmt1(this.discardComboMult + Number(comboBonus));
-    discardLog += ` ♻ Batch Discard: +${comboBonus}× Eff stacked (${this.discardComboMult}× ready).`;
+    const prev = this.tox;
+    this.tox = clamp(this.tox - 10, 0, 100);
+    discardLog += ` ♻ Batch Discard: -10% Tox (${prev}% → ${this.tox}%).`;
   }
   this.addLog('ch', discardLog);
   this.drawUp(); this._commit();
@@ -166,7 +166,6 @@ export function playSelected() {
   }
 
   for (const c of cards) this.weekArchetypes[c.archetype] = (this.weekArchetypes[c.archetype] || 0) + 1;
-  this._checkArchetypeMilestones();
   for (const c of cards.filter(c => c.exhaust)) this.addLog('ng', `> ⊗ [${c.name}] exhausted — gone until next week.`);
 
   // Compute scoring reveal intensity
@@ -244,7 +243,6 @@ export function processTurn(cards, _unused = {}, handSizeBeforePlay = 0) {
     passives:                this.passives,
     teammate:                this.teammate,
     consecutiveSameTeammate: this.consecutiveSameTeammate,
-    discardComboMult:        this.discardComboMult,
     firstCardThisWeek:       this.firstCardThisWeek,
     firstCrunchUsed:         this.firstCrunchUsed,
     weekCrunchCount:         this.weekCrunchCount,
@@ -252,16 +250,12 @@ export function processTurn(cards, _unused = {}, handSizeBeforePlay = 0) {
     deskItems:               this.deskItems || [],
     handSize:                handSizeBeforePlay,
     totalPlayCount:          this.totalPlayCount || 0,
-    stratCarryMult:          this.stratCarryMult || 0,
     lastMeetingType:         this.lastMeetingType || null,
     mode: 'real',
   });
-  this.discardComboMult = 0;
   this.firstCrunchUsed   = result.firstCrunchUsed;
   this.weekCrunchCount   = result.weekCrunchCount;
   this.firstCardThisWeek = result.firstCardThisWeek;
-  // Update stratCarryMult from consultants_notes
-  this.stratCarryMult = result.newStratCarryMult || 0;
   // Update lastMeetingType for secret meeting detection
   this.lastMeetingType = result.meetingType?.id || null;
   for (const uid of result.newExhausted) this.exhausted.add(uid);
@@ -303,53 +297,6 @@ export function updateTeammateBehavior() {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-//  ARCHETYPE MILESTONES + PASSIVE COMBOS
-// ═══════════════════════════════════════════════════════
-
-export function _checkArchetypeMilestones() {
-  const T = 4;
-  if (!this.archetypeMilestonesHit.has('PRODUCTION') && (this.weekArchetypes.PRODUCTION || 0) >= T) {
-    this.archetypeMilestonesHit.add('PRODUCTION'); this.wscore += 150;
-    this.addLog('sy', '> ★ PRODUCTION MILESTONE — +150 bonus pts!');
-  }
-  if (!this.archetypeMilestonesHit.has('STRATEGY') && (this.weekArchetypes.STRATEGY || 0) >= T) {
-    this.archetypeMilestonesHit.add('STRATEGY'); this.wscore += 120;
-    this.addLog('sy', '> ★ STRATEGY MILESTONE — +120 bonus pts!');
-  }
-  if (!this.archetypeMilestonesHit.has('CRUNCH') && (this.weekArchetypes.CRUNCH || 0) >= T) {
-    this.archetypeMilestonesHit.add('CRUNCH'); this.wscore += 200;
-    this.wb = clamp(this.wb - 10, 0, 100);
-    this.addLog('sy', '> ★ CRUNCH MILESTONE — +200 pts but −10 WB!');
-  }
-  if (!this.archetypeMilestonesHit.has('RECOVERY') && (this.weekArchetypes.RECOVERY || 0) >= T) {
-    this.archetypeMilestonesHit.add('RECOVERY');
-    this.wb = clamp(this.wb + 15, 0, 100);
-    this.addLog('sy', '> ★ RECOVERY MILESTONE — +15 Wellbeing!');
-  }
-}
-
-export function _checkPassiveCombos() {
-  const owned = new Set(this.passives.map(p => p.itemId));
-  const combos = [
-    {id:'combo_ergo',     needs:['sh_chair','sh_keyboard'],
-     msg:'★ PASSIVE COMBO: Ergonomics Expert (Chair + Keyboard) — +0.5 permanent Eff',
-     apply: g => { g.permMult = fmt1((g.permMult||0)+0.5); }},
-    {id:'combo_zen',      needs:['sh_plant','sh_cooler'],
-     msg:'★ PASSIVE COMBO: Zen Office (Plant + Cooler) — -10% Toxicity',
-     apply: g => { g.tox = clamp(g.tox-10,0,100); }},
-    {id:'combo_techLead', needs:['sh_keyboard','sh_coach'],
-     msg:'★ PASSIVE COMBO: Tech Leadership (Keyboard + Coach) — +0.3 Eff, +10 WB',
-     apply: g => { g.permMult = fmt1((g.permMult||0)+0.3); g.wb = clamp(g.wb+10,0,100); }},
-  ];
-  for (const c of combos) {
-    if (!this.discoveredCombos.has(c.id) && c.needs.every(id => owned.has(id))) {
-      this.discoveredCombos.add(c.id);
-      c.apply(this);
-      this.addLog('sy', `> ${c.msg}`);
-    }
-  }
-}
 
 // ═══════════════════════════════════════════════════════
 //  UTILITY ACTIONS
@@ -400,14 +347,6 @@ export function bankRemainingPlays() {
   this._commit();
 }
 
-export function releasePressure() {
-  if (this.pressureReleaseUsed || this.discs <= 0 || this.phase !== 'play') return;
-  this.discs--;
-  this.pressureReleaseUsed = true;
-  this.tox = clamp(this.tox - 15, 0, 100);
-  this.addLog('tl', `> 💨 [Pressure Release] −15% Toxicity → ${this.tox}% (1 discard used)`);
-  this._commit();
-}
 
 export function cancelAction() {
   this.pendingRemove = false;

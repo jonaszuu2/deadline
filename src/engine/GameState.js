@@ -31,7 +31,6 @@ export class GameState {
     this.consecutiveFails = 0; this.kpiMult = 1.0; this.supportInjected = false; this.firstDraw = true;
 
     // Discard/crunch state
-    this.discardComboMult = 0;
     this.firstCrunchUsed = false; this.firstCardThisWeek = true;
 
     // Teammate state
@@ -73,11 +72,7 @@ export class GameState {
     // Decision Depth
     this.pendingTargetedDraw = false; this.targetedDrawOptions = [];
     this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
-    this.archetypeMilestonesHit = new Set();
-    this.pendingUpgrade = false; this.pressureReleaseUsed = false;
-
-    // Build Identity
-    this.discoveredCombos = new Set();
+    this.pendingUpgrade = false;
 
     // Desk Items
     this.deskItems = [];           // up to 4 active desk items
@@ -104,7 +99,6 @@ export class GameState {
     this.wellnessWeeks = 0;
 
     // Desk item carry state
-    this.stratCarryMult = 0;  // consultants_notes: Eff carry from previous play
     this.shopPacksBought = 0; // budget_freeze: 1 pack per shop limit
 
   }

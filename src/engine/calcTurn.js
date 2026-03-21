@@ -84,12 +84,11 @@ export function getRiskLevel(wb, tox, bo) {
 export function calcTurn(cards, ctx) {
   const {
     passives = [], teammate = null,
-    discardComboMult = 0, permMult = 0,
+    permMult = 0,
     mode = 'preview',
     deskItems = [],
     handSize = 0,
     totalPlayCount = 0,
-    stratCarryMult = 0,
     lastMeetingType = null,
   } = ctx;
   const desk = id => deskItems.some(it => it.id === id);
@@ -112,10 +111,6 @@ export function calcTurn(cards, ctx) {
   log.push({cls:'d', t:`── Play: ${cards.map(c => c.name).join(', ')} ──`});
 
   // ── Pre-play bonuses ──────────────────────────────────
-  if (discardComboMult > 0) {
-    acc.mult += discardComboMult;
-    lg('sy', `  ♻ [Batch Discard] Consuming +${fmt1(discardComboMult)}× stacked Eff`);
-  }
   if (permMult > 0) {
     acc.mult += permMult;
     lg('sy', `  ★ [Breakthrough] +${fmt1(permMult)}× Permanent Eff`);
@@ -134,10 +129,14 @@ export function calcTurn(cards, ctx) {
     acc.chips += 150;
     lg('ch', `  ☕ [Coffee Mug] First play this week — +150 Output`);
   }
-  // Desk Item: consultants_notes — carry Eff from previous STRATEGY play
-  if (desk('consultants_notes') && stratCarryMult > 0) {
-    acc.mult += stratCarryMult;
-    lg('sy', `  📝 [Consultant's Notes] Carry from last play — +${fmt1(stratCarryMult)} Eff`);
+  // Desk Item: consultants_notes — static +0.2 Eff per STRATEGY card in this play
+  if (desk('consultants_notes')) {
+    const stratCount = cards.filter(c => c.archetype === 'STRATEGY').length;
+    if (stratCount > 0) {
+      const bonus = stratCount * 0.2;
+      acc.mult += bonus;
+      lg('sy', `  📝 [Consultant's Notes] ${stratCount} STRATEGY card${stratCount > 1 ? 's' : ''} — +${fmt1(bonus)} Eff`);
+    }
   }
   // Org Chart: +0.2 Eff per unique archetype in combo
   if (desk('org_chart')) {
@@ -201,8 +200,8 @@ export function calcTurn(cards, ctx) {
   }
 
   // ── Toxicity tier (based on starting tox) ────────────
-  const toxTier = tox >= 91 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
-  if (toxTier === 4) { acc.mult *= 1.5; lg('sy', `  ☣ [Meltdown Zone] All Eff ×1.5 → ${fmt1(acc.mult)}×`); }
+  // Zone 1: 0-30% Safe | Zone 2: 31-60% Hostile | Zone 3: 61-80% Toxic | Zone 4: 81%+ Hazardous
+  const toxTier = tox >= 81 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
 
   // ── Card loop ─────────────────────────────────────────
   for (const card of cards) {
@@ -251,6 +250,11 @@ export function calcTurn(cards, ctx) {
     // strategy_deck: STRATEGY Eff counts twice
     if (desk('strategy_deck') && card.archetype === 'STRATEGY' && fx.mult) {
       fx.mult = fx.mult * 2;
+    }
+    // Tox Zone 2 (31-60%): CRUNCH gets +40% Output
+    if (toxTier === 2 && card.archetype === 'CRUNCH' && fx.chips > 0) {
+      fx.chips = Math.round(fx.chips * 1.4);
+      lg('ch', `  🔥 [Hostile Office] CRUNCH +40% Output → ${fx.chips}`, true);
     }
 
     // Context archetype modifiers
@@ -353,11 +357,6 @@ export function calcTurn(cards, ctx) {
     }
     if (!fx.chips && !fx.mult && !fx.tox && !fx.wb) lg('i', `  [${card.name}] played`, true);
 
-    // Toxicity Tier 2: Passive-Aggressive
-    if (toxTier === 2) {
-      wb = clamp(wb - 1, 0, 100); lg('wl', `  [Passive-Aggressive] -1 WB → ${wb}%`, true);
-      if (card.archetype === 'STRATEGY') { acc.mult += 0.2; lg('mu', `  [Passive-Aggressive] STRATEGY: +0.2 Eff`, true); }
-    }
 
     // Crunch Fatigue: 2nd+ CRUNCH costs extra Tox
     if (card.archetype === 'CRUNCH') {
@@ -384,11 +383,12 @@ export function calcTurn(cards, ctx) {
       lg('ng', `  ☣ [Meltdown] ${card.name} wypalona (auto-exhaust)`);
     }
 
-    // Toxic Atmosphere damage (deterministic: tier-based drain per card played)
-    if (tox > 35) {
-      const drain = tox >= 90 ? 4 : tox >= 70 ? 2 : 1;
+    // Tox Zone 3 (61-80%): per-card WB drain + Eff ×1.3 applied post-loop
+    // Tox Zone 4 (81%+): per-card WB drain × 2 + Eff ×1.6 applied post-loop
+    if (tox >= 61) {
+      const drain = tox >= 81 ? 2 : 1;
       wb = clamp(wb - drain, 0, 100);
-      lg('dm', `  ☣ Toxic Atmosphere (${tox}%) −${drain} WB → ${wb}%`);
+      lg('dm', `  ☣ Toxic Atmosphere (${tox}%) −${drain} WB → ${wb}%`, true);
       if (wb === 0) {
         bo = clamp(bo + drain, 0, 100);
         lg('bo', `  🔥 OVERFLOW → +${drain} Burnout → ${bo}%`);
@@ -459,19 +459,30 @@ export function calcTurn(cards, ctx) {
       }
     }
 
+    // Tox Zone Eff multipliers (post-loop)
+    if (tox >= 81 && !gameOver) {
+      const before = acc.mult;
+      acc.mult = Number(fmt1(acc.mult * 1.6));
+      lg('mu', `  ☣ [Hazardous (${Math.round(tox)}%)] ALL Eff ×1.6: ${fmt1(before)} → ${fmt1(acc.mult)}`);
+    } else if (tox >= 61 && !gameOver) {
+      const before = acc.mult;
+      acc.mult = Number(fmt1(acc.mult * 1.3));
+      lg('mu', `  ⚡ [Toxic Culture (${Math.round(tox)}%)] ALL Eff ×1.3: ${fmt1(before)} → ${fmt1(acc.mult)}`);
+    }
+
     // Toxicity Tier Transition announcement (real only)
     if (mode === 'real') {
-      const tierBefore = ctx.tox >= 91 ? 4 : ctx.tox >= 61 ? 3 : ctx.tox >= 31 ? 2 : 1;
-      const tierAfter  = tox >= 91 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
+      const tierBefore = ctx.tox >= 81 ? 4 : ctx.tox >= 61 ? 3 : ctx.tox >= 31 ? 2 : 1;
+      const tierAfter  = tox >= 81 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
       if (tierAfter > tierBefore) {
-        const names = ['','','PASSIVE-AGGRESSIVE','TOXIC CULTURE','☣ MELTDOWN ZONE'];
-        const effs  = ['','','+0.2 Eff/STRATEGY | −1 WB/card','−1 Discard next week','ALL EFF ×2 | 20% auto-exhaust'];
-        log.push({cls:'tg', t:`  !! TIER UP → [${names[tierAfter]}] ${effs[tierAfter]}`});
+        const names = ['','','HOSTILE OFFICE','TOXIC CULTURE','☣ HAZARDOUS'];
+        const effs  = ['','','CRUNCH +40% Output','Eff ×1.3 | −1 WB/card','Eff ×1.6 | −2 WB/card | −1 Discard'];
+        log.push({cls:'tg', t:`  !! TOX ZONE UP → [${names[tierAfter]}] ${effs[tierAfter]}`});
       }
     }
 
     // ── Meeting Type Detection + Bonuses ──────────────────
-    const detectedMeeting = detectMeeting(cards, deskItems, { lastMeetingType, stratCarryMult });
+    const detectedMeeting = detectMeeting(cards, deskItems, { lastMeetingType });
     if (detectedMeeting) {
       if (detectedMeeting.secret) {
         lg('sy', `  ✨ SECRET MEETING: ${detectedMeeting.icon} ${detectedMeeting.name}`);
@@ -542,15 +553,6 @@ export function calcTurn(cards, ctx) {
     const maxToxDmg = toxLevels.length * TOX_DMG;
     const riskWb = clamp(finalWb - expectedToxDmg, 0, 100);
 
-    // consultants_notes: calculate carry for next play
-    const stratPlayedCount = cards.filter(c => c.archetype === 'STRATEGY').length;
-    const newStratCarryMult = desk('consultants_notes') && stratPlayedCount > 0
-      ? stratPlayedCount * 0.15
-      : 0;
-    if (desk('consultants_notes') && stratPlayedCount > 0) {
-      lg('sy', `  📝 [Consultant's Notes] ${stratPlayedCount} STRATEGY played — +${fmt1(newStratCarryMult)} Eff carry next play`);
-    }
-
     return {
       score, baseScore: score, wb: finalWb, tox: finalTox, bo: finalBo, gameOver: false,
       comboMult: 1.0, chips: acc.chips, mult: fmt1(acc.mult),
@@ -562,7 +564,6 @@ export function calcTurn(cards, ctx) {
       finalWb, finalTox, finalBo,
       toxChecks: toxLevels.length, expectedToxDmg, maxToxDmg,
       riskLevel: getRiskLevel(riskWb, finalTox, finalBo),
-      newStratCarryMult,
       meetingType: detectedMeeting || null,
     };
   }
@@ -575,7 +576,6 @@ export function calcTurn(cards, ctx) {
     log, activeSynergies,
     firstCrunchUsed, weekCrunchCount, firstCardThisWeek, newExhausted,
     riskLevel: 'LETHAL',
-    newStratCarryMult: 0,
   };
 }
 
@@ -587,7 +587,6 @@ export function simulateTurn(cards, G) {
     passives:                G.passives || [],
     teammate:                G.teammate,
     consecutiveSameTeammate: G.consecutiveSameTeammate || 0,
-    discardComboMult:        G.discardComboMult || 0,
     firstCardThisWeek:       G.firstCardThisWeek !== undefined ? G.firstCardThisWeek : true,
     firstCrunchUsed:         G.firstCrunchUsed || false,
     weekCrunchCount:         G.weekCrunchCount || 0,
@@ -595,7 +594,6 @@ export function simulateTurn(cards, G) {
     deskItems:               G.deskItems || [],
     handSize:                G.hand ? G.hand.length - cards.length : 0,
     totalPlayCount:          G.totalPlayCount || 0,
-    stratCarryMult:          G.stratCarryMult || 0,
     lastMeetingType:         G.lastMeetingType || null,
     mode: 'preview',
   });

@@ -741,7 +741,7 @@
 .sc-f-value{font:bold 40px 'Courier New',monospace;line-height:1}
 .sc-f-score .sc-f-value{font-size:48px}
 .sc-chips-color{color:var(--color-card-production);text-shadow:0 0 18px rgba(124,58,237,.5)}
-.sc-mult-color{color:var(--color-card-strategy);text-shadow:0 0 18px rgba(184,124,255,.5)}
+.sc-mult-color{color:var(--color-card-strategy);text-shadow:0 0 18px rgba(232,160,32,.5)}
 .sc-score-color{color:var(--color-revenue);text-shadow:0 0 22px rgba(74,222,128,.6)}
 .sc-f-op{font:bold 26px 'Courier New',monospace;color:#444;
   opacity:0;transition:opacity .25s}
@@ -775,7 +775,7 @@
 .scoring-mode #actions{opacity:.4;pointer-events:none}
 /* Card badges — archetype colors (lowercase class) */
 .sc-card-badge.sc-cb-production{color:var(--color-card-production);border-color:rgba(124,58,237,.35)}
-.sc-card-badge.sc-cb-strategy{color:var(--color-card-strategy);border-color:rgba(184,124,255,.35)}
+.sc-card-badge.sc-cb-strategy{color:var(--color-card-strategy);border-color:rgba(232,160,32,.35)}
 .sc-card-badge.sc-cb-crunch{color:var(--color-card-crunch);border-color:rgba(255,45,85,.35)}
 .sc-card-badge.sc-cb-recovery{color:var(--color-card-recovery);border-color:rgba(0,224,144,.35)}
 /* Score machine scoring mode overrides */

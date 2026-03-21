@@ -87,12 +87,13 @@ export const BASE_MEETINGS = [
 
 // ── Secret Meeting Definitions (each requires a specific desk item) ──
 // Discovered mid-run when desk item + right combo + right context align.
-// ctx: { lastMeetingType, stratCarryMult }
+// ctx: { lastMeetingType }
 export const SECRET_MEETINGS = [
   {
     id: 'agile_sprint', name: 'AGILE SPRINT', icon: '⚡', tier: 6, secret: true,
     requires: 'assembly_line',
-    desc: 'Consecutive Sprint Reviews: Output ×1.5',
+    desc: '3× PRODUCTION after Sprint Review',
+    bonusDesc: 'Output ×1.5',
     flavor: '"Velocity metrics through the roof. Nobody slept."',
     match: (p, s, c, r, total, u, ctx) =>
       p >= 3 && s === 0 && c === 0 && r === 0 && ctx.lastMeetingType === 'sprint_review',
@@ -100,7 +101,8 @@ export const SECRET_MEETINGS = [
   {
     id: 'executive_brief', name: 'EXECUTIVE BRIEF', icon: '💼', tier: 6, secret: true,
     requires: 'strategy_deck',
-    desc: 'Board Meeting after Strategy Session: +2.0 Eff',
+    desc: '3× STRATEGY after Strategy Session',
+    bonusDesc: '+2.0 Eff',
     flavor: '"Slides approved. Nobody read them. Success."',
     match: (p, s, c, r, total, u, ctx) =>
       s >= 3 && p === 0 && c === 0 && r === 0 && ctx.lastMeetingType === 'strategy_session',
@@ -108,24 +110,28 @@ export const SECRET_MEETINGS = [
   {
     id: 'death_march', name: 'DEATH MARCH', icon: '💀', tier: 6, secret: true,
     requires: 'burnout_culture_trophy',
-    desc: '3× CRUNCH: Revenue ×2, +15 Burnout',
+    desc: '3× CRUNCH only',
+    bonusDesc: 'Revenue ×2, +15 BO',
     flavor: '"We move fast. Some of us don\'t make it."',
     match: (p, s, c, r) => c >= 3 && p === 0 && s === 0 && r === 0,
   },
   {
     id: 'mental_health_day', name: 'MENTAL HEALTH DAY', icon: '🌿', tier: 5, secret: true,
     requires: 'wellness_program',
-    desc: 'Solo RECOVERY: Output ×3',
+    desc: '1× RECOVERY only (solo)',
+    bonusDesc: 'Output ×3',
     flavor: '"Taking the day. For strategic reasons."',
     match: (p, s, c, r, total) => r === 1 && p === 0 && s === 0 && c === 0 && total === 1,
   },
   {
     id: 'strategic_pivot', name: 'STRATEGIC PIVOT', icon: '🔀', tier: 5, secret: true,
     requires: 'consultants_notes',
-    desc: 'Cross-functional Sync with active carry: +1.0 Eff',
+    desc: 'PROD + STRAT after a STRATEGY meeting',
+    bonusDesc: '+1.0 Eff',
     flavor: '"Leveraging prior learnings to synergize forward momentum."',
     match: (p, s, c, r, total, u, ctx) =>
-      p >= 1 && s >= 1 && c === 0 && r === 0 && (ctx.stratCarryMult || 0) > 0,
+      p >= 1 && s >= 1 && c === 0 && r === 0 &&
+      (ctx.lastMeetingType === 'strategy_session' || ctx.lastMeetingType === 'board_meeting'),
   },
 ];
 
@@ -185,8 +191,9 @@ export function getMeetingUpgradeHint(meeting, deskItems = [], ctx = {}) {
   if (meeting.id === 'strategy_session' && deskIds.has('strategy_deck')) {
     return { special: true, text: `Add 1 STRATEGY → 💼 EXECUTIVE BRIEF!` };
   }
-  if (meeting.id === 'cross_functional' && deskIds.has('consultants_notes') && ctx.stratCarryMult > 0) {
-    return { special: true, text: `Carry active → 🔀 STRATEGIC PIVOT!` };
+  if (meeting.id === 'cross_functional' && deskIds.has('consultants_notes') &&
+      (ctx.lastMeetingType === 'strategy_session' || ctx.lastMeetingType === 'board_meeting')) {
+    return { special: true, text: `After a STRATEGY meeting → 🔀 STRATEGIC PIVOT!` };
   }
 
   // Standard upgrade path

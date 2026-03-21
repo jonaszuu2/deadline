@@ -105,11 +105,9 @@ export const SHOP_DB = {
 };
 
 export const PACK_DB = {
-  wellness:      { id:'wellness',      name:'Wellness Package',        tagline:'"HR cares. Allegedly."',                              icon:'🧘', cost:3, color:'#60cc60' },
-  office_supply: { id:'office_supply', name:'Office Supply Order',     tagline:'"Estimated delivery: 3-5 business years."',           icon:'📦', cost:5, color:'#c0c0c0' },
-  talent_acq:    { id:'talent_acq',    name:'Talent Acquisition',      tagline:'"We\'re a family here. A dysfunctional one."',        icon:'👔', cost:6, color:'#6ab4ff' },
-  executive:     { id:'executive',     name:'Executive Perks',         tagline:'"Not available to all employees."',                   icon:'💼', cost:9, color:'#ffd700' },
-  restructuring: { id:'restructuring', name:'Surprise Restructuring',  tagline:'"Change is the only constant. Except for meetings."', icon:'🎲', cost:4, color:'#ff6030' },
+  standard:   { id:'standard',   name:'Standard Issue',    tagline:'"Approved by Procurement."',                        icon:'📦', cost:4, color:'#c0c0c0' },
+  talent_acq: { id:'talent_acq', name:'Talent Acquisition', tagline:'"We\'re a family here. A dysfunctional one."',    icon:'👔', cost:6, color:'#6ab4ff' },
+  executive:  { id:'executive',  name:'Executive Perks',   tagline:'"Not available to all employees."',                 icon:'💼', cost:9, color:'#ffd700' },
 };
 
 export const NEGATIVE_ITEMS = [

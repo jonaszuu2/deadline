@@ -437,57 +437,47 @@ window._animatedPlay = function() {
 // ═══════════════════════════════════════════════════════
 
 // ── Meeting list groups (highest tier first = aspiration at top) ──
-const _MEETING_GROUPS = [
-  { label: 'PRODUCTION', ids: ['sprint_review', 'status_update', 'quick_email'] },
-  { label: 'STRATEGY',   ids: ['board_meeting', 'strategy_session', 'one_on_one'] },
-  { label: 'MIXED',      ids: ['all_hands', 'cross_functional', 'crunch_time', 'wellness_check'] },
-];
-
 function renderMeetingList(G, activeMeetingId) {
-  const meetingById = {};
-  for (const m of BASE_MEETINGS)   meetingById[m.id] = m;
-  for (const m of SECRET_MEETINGS) meetingById[m.id] = m;
-
   const deskIds = new Set((G.deskItems || []).map(d => d.id));
 
-  const groupsHtml = _MEETING_GROUPS.map(group => {
-    const items = group.ids.map(id => {
-      const m = meetingById[id];
-      if (!m) return '';
-      const isActive = activeMeetingId === id;
-      const color = MEETING_TIER_COLORS[m.tier] || '#555';
-      const activeCls = isActive ? ' lpm-active' : '';
-      return `<div class="lpm-item${activeCls}" style="--mc:${color}">
-        <span class="lpm-icon">${m.icon}</span>
+  // Filter trivial meetings, sort by tier descending (strongest first)
+  const HIDDEN_MEETINGS = new Set(['quick_email', 'one_on_one']);
+  const sorted = [...BASE_MEETINGS].filter(m => !HIDDEN_MEETINGS.has(m.id)).sort((a, b) => b.tier - a.tier);
+
+  const baseHtml = sorted.map(m => {
+    const isActive = activeMeetingId === m.id;
+    const color = MEETING_TIER_COLORS[m.tier] || '#555';
+    const activeCls = isActive ? ' lpm-active' : '';
+    return `<div class="lpm-item${activeCls}" style="--mc:${color}">
+      <span class="lpm-icon">${m.icon}</span>
+      <span class="lpm-info">
         <span class="lpm-name">${esc(m.name)}</span>
+        <span class="lpm-req">${esc(m.desc)}</span>
         <span class="lpm-bonus">${esc(m.bonusDesc || '')}</span>
-      </div>`;
-    }).join('');
-    return `<div class="lpm-group">
-      <div class="lpm-group-label">${group.label}</div>
-      ${items}
+      </span>
     </div>`;
   }).join('');
 
   // Secret meetings: show only if required desk item is present
   const unlockedSecrets = SECRET_MEETINGS.filter(sm => deskIds.has(sm.requires));
   const secretsHtml = unlockedSecrets.length ? `
-    <div class="lpm-group">
-      <div class="lpm-group-label lpm-secret-label">✦ UNLOCKED</div>
-      ${unlockedSecrets.map(sm => {
-        const isActive = activeMeetingId === sm.id;
-        const activeCls = isActive ? ' lpm-active lpm-secret-active' : ' lpm-secret';
-        return `<div class="lpm-item${activeCls}" style="--mc:#fbbf24">
-          <span class="lpm-icon">${sm.icon}</span>
+    <div class="lpm-secret-divider">✦ UNLOCKED</div>
+    ${unlockedSecrets.map(sm => {
+      const isActive = activeMeetingId === sm.id;
+      const activeCls = isActive ? ' lpm-active lpm-secret-active' : ' lpm-secret';
+      return `<div class="lpm-item${activeCls}" style="--mc:#fbbf24">
+        <span class="lpm-icon">${sm.icon}</span>
+        <span class="lpm-info">
           <span class="lpm-name">${esc(sm.name)}</span>
-          <span class="lpm-bonus">${esc(sm.desc)}</span>
-        </div>`;
-      }).join('')}
-    </div>` : '';
+          <span class="lpm-req">${esc(sm.desc)}</span>
+          <span class="lpm-bonus">${esc(sm.bonusDesc || '')}</span>
+        </span>
+      </div>`;
+    }).join('')}` : '';
 
   return `<div class="lpm-wrap">
     <div class="section-title">Meeting Types</div>
-    ${groupsHtml}
+    ${baseHtml}
     ${secretsHtml}
   </div>`;
 }
@@ -497,7 +487,7 @@ function renderLeftPanel(G, preview, selCards = []) {
 
   // Detect active meeting from current selection
   const activeMeeting = selCards.length
-    ? detectMeeting(selCards, G.deskItems || [], { lastMeetingType: G.lastMeetingType || null, stratCarryMult: G.stratCarryMult || 0 })
+    ? detectMeeting(selCards, G.deskItems || [], { lastMeetingType: G.lastMeetingType || null })
     : null;
 
   // Stat bars
@@ -620,7 +610,7 @@ const _MEETING_ROWS = [
 ];
 
 function renderMeetingBadge(selCards, G) {
-  const ctx = { lastMeetingType: G.lastMeetingType || null, stratCarryMult: G.stratCarryMult || 0 };
+  const ctx = { lastMeetingType: G.lastMeetingType || null };
   const deskItems = G.deskItems || [];
   const activeMeeting = selCards.length ? detectMeeting(selCards, deskItems, ctx) : null;
   const deskIds = new Set(deskItems.map(d => d.id));
@@ -725,11 +715,13 @@ function renderActionBarNew(G, preview) {
     hintCls  = 'bad';
   } else if (preview) {
     const risk = preview.riskLevel;
+    const mt   = preview.meetingType;
+    const mtLabel = mt ? `${mt.icon} ${mt.name}` : `${sel.length} card${sel.length > 1 ? 's' : ''}`;
     if      (risk === 'LETHAL')  { confirmBtn = `<button class="btn-confirm danger"  onclick="_animatedPlay()">💀 DESPERATE MOVE</button>`; hintCls = 'bad'; }
     else if (risk === 'RISKY')   { confirmBtn = `<button class="btn-confirm risky"   onclick="_animatedPlay()">⚡ RISKY PLAY</button>`;      hintCls = 'warn'; }
-    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="_animatedPlay()">⚠ CAUTION</button>`;          hintCls = 'warn'; }
-    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="_animatedPlay()">Zatwierdź wybór</button>`;    hintCls = ''; }
-    hintText = `${sel.length} card${sel.length > 1 ? 's' : ''} selected · ${risk}`;
+    else if (risk === 'CAUTION') { confirmBtn = `<button class="btn-confirm caution" onclick="_animatedPlay()">▶ ${esc(mtLabel)}</button>`;  hintCls = 'warn'; }
+    else                         { confirmBtn = `<button class="btn-confirm ready"   onclick="_animatedPlay()">▶ ${esc(mtLabel)}</button>`;  hintCls = ''; }
+    hintText = mt ? `${mt.bonusDesc || mt.desc} · ${risk}` : `${sel.length} card${sel.length > 1 ? 's' : ''} selected · ${risk}`;
   } else {
     confirmBtn = `<button class="btn-confirm ready" onclick="_animatedPlay()">Zatwierdź (${sel.length} cards)</button>`;
     hintText = `${sel.length} card(s) selected`;
@@ -738,12 +730,10 @@ function renderActionBarNew(G, preview) {
 
   const discBtn = (phase === 'play' && discs > 0 && sel.length)
     ? `<button class="btn-skip-new" onclick="G.discardSelected()">✕ DISCARD [${discs}]</button>` : '';
-  const ventBtn = (phase === 'play' && !G.pressureReleaseUsed && G.discs > 0 && G.tox > 0)
-    ? `<button class="btn-skip-new" onclick="G.releasePressure()" title="Use 1 discard — reduce Toxicity by 15%">💨 VENT</button>` : '';
   const crisisBanner = (plays === 1 && wscore < target && phase === 'play')
     ? `<span style="font-size:9px;color:var(--color-fail);font-family:var(--font-data);">⚡ LAST PLAY</span>` : '';
 
-  return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${crisisBanner}${hintText}</div>${discBtn}${ventBtn}${confirmBtn}</div>`;
+  return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${crisisBanner}${hintText}</div>${discBtn}${confirmBtn}</div>`;
 }
 
 function renderRightPanelNew(G) {
@@ -755,7 +745,10 @@ function renderRightPanelNew(G) {
     const tierData = tm.tiers ? tm.tiers[curTier - 1] : null;
     const buffText    = tierData ? tierData.buffText : tm.buffText;
     const penaltyText = tierData ? tierData.penaltyText : tm.penaltyText;
-    const tierLabel   = tierData ? `<div class="tm-role-new" style="color:var(--color-currency);">T${curTier}: ${esc(tierData.name)}</div>` : '';
+    const tierColor   = curTier === 3 ? 'var(--color-fail)' : curTier === 2 ? 'var(--color-warning)' : 'var(--color-pass)';
+    const nextTierTox = curTier === 1 ? 31 : curTier === 2 ? 81 : null;
+    const tierHint    = nextTierTox ? ` <span style="font-size:7px;color:var(--color-text-muted);">(Tox ${nextTierTox}%→T${curTier+1})</span>` : '';
+    const tierLabel   = tierData ? `<div class="tm-role-new" style="color:${tierColor};">T${curTier}: ${esc(tierData.name)}${tierHint}</div>` : '';
     const loyalty = G.consecutiveSameTeammate || 0;
     const loyaltyHtml = loyalty >= 3
       ? `<div class="tm-loyalty-new">🤝 ${loyalty >= 7 ? 'Unbreakable Bond' : loyalty >= 5 ? 'Deep Partnership' : 'Trusted Ally'} (${loyalty} wks)</div>`
@@ -834,9 +827,6 @@ export function getBuildName(G) {
   const domPct = counts[dom] / total;
   const passiveIds = (G.passives||[]).map(p => p.itemId);
   const hasPerm = (G.permMult||0) >= 1.5;
-  if (G.discoveredCombos?.has('combo_ergo') && counts.PRODUCTION >= 4) return '💻 THROUGHPUT ENGINE';
-  if (G.discoveredCombos?.has('combo_zen')) return '🌿 ZEN OPERATOR';
-  if (G.discoveredCombos?.has('combo_techLead')) return '📊 TECH LEAD';
   if (hasPerm) return '🚀 MULT MACHINE';
   if (counts.CRUNCH >= 3 && G.tox >= 60) return '🔥 BURNOUT GAMBLER';
   if (counts.STRATEGY >= 4 && passiveIds.includes('sh_coach')) return '🧠 SYNERGY BROKER';
@@ -878,19 +868,6 @@ export function renderHeader(G) {
           <div class="hc-kpi-fill ${willPass ? 'pass' : pct >= 80 ? 'near' : pct >= 50 ? 'mid' : 'low'}" style="width:${pct}%"></div>
         </div>
       </div>
-      ${(() => {
-        const aC = {PRODUCTION:'#6ab4ff',STRATEGY:'#ff9090',CRUNCH:'#ff6030',RECOVERY:'#60ff80'};
-        const wa = G.weekArchetypes || {};
-        const mh = G.archetypeMilestonesHit || new Set();
-        return `<div class="arch-track-row">${['PRODUCTION','STRATEGY','CRUNCH','RECOVERY'].map(a => {
-          const cnt = wa[a] || 0; const hit = mh.has(a); const pct = Math.min(100, cnt / 4 * 100);
-          return `<div class="at-item" title="${a}: ${cnt}/4${hit?' ★ MILESTONE':''}" >
-            <span class="at-lbl" style="color:${aC[a]}">${a.slice(0,4)}</span>
-            <div class="at-track"><div class="at-fill" style="width:${pct}%;background:${aC[a]}${hit?';box-shadow:0 0 6px '+aC[a]:''}"></div></div>
-            <span class="at-cnt" style="color:${hit?'#ffdd44':'var(--dim)'}">${hit?'★':cnt+'/4'}</span>
-          </div>`;
-        }).join('')}</div>`;
-      })()}
     </div>
     <div class="hr">
       <div class="hr-row1">
@@ -1257,9 +1234,7 @@ export function renderActions(G, preview) {
     ? `<div class="crisis-banner">⚡ LAST PLAY — need $${(target - wscore).toLocaleString()} more revenue</div>` : '';
   const toxRiskLine = (preview && preview.toxChecks > 0 && phase === 'play')
     ? `<div class="play-tox-risk">☣ ${preview.toxChecks} tox check${preview.toxChecks > 1 ? 's' : ''} · est. −${preview.expectedToxDmg} WB · worst −${preview.maxToxDmg} WB</div>` : '';
-  const ventBtn = (phase === 'play' && !G.pressureReleaseUsed && G.discs > 0 && G.tox > 0)
-    ? `<button class="btn btn-vent" onclick="G.releasePressure()" title="Use 1 discard slot — reduce Toxicity by 15%">💨 VENT (−15% Tox)</button>` : '';
-  return `<div id="actions">${crisisBanner}${bankBtn}${playBtn}${toxRiskLine}<div style="display:flex;gap:6px">${discBtn}${ventBtn}</div></div>`;
+  return `<div id="actions">${crisisBanner}${bankBtn}${playBtn}${toxRiskLine}<div style="display:flex;gap:6px">${discBtn}</div></div>`;
 }
 
 export function renderLog(log, preview) {
@@ -1796,15 +1771,13 @@ export function renderPackShop(G) {
   const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
   const boColor  = G.bo  >= 90 ? '#ff2020' : G.bo  >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
 
-  // Packs grid — 3 of 5 rolled each week
+  // Packs grid — all 3 always available
   const packsHtml = (G.shopPackIds || []).map(id => PACK_DB[id]).filter(Boolean).map(pack => {
     const canAfford = coins >= pack.cost;
     const poolDesc = {
-      wellness:      'Consumables: WB recovery, Tox cleanse',
-      office_supply: 'Desk Items: Common & Uncommon tier',
-      talent_acq:    'Cards for deck + Overtime Briefcase',
-      executive:     'Rare Desk Items, passives, Upgrade Card',
-      restructuring: 'Anything — including negatives. High risk.',
+      standard:   'Consumables + Common Desk Items',
+      talent_acq: 'Cards for deck + Overtime Briefcase',
+      executive:  'Rare Desk Items, passives, Upgrade Card',
     }[pack.id] || '';
     return `<div class="pack-card${canAfford ? ' pack-buyable' : ' pack-broke'}" ${canAfford ? `onclick="G.buyPack('${pack.id}')"` : ''} style="--pack-color:${pack.color}">
       <div class="pk-icon">${pack.icon}</div>

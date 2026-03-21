@@ -56,7 +56,7 @@ export const DESK_ITEMS_DB = {
   // ── UNCOMMON (new — STRATEGY build) ─────────────────
   consultants_notes: {
     id:'consultants_notes', name:"Consultant's Notes", icon:'📝', rarity:'UNCOMMON',
-    desc:'STRATEGY played this turn: +0.15 Eff carry per STRATEGY card played, applied on next play. Resets each turn.',
+    desc:'Each STRATEGY card in a play gives +0.2 Eff immediately.',
     flavor:'"Expensive advice. Rarely implemented. Always expensed."',
   },
   // ── UNCOMMON (new — CRUNCH build) ───────────────────

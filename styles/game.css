@@ -350,9 +350,9 @@
 .card.PRODUCTION{background:linear-gradient(155deg,#1a0840,#12082a);border-color:rgba(124,58,237,.35)}
 .card.PRODUCTION:hover{border-color:rgba(124,58,237,.7)}
 .card.PRODUCTION.sel{border-color:var(--color-card-production);box-shadow:0 15px 30px rgba(124,58,237,.45)}
-.card.STRATEGY{background:linear-gradient(155deg,#200a3a,#160a2a);border-color:rgba(184,124,255,.3)}
-.card.STRATEGY:hover{border-color:rgba(184,124,255,.65)}
-.card.STRATEGY.sel{border-color:var(--color-card-strategy);box-shadow:0 15px 30px rgba(184,124,255,.42)}
+.card.STRATEGY{background:linear-gradient(155deg,#1a1000,#120c00);border-color:rgba(232,160,32,.3)}
+.card.STRATEGY:hover{border-color:rgba(232,160,32,.65)}
+.card.STRATEGY.sel{border-color:var(--color-card-strategy);box-shadow:0 15px 30px rgba(232,160,32,.42)}
 .card.CRUNCH{background:linear-gradient(155deg,#280510,#1a0510);border-color:rgba(255,45,85,.3)}
 .card.CRUNCH:hover{border-color:rgba(255,45,85,.65)}
 .card.CRUNCH.sel{border-color:var(--color-card-crunch);box-shadow:0 15px 30px rgba(255,45,85,.48)}
@@ -814,12 +814,12 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
               padding:3px 8px;border:1px solid var(--color-border-hover);border-radius:4px}
 
 /* ── 3-column main layout (play + result phases) ── */
-.main-3col{display:grid;grid-template-columns:200px 1fr 220px;height:100%;min-height:0;overflow:hidden}
+.main-3col{display:grid;grid-template-columns:240px 1fr 220px;height:100%;min-height:0;overflow:hidden}
 
 /* ── Left Panel ── */
 .left-panel{background:var(--color-bg-surface);border-right:1px solid var(--color-border-default);
             padding:14px 12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
-.section-title{font-size:9px;color:var(--color-text-muted);text-transform:uppercase;
+.section-title{font-size:9px;color:#6868a0;text-transform:uppercase;
                letter-spacing:0.12em;font-family:var(--font-data);margin-bottom:7px}
 /* Slim stat bars in left panel */
 .lp-stat-bars{display:flex;flex-direction:column;gap:7px}
@@ -881,43 +881,49 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .f-sub.f-sub-progress{color:#ff9500;animation:fadeUp 0.15s ease-out}
 
 /* ── Meeting List (Left Panel) ── */
-.lpm-wrap{margin-top:4px}
-.lpm-group{margin-bottom:5px}
-.lpm-group-label{
-  font-size:7px;letter-spacing:0.12em;color:#383850;
+.lpm-wrap{margin-top:2px;display:flex;flex-direction:column;gap:1px}
+.lpm-secret-divider{
+  font-size:7px;letter-spacing:0.12em;color:#7a6520;
   font-family:var(--font-data);font-weight:700;
-  padding:0 2px 2px;
+  padding:6px 2px 2px;
 }
-.lpm-secret-label{color:#7a6520}
 .lpm-item{
   display:grid;
-  grid-template-columns:14px 1fr auto;
-  align-items:center;
+  grid-template-columns:16px 1fr;
+  align-items:start;
   gap:4px;
-  padding:2px 4px;
+  padding:4px 4px 4px 2px;
   border-radius:3px;
   border-left:2px solid transparent;
   transition:all 0.1s;
 }
 .lpm-active{
   border-left-color:var(--mc, #888);
-  background:rgba(255,255,255,0.05);
+  background:rgba(255,255,255,0.04);
 }
-.lpm-icon{font-size:10px;text-align:center}
+.lpm-icon{font-size:11px;text-align:center;padding-top:2px;flex-shrink:0}
+.lpm-info{display:flex;flex-direction:column;gap:1px;min-width:0}
 .lpm-name{
-  font-size:9px;color:#555;
+  font-size:10px;color:#666;
   font-family:var(--font-data);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  line-height:1.3;
+  transition:color 0.1s;
+}
+.lpm-req{
+  font-size:9px;color:#3a3a55;
+  font-family:var(--font-data);
+  line-height:1.2;
+  transition:color 0.1s;
+}
+.lpm-bonus{
+  font-size:9px;color:#4a4a6a;
+  font-family:var(--font-data);
+  line-height:1.2;margin-top:1px;
   transition:color 0.1s;
 }
 .lpm-active .lpm-name{color:var(--mc,#ccc);font-weight:700}
-.lpm-bonus{
-  font-size:8px;color:#444;
-  font-family:var(--font-data);
-  white-space:nowrap;text-align:right;
-  transition:color 0.1s;
-}
-.lpm-active .lpm-bonus{color:var(--mc,#999)}
+.lpm-active .lpm-req{color:var(--mc,#777)}
+.lpm-active .lpm-bonus{color:var(--mc,#aaa);font-weight:700}
 .lpm-secret{opacity:0.7}
 .lpm-secret .lpm-name{color:#7a6520}
 .lpm-secret-active .lpm-name{color:#fbbf24}
@@ -971,7 +977,7 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .card.new-card.selected{transform:translateY(-8px);border-color:var(--color-pass) !important}
 /* archetype bg tint when selected */
 .card.new-card.PRODUCTION.selected{background:rgba(124,58,237,0.06)}
-.card.new-card.STRATEGY.selected{background:rgba(184,124,255,0.06)}
+.card.new-card.STRATEGY.selected{background:rgba(232,160,32,0.06)}
 .card.new-card.CRUNCH.selected{background:rgba(255,45,85,0.06)}
 .card.new-card.RECOVERY.selected{background:rgba(0,224,144,0.06)}
 /* disabled: max selection reached, this card not in sel */
@@ -987,8 +993,8 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 /* archetype border tints */
 .card.new-card.PRODUCTION{border-color:rgba(124,58,237,0.35)}
 .card.new-card.PRODUCTION:hover{border-color:#7c3aed}
-.card.new-card.STRATEGY{border-color:rgba(184,124,255,0.3)}
-.card.new-card.STRATEGY:hover{border-color:#b87cff}
+.card.new-card.STRATEGY{border-color:rgba(232,160,32,0.3)}
+.card.new-card.STRATEGY:hover{border-color:#e8a020}
 .card.new-card.CRUNCH{border-color:rgba(255,45,85,0.3)}
 .card.new-card.CRUNCH:hover{border-color:#ff2d55}
 .card.new-card.RECOVERY{border-color:rgba(0,224,144,0.3)}
@@ -1161,26 +1167,26 @@ body::before{content:'';position:fixed;inset:0;
   width:3px;border-radius:0 2px 2px 0;opacity:0;
   transition:opacity 0.15s ease}
 .card.new-card.PRODUCTION::before{background:#7c3aed;opacity:0.5}
-.card.new-card.STRATEGY::before {background:#b87cff;opacity:0.4}
+.card.new-card.STRATEGY::before {background:#e8a020;opacity:0.4}
 .card.new-card.CRUNCH::before   {background:#ff2d55;opacity:0.5}
 .card.new-card.RECOVERY::before {background:#00e090;opacity:0.45}
 .card.new-card:hover::before,.card.new-card.selected::before{opacity:1}
 
 /* ── Card archetype gradient backgrounds ── */
 .card.new-card.PRODUCTION{background:linear-gradient(160deg,#141428 70%,rgba(124,58,237,0.06) 100%)}
-.card.new-card.STRATEGY  {background:linear-gradient(160deg,#141428 70%,rgba(184,124,255,0.05) 100%)}
+.card.new-card.STRATEGY  {background:linear-gradient(160deg,#141428 70%,rgba(232,160,32,0.05) 100%)}
 .card.new-card.CRUNCH    {background:linear-gradient(160deg,#141428 70%,rgba(255,45,85,0.05) 100%)}
 .card.new-card.RECOVERY  {background:linear-gradient(160deg,#141428 70%,rgba(0,224,144,0.05) 100%)}
 
 /* ── Card archetype hover glows ── */
 .card.new-card.PRODUCTION:hover{box-shadow:0 6px 24px rgba(124,58,237,0.2),0 2px 8px rgba(0,0,0,0.4)}
-.card.new-card.STRATEGY:hover  {box-shadow:0 6px 24px rgba(184,124,255,0.18),0 2px 8px rgba(0,0,0,0.4)}
+.card.new-card.STRATEGY:hover  {box-shadow:0 6px 24px rgba(232,160,32,0.18),0 2px 8px rgba(0,0,0,0.4)}
 .card.new-card.CRUNCH:hover    {box-shadow:0 6px 24px rgba(255,45,85,0.2),0 2px 8px rgba(0,0,0,0.4)}
 .card.new-card.RECOVERY:hover  {box-shadow:0 6px 24px rgba(0,224,144,0.2),0 2px 8px rgba(0,0,0,0.4)}
 
 /* ── Card selected box-shadow per archetype ── */
 .card.new-card.PRODUCTION.selected{box-shadow:0 8px 28px rgba(124,58,237,0.3),0 0 0 1px #7c3aed}
-.card.new-card.STRATEGY.selected  {box-shadow:0 8px 28px rgba(184,124,255,0.28),0 0 0 1px #b87cff}
+.card.new-card.STRATEGY.selected  {box-shadow:0 8px 28px rgba(232,160,32,0.28),0 0 0 1px #e8a020}
 .card.new-card.CRUNCH.selected    {box-shadow:0 8px 28px rgba(255,45,85,0.3),0 0 0 1px #ff2d55}
 .card.new-card.RECOVERY.selected  {box-shadow:0 8px 28px rgba(0,224,144,0.28),0 0 0 1px #00e090}
 
