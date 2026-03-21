@@ -139,14 +139,6 @@ export function calcTurn(cards, ctx) {
   // Hourglass: last play of week → Revenue ×1.5 (applied after card loop)
   // Golden Mug: every 5th total play → Revenue ×2 (applied after card loop)
 
-  // TOX_TO_CHIPS passive: +passiveVal Chips per 10% Tox above 30%
-  for (const p of passives) {
-    if (p.passiveType === 'TOX_TO_CHIPS' && tox > 30) {
-      const toxBonus = Math.floor((tox - 30) / 10) * p.passiveVal;
-      if (toxBonus > 0) { acc.chips += toxBonus; lg('ch', `  ★ [${p.name}] Tox ${tox}% — +${toxBonus} Output`); }
-    }
-  }
-
   // ── Teammate pre-play bonuses ─────────────────────────
   const tmTier = tox >= 81 ? 3 : tox >= 31 ? 2 : 1;
   if (teammate === 'gary') {
