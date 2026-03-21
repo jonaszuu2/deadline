@@ -7,7 +7,7 @@
 export const DESK_ITEMS_DB = {
   // ── COMMON ──────────────────────────────────────────
   office_plant: {
-    id:'office_plant', name:'Office Plant', icon:'🌿', rarity:'COMMON',
+    id:'office_plant', name:'Office Plant', icon:'🌿', rarity:'COMMON', passive: true,
     desc:'End of each week: −3% Toxicity.',
     flavor:'"The only living thing that survived the Q3 restructure."',
   },
@@ -33,27 +33,27 @@ export const DESK_ITEMS_DB = {
   },
   // ── UNCOMMON ────────────────────────────────────────
   ergonomic_chair: {
-    id:'ergonomic_chair', name:'Ergonomic Chair', icon:'🪑', rarity:'UNCOMMON',
+    id:'ergonomic_chair', name:'Ergonomic Chair', icon:'🪑', rarity:'UNCOMMON', passive: true,
     desc:'All cards: WB damage reduced by 2 per card.',
     flavor:'"Lumbar support. The only support HR provides."',
   },
   mechanical_keyboard: {
-    id:'mechanical_keyboard', name:'Mechanical Keyboard', icon:'⌨️', rarity:'UNCOMMON',
+    id:'mechanical_keyboard', name:'Mechanical Keyboard', icon:'⌨️', rarity:'UNCOMMON', passive: true,
     desc:'PRODUCTION cards: +50 Output each.',
     flavor:'"Clicky. Loud. Passive-aggressive at volume."',
   },
   water_cooler: {
-    id:'water_cooler', name:'Water Cooler', icon:'💧', rarity:'UNCOMMON',
+    id:'water_cooler', name:'Water Cooler', icon:'💧', rarity:'UNCOMMON', passive: true,
     desc:'RECOVERY cards: healing and Tox reduction both ×1.25.',
     flavor:'"The true meeting room. No agenda. No notes. No follow-ups."',
   },
   agile_coach: {
-    id:'agile_coach', name:'Agile Coach', icon:'📊', rarity:'UNCOMMON',
+    id:'agile_coach', name:'Agile Coach', icon:'📊', rarity:'UNCOMMON', passive: true,
     desc:'STRATEGY cards: +0.1 Eff each.',
     flavor:'"Charges by the hour. Delivers by the quarter."',
   },
   performance_bonus: {
-    id:'performance_bonus', name:'Performance Bonus', icon:'💰', rarity:'UNCOMMON',
+    id:'performance_bonus', name:'Performance Bonus', icon:'💰', rarity:'UNCOMMON', passive: true,
     desc:'Each card played this turn: +75 Output.',
     flavor:'"Discretionary. Subject to change. Probably already changed."',
   },

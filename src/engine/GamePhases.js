@@ -258,7 +258,6 @@ export function _processEndOfWeekStats() {
     const passReward = overPct >= 1.3 ? 12 : overPct >= 1.1 ? 9 : 6;
     this.coins += passReward;
     const bonusLabel = overPct >= 1.3 ? ' 🏆 Overperformance bonus!' : overPct >= 1.1 ? ' ⭐ Good work!' : '';
-    if (!this.weekCrunched) { this.tox = clamp(this.tox - 5, 0, 100); this.addLog('tl', '> Clean week bonus — -5% Toxicity.'); }
     this.addLog('ok', `> Week ${this.week} PASSED! +${passReward} CC → ${this.coins} CC${bonusLabel}`);
     if (this.wscore >= this.kpi() * 2) {
       this.permMult = fmt1((this.permMult || 0) + 0.5);

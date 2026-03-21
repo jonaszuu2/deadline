@@ -1379,4 +1379,51 @@ body::before{content:'';position:fixed;inset:0;
 .ps-pick-btn:not(:disabled):hover { filter: brightness(1.2); transform: scale(1.03); }
 .pack-slot.pack-slot-neg .ps-pick-btn { background: #cc2020; color: #fff; }
 
+/* ── Crunch counter pill ─────────────────────────────── */
+.crunch-warn-pill {
+  font:bold 9px var(--font-data);
+  color:#ff8040;
+  background:rgba(255,128,64,.12);
+  border:1px solid rgba(255,128,64,.4);
+  padding:2px 7px;
+  border-radius:3px;
+  white-space:nowrap;
+  animation:crunch-pulse 1s ease-in-out infinite alternate;
+}
+@keyframes crunch-pulse { from{opacity:.7} to{opacity:1} }
+
+/* ── Golden mug pill ─────────────────────────────────── */
+.mug-pill {
+  font:bold 9px var(--font-data);
+  color:#ffd700;
+  background:rgba(255,215,0,.1);
+  border:1px solid rgba(255,215,0,.35);
+  padding:2px 7px;
+  border-radius:3px;
+  white-space:nowrap;
+}
+
+/* ── TOX zone markers on the bar ─────────────────────── */
+.tox-zone-mark {
+  position:absolute;
+  top:0; bottom:0;
+  width:1px;
+  background:rgba(255,255,255,.25);
+  pointer-events:none;
+}
+
+/* ── Passive desk slot ───────────────────────────────── */
+.desk-slot.ds-passive {
+  opacity:.55;
+  filter:saturate(.6);
+}
+.desk-slot.ds-passive .desk-slot-name {
+  font-style:italic;
+}
+
+/* ── Loyalty new styles ──────────────────────────────── */
+.tm-loyalty-new.dim { color:var(--color-text-muted); }
+.tm-loyalty-new.deep { color:#b87cff; }
+.tm-loyalty-new.bond { color:#ffd700; }
+
 .pr-skip-row { text-align: center; margin-top: 8px; }

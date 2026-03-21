@@ -41,10 +41,10 @@ function _showPhaseFlash(phase, week) {
 //  STATUS BAR
 // ═══════════════════════════════════════════════════════
 export function renderStatusBar(G) {
-  const tierInfo = G.tox >= 91 ? {cls:'tier-meltdown', lbl:'MELTDOWN ZONE'}
-                 : G.tox >= 61 ? {cls:'tier-toxic',    lbl:'TOXIC CULTURE'}
-                 : G.tox >= 31 ? {cls:'tier-passive',  lbl:'PASSIVE-AGGRESSIVE'}
-                 :               {cls:'tier-pro',      lbl:'PROFESSIONAL'};
+  const tierInfo = G.tox >= 81 ? {cls:'tier-meltdown', lbl:'☣ HAZARDOUS'}
+                 : G.tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC CULTURE'}
+                 : G.tox >= 31 ? {cls:'tier-passive',  lbl:'😶 HOSTILE OFFICE'}
+                 :               {cls:'tier-pro',      lbl:'✅ SAFE'};
 
   const lastEntry = G.log ? [...G.log].reverse().find(e => !e.hidden) : null;
   const logText   = lastEntry ? lastEntry.t : 'System ready.';
@@ -164,7 +164,7 @@ export function render(G) {
   if (win) {
     const atm = ['atm-toxic','atm-meltdown','atm-wb-crit','atm-burnout','atm-pass'];
     atm.forEach(c => win.classList.remove(c));
-    if      (G.tox >= 90)  win.classList.add('atm-meltdown');
+    if      (G.tox >= 81)  win.classList.add('atm-meltdown');
     else if (G.tox >= 60)  win.classList.add('atm-toxic');
     if (G.wb  <  30)       win.classList.add('atm-wb-crit');
     else if (G.bo > 70)    win.classList.add('atm-burnout');
@@ -317,7 +317,8 @@ function renderDeskRow(G) {
     if (item) {
       const col = DESK_TIER_COLORS[item.rarity] || '#7c3aed';
       const isActive = item.active === true && !(item.id === 'resignation_letter' && G.resignationLetterUsed);
-      slots.push(`<div class="desk-slot${isActive ? ' ds-active' : ''}" data-id="${item.id}" style="--desk-tier-color:${col}">
+      const isPassive = item.passive === true;
+      slots.push(`<div class="desk-slot${isActive ? ' ds-active' : ''}${isPassive ? ' ds-passive' : ''}" data-id="${item.id}" style="--desk-tier-color:${col}">
         <div class="desk-slot-icon">${item.icon}</div>
         <div class="desk-slot-name">${esc(item.name)}</div>
         <div class="desk-slot-desc">${esc(item.desc)}</div>
@@ -738,7 +739,16 @@ function renderActionBarNew(G, preview) {
   const crisisBanner = (plays === 1 && wscore < target && phase === 'play')
     ? `<span style="font-size:9px;color:var(--color-fail);font-family:var(--font-data);">⚡ LAST PLAY</span>` : '';
 
-  return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${crisisBanner}${hintText}</div>${discBtn}${confirmBtn}</div>`;
+  const crunchWarn = G.weekCrunchCount > 0 && G.phase === 'play'
+    ? `<div class="crunch-warn-pill">⚡ CRUNCH ×${G.weekCrunchCount} · next +${G.weekCrunchCount * 12}% TOX</div>`
+    : '';
+  const hasMug = (G.deskItems||[]).some(d => d.id === 'golden_mug');
+  const mugPill = hasMug && G.phase === 'play' ? (() => {
+    const n = 5 - ((G.totalPlayCount||0) % 5);
+    return n < 5 ? `<div class="mug-pill">🥇 ×2 in ${n}</div>` : '';
+  })() : '';
+
+  return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${crisisBanner}${hintText}</div>${crunchWarn}${mugPill}${discBtn}${confirmBtn}</div>`;
 }
 
 function renderRightPanelNew(G) {
@@ -755,9 +765,14 @@ function renderRightPanelNew(G) {
     const tierHint    = nextTierTox ? ` <span style="font-size:7px;color:var(--color-text-muted);">(Tox ${nextTierTox}%→T${curTier+1})</span>` : '';
     const tierLabel   = tierData ? `<div class="tm-role-new" style="color:${tierColor};">T${curTier}: ${esc(tierData.name)}${tierHint}</div>` : '';
     const loyalty = G.consecutiveSameTeammate || 0;
-    const loyaltyHtml = loyalty >= 3
-      ? `<div class="tm-loyalty-new">🤝 ${loyalty >= 7 ? 'Unbreakable Bond' : loyalty >= 5 ? 'Deep Partnership' : 'Trusted Ally'} (${loyalty} wks)</div>`
-      : '';
+    const loyaltyLabel = loyalty >= 7 ? 'Unbreakable Bond' : loyalty >= 5 ? 'Deep Partnership' : loyalty >= 3 ? 'Trusted Ally' : '';
+    const loyaltyBonus = loyalty >= 7 ? '+0.6' : loyalty >= 5 ? '+0.4' : '+0.2';
+    const loyaltyNext  = loyalty >= 7 ? null : loyalty >= 5 ? {thr:7, bonus:'+0.6'} : loyalty >= 3 ? {thr:5, bonus:'+0.4'} : {thr:3, bonus:'+0.2'};
+    const loyaltyHtml  = loyalty >= 1 && loyalty < 3
+      ? `<div class="tm-loyalty-new dim">⏳ ${loyalty} wk${loyalty > 1 ? 's' : ''} · ${3 - loyalty} more → +0.2 Eff/play</div>`
+      : loyalty >= 3
+        ? `<div class="tm-loyalty-new${loyalty >= 7 ? ' bond' : loyalty >= 5 ? ' deep' : ''}">🤝 ${loyaltyLabel} ${loyaltyBonus} Eff/play${loyaltyNext ? ` · ${loyaltyNext.thr - loyalty} more → ${loyaltyNext.bonus}` : ' — MAX'}</div>`
+        : '';
     const snitchHtml = G.pendingSnitch ? `<div style="font-size:9px;color:var(--color-fail);margin-top:4px;">⚠ HR SNITCH ACTIVE</div>` : '';
     const initials = tm.fullName.split(' ').map(w=>w[0]).join('').slice(0,2);
     tmHtml = `<div class="tm-card-new">
@@ -914,14 +929,15 @@ export function renderEmployeeDashboard(wb, tox, bo, preview) {
     return `<div class="ed-fc risk" style="left:${clamp(base - rW, 0, 100)}%;width:${rW}%"></div>`;
   })() : '';
 
-  const tierInfo = tox >= 91 ? {cls:'tier-meltdown', lbl:'☣ MELTDOWN ZONE', tip:'Efficiency ×2 | 20% auto-exhaust'}
-                 : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC CULTURE', tip:'+1 karta/play | -1 Discard/tydzień'}
-                 : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 PASSIVE-AGGRESSIVE', tip:'STRATEGY +0.2 Eff | -1 WB/karta'}
-                 :              {cls:'tier-pro',      lbl:'✅ PROFESSIONAL', tip:'+4 WB na końcu tygodnia (jeśli Tox ≤30%)'};
+  const tierInfo = tox >= 81 ? {cls:'tier-meltdown', lbl:'☣ HAZARDOUS',      tip:'Eff ×1.6 · −2 WB/card · −1 Discard next week'}
+                 : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC CULTURE',  tip:'Eff ×1.3 · −1 WB/card played'}
+                 : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 HOSTILE OFFICE', tip:'CRUNCH cards +40% Output'}
+                 :              {cls:'tier-pro',      lbl:'✅ SAFE',           tip:'End of week: +4 WB if Tox ≤30%'};
   return `<div id="employee-dashboard">
     <div class="ed-title">EMPLOYEE DASHBOARD</div>
     ${edStat('❤️', 'Wellbeing', wb,  'wb',  wbD,  '#ff80c8', wb  < 25 ? 'danger' : '', wbRiskFc)}
-    ${edStat('☣️', 'Toxicity',  tox, 'tox', toxD, '#50ffaa', tox > 50 ? 'danger' : '')}
+    ${edStat('☣️', 'Toxicity',  tox, 'tox', toxD, '#50ffaa', tox > 50 ? 'danger' : '',
+      '<div class="tox-zone-mark" style="left:31%"></div><div class="tox-zone-mark" style="left:61%"></div><div class="tox-zone-mark" style="left:81%"></div>')}
     ${edStat('🔥', 'Burnout',   bo,  'bo',  boD,  '#ff6030', bo  > 75 ? 'danger' : '')}
     <div class="tox-tier-badge ${tierInfo.cls}" title="${tierInfo.tip}">${tierInfo.lbl}</div>
   </div>`;
