@@ -1067,6 +1067,37 @@ const SCENARIOS = [
 // ── Export ────────────────────────────────────────────
 const GENERAL_POOL = SCENARIOS.filter(s => s.general);
 
+// ── Special system emails (injected directly, not via scenario engine) ──
+export const WEEK1_HOOK_EMAIL = {
+  type: 'week1_hook',
+  mgr: MGR.vp_ops,
+  subject: 'RE: Your first deliverable',
+  body: "Good numbers. Keep this up and you'll have a very comfortable career here. Results matter more than methods — that's what we tell new hires. It's mostly true.",
+  ps: null,
+  dayName: 'Friday',
+  passed: true,
+};
+
+export const BANKING_HINT_EMAIL_1 = {
+  type: 'banking_hint',
+  mgr: MGR.payroll,
+  subject: 'RE: Q1 delivery — hours reconciliation',
+  body: "Hi. Just flagging — you wrapped this period ahead of schedule with unsubmitted hours on the clock. Friendly reminder that unsubmitted hours don't count toward your quarterly allocation. Clock them before EOD. The system accepts banking submissions until midnight.",
+  ps: "P.S. The banking option is available from the result screen at end of week. Just saying.",
+  dayName: 'Friday',
+  passed: true,
+};
+
+export const BANKING_HINT_EMAIL_2 = {
+  type: 'banking_hint',
+  mgr: MGR.brad,
+  subject: 'Quick tip — re: last week',
+  body: "Hey. Saw you left some hours on the table again. I don't usually send these but — you can bank unplayed time at the end of each week. It converts to Corpo Coins and helps with the toxicity situation. I've been doing it since Q2. It adds up. Anyway. Up to you.",
+  ps: null,
+  dayName: 'Monday',
+  passed: true,
+};
+
 export function buildManagerEmail(G, d) {
   const target    = G.kpi ? G.kpi() : 0;
   const total     = (d.prevWscore ?? 0) + (d.score ?? 0);

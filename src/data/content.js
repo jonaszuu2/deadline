@@ -160,3 +160,14 @@ export const TUTORIAL_DB = [
    content:'You\'re ready. Select 1–3 cards — a <b>PRODUCTION + STRATEGY</b> combo is a strong start. Then hit <b>SUBMIT PLAY</b>. You have <b>3 plays and 2 discards</b> this week. Hit the KPI target before you run out of plays.',
    highlight:null,btn:'▶ LET\'S GO'},
 ];
+
+// ── Brief ↔ Teammate friction (opposed = 0.8× teammate buff) ──────────
+// Format: "brief_id:teammate_id"
+// Aligned = 1.0 (no change). Opposed = 0.8 (friction signal).
+export const BRIEF_TEAMMATE_FRICTION = new Set([
+  'cost_reduction:sarah',   // CRUNCH brief vs RECOVERY specialist
+  'cost_reduction:priya',   // CRUNCH brief vs STRATEGY/RECOVERY specialist
+  'hyper_growth:ben',       // max pressure brief vs stress reducer
+  'sustainable_growth:alex',// careful WB brief vs chaos agent
+  'scale_or_fail:ben',      // harder KPI brief vs KPI reducer
+]);

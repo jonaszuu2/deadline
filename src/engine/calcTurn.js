@@ -2,6 +2,7 @@ import { clamp, TOX_DMG } from '../data/constants.js';
 import { rnd100, fmt1, getUnlockedTier, setUnlockedTier } from './utils.js';
 import { wbEff } from './deck.js';
 import { detectMeeting } from '../data/meetingTypes.js';
+import { BRIEF_TEAMMATE_FRICTION } from '../data/content.js';
 
 // ═══════════════════════════════════════════════════════
 //  CARD FX — now desk-item based, no separate passive system
@@ -70,12 +71,26 @@ export function calcTurn(cards, ctx) {
     handSize = 0,
     totalPlayCount = 0,
     lastMeetingType = null,
+    brief = null,
+    weekEffBonus = 0,
   } = ctx;
   const desk = id => deskItems.some(it => it.id === id);
   const log = [];
+  const deskActivations = [];
   const lg = (cls, t, hidden = false) => {
     if (mode === 'real') log.push(hidden ? {cls, t, hidden: true} : {cls, t});
     else if (mode === 'preview') log.push({cls, t});
+  };
+  // dlg = desk item log — appears in both main log AND activation strip
+  const dlg = (cls, t) => {
+    log.push({cls, t});
+    deskActivations.push({cls, t});
+  };
+  // blg = brief log — appears in main log AND brief strip
+  const briefActivations = [];
+  const blg = (cls, t) => {
+    log.push({cls, t});
+    briefActivations.push({cls, t});
   };
 
   let wb = ctx.wb, tox = ctx.tox, bo = ctx.bo;
@@ -86,7 +101,7 @@ export function calcTurn(cards, ctx) {
 
   const acc = {chips: 0, mult: 1.0, scaleLog: []};
   const playLog = [], activeSynergies = new Set(), toxLevels = [];
-  let toxGained = 0, gameOver = false, prodChips = 0;
+  let toxGained = 0, gameOver = false, prodChips = 0, briefProgressDelta = 0;
 
   log.push({cls:'d', t:`── Play: ${cards.map(c => c.name).join(', ')} ──`});
 
@@ -96,18 +111,31 @@ export function calcTurn(cards, ctx) {
     lg('sy', `  ★ [Breakthrough] +${fmt1(permMult)}× Permanent Eff`);
   }
 
+  // ── Teammate alignment friction ──────────────────────
+  const alignMult = (brief && teammate && BRIEF_TEAMMATE_FRICTION.has(`${brief}:${teammate}`)) ? 0.8 : 1.0;
+  if (alignMult < 1.0) lg('ng', `  ⚡ [${teammate}/${brief}] Misaligned approach — teammate effectiveness −20%`);
+
+  // ── Brief pre-play effects ────────────────────────────
+  // restructure: weekEffBonus Eff per play
+  if (brief === 'restructure' && weekEffBonus > 0) {
+    acc.mult += weekEffBonus;
+    blg('sy', `  📉 [Restructure] Lean deck bonus — +${fmt1(weekEffBonus)} Eff`);
+  }
+  // hyper_growth: pre-check if no PRODUCTION cards → chips penalty applied post-loop
+  // cost_reduction / sustainable_growth: handled in card loop below
+
   // ── Desk Item pre-play effects ────────────────────────
   if (desk('stress_ball') && wb < 40) {
     acc.mult += 1.0;
-    lg('mu', `  🔴 [Stress Ball] Hanging on — WB ${wb}% < 40%: +1.0 Eff`);
+    dlg('mu', `  🔴 [Stress Ball] Hanging on — WB ${wb}% < 40%: +1.0 Eff`);
   }
   if (desk('action_figure') && wb < 50) {
     acc.mult += 0.8;
-    lg('mu', `  🧸 [Action Figure] Low WB motivation — +0.8 Eff`);
+    dlg('mu', `  🧸 [Action Figure] Low WB motivation — +0.8 Eff`);
   }
   if (desk('coffee_mug') && firstCardThisWeek) {
     acc.chips += 150;
-    lg('ch', `  ☕ [Coffee Mug] First play this week — +150 Output`);
+    dlg('ch', `  ☕ [Coffee Mug] First play this week — +150 Output`);
   }
   // Desk Item: consultants_notes — static +0.2 Eff per STRATEGY card in this play
   if (desk('consultants_notes')) {
@@ -115,7 +143,7 @@ export function calcTurn(cards, ctx) {
     if (stratCount > 0) {
       const bonus = stratCount * 0.2;
       acc.mult += bonus;
-      lg('sy', `  📝 [Consultant's Notes] ${stratCount} STRATEGY card${stratCount > 1 ? 's' : ''} — +${fmt1(bonus)} Eff`);
+      dlg('sy', `  📝 [Consultant's Notes] ${stratCount} STRATEGY card${stratCount > 1 ? 's' : ''} — +${fmt1(bonus)} Eff`);
     }
   }
   // Org Chart: +0.2 Eff per unique archetype in combo
@@ -124,7 +152,7 @@ export function calcTurn(cards, ctx) {
     if (unique > 0) {
       const orgBonus = unique * 0.2;
       acc.mult += orgBonus;
-      lg('mu', `  🗺️ [Org Chart] ${unique} unique archetype${unique > 1 ? 's' : ''} — +${fmt1(orgBonus)} Eff`);
+      dlg('mu', `  🗺️ [Org Chart] ${unique} unique archetype${unique > 1 ? 's' : ''} — +${fmt1(orgBonus)} Eff`);
     }
   }
   // Cactus: bonus Output per card based on tox
@@ -133,7 +161,7 @@ export function calcTurn(cards, ctx) {
     if (cactusPer > 0) {
       const cactusBonus = cactusPer * cards.length;
       acc.chips += cactusBonus;
-      lg('ch', `  🌵 [Cactus] Tox ${tox}% — +${cactusPer}×${cards.length} = +${cactusBonus} Output`);
+      dlg('ch', `  🌵 [Cactus] Tox ${tox}% — +${cactusPer}×${cards.length} = +${cactusBonus} Output`);
     }
   }
   // Hourglass: last play of week → Revenue ×1.5 (applied after card loop)
@@ -180,7 +208,7 @@ export function calcTurn(cards, ctx) {
     const toxBonus = Math.floor((tox - 30) / 10) * 100;
     if (toxBonus > 0) {
       acc.chips += toxBonus;
-      lg('ch', `  ⚗️ [Hostile Environment] Tox ${Math.round(tox)}% → +${toxBonus} Output`);
+      dlg('ch', `  ⚗️ [Hostile Environment] Tox ${Math.round(tox)}% → +${toxBonus} Output`);
     }
   }
 
@@ -225,7 +253,7 @@ export function calcTurn(cards, ctx) {
       if (fx.wb > 0) {
         const wbonus = fx.wb * 25;
         acc.chips += wbonus;
-        lg('ch', `  💊 [Wellness Program] ${fx.wb}% WB healed → +${wbonus} Output`);
+        dlg('ch', `  💊 [Wellness Program] ${fx.wb}% WB healed → +${wbonus} Output`);
       }
     }
     // strategy_deck: STRATEGY Eff counts twice
@@ -248,6 +276,26 @@ export function calcTurn(cards, ctx) {
     // Crisis Mode: CRUNCH WB damage halved
     if (desk('crisis_mode') && card.archetype === 'CRUNCH' && fx.wb < 0) fx.wb = Math.round(fx.wb * 0.5);
 
+    // ── Brief per-card effects ────────────────────────────
+    if (brief === 'cost_reduction' && card.archetype === 'CRUNCH') {
+      if (fx.chips) fx.chips = Math.round(fx.chips * 1.6);
+      if (fx.wb < 0) fx.wb   = Math.round(fx.wb * 1.5);
+      tox = clamp(tox + 3, 0, 100); toxGained += 3;
+      blg('ch', `  ✂️ [Cost Reduction] CRUNCH: chips ×1.6, WB +50% dmg, +3% TOX → ${tox}%`);
+    }
+    if (brief === 'sustainable_growth' && card.archetype === 'RECOVERY') {
+      if (fx.tox < 0) fx.tox = 0; // no TOX reduction
+      if (fx.wb > 0) {
+        const sgBonus = fx.wb * 30;
+        acc.chips += sgBonus;
+        briefProgressDelta += sgBonus;
+        blg('ch', `  🌱 [Sustainable Growth] ${fx.wb}% WB healed → +${sgBonus} chips`);
+      }
+    }
+    if (brief === 'hyper_growth' && card.archetype === 'PRODUCTION') {
+      if (fx.chips) fx.chips = Math.round(fx.chips * 1.5);
+    }
+
     // Tox Zone 2 (31-60%): CRUNCH gets +40% Output
     if (toxTier === 2 && card.archetype === 'CRUNCH' && fx.chips > 0) {
       fx.chips = Math.round(fx.chips * 1.4);
@@ -262,25 +310,25 @@ export function calcTurn(cards, ctx) {
 
     // Gary T1: +100 Output per card
     if (teammate === 'gary' && tmTier === 1) {
-      acc.chips += 100;
-      lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +100 Output`, true);
+      acc.chips += Math.round(100 * alignMult);
+      lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +${Math.round(100 * alignMult)} Output`, true);
     }
     // Performance Bonus: +75 Output per card played
     if (desk('performance_bonus')) {
       acc.chips += 75;
-      lg('ch', `  💰 [Performance Bonus] +75 Output`, true);
+      dlg('ch', `  💰 [Performance Bonus] +75 Output`);
     }
 
     // red_bull_stash: CRUNCH → +0.4 Eff stacking + +2 BO
     if (desk('red_bull_stash') && card.archetype === 'CRUNCH') {
       acc.mult += 0.4;
       bo = clamp(bo + 2, 0, 100);
-      lg('mu', `  🥤 [Red Bull Stash] CRUNCH +0.4 Eff → ${fmt1(acc.mult)}× (+2 BO → ${bo}%)`);
+      dlg('mu', `  🥤 [Red Bull Stash] CRUNCH +0.4 Eff → ${fmt1(acc.mult)}× (+2 BO → ${bo}%)`);
     }
     // burnout_culture_trophy: +4 BO per CRUNCH
     if (desk('burnout_culture_trophy') && card.archetype === 'CRUNCH') {
       bo = clamp(bo + 4, 0, 100);
-      lg('bo', `  🏅 [Burnout Culture Trophy] CRUNCH — +4 Burnout → ${bo}%`);
+      dlg('bo', `  🏅 [Burnout Culture Trophy] CRUNCH — +4 Burnout → ${bo}%`);
     }
 
     // Ben: tier-aware STRATEGY effect
@@ -301,7 +349,7 @@ export function calcTurn(cards, ctx) {
     // Derek: PRODUCTION chips / STRATEGY tox
     if (teammate === 'derek') {
       if (card.archetype === 'PRODUCTION') {
-        const mc = tmTier === 3 ? 300 : 150;
+        const mc = Math.round((tmTier === 3 ? 300 : 150) * alignMult);
         acc.chips += mc;
         lg('ch', `  📋 [Derek T${tmTier}] Deliverable approved — +${mc} Output`, true);
         if (tmTier === 1) { wb = clamp(wb + 5, 0, 100); lg('wg', `  📋 [Derek T1] Good work noted — +5 WB → ${wb}%`, true); }
@@ -316,9 +364,9 @@ export function calcTurn(cards, ctx) {
     // Priya: STRATEGY mult / RECOVERY modifier
     if (teammate === 'priya') {
       if (card.archetype === 'STRATEGY') {
-        const pm = tmTier === 1 ? 0.2 : tmTier === 3 ? 0.6 : 0.4;
+        const pm = (tmTier === 1 ? 0.2 : tmTier === 3 ? 0.6 : 0.4) * alignMult;
         acc.mult += pm;
-        lg('mu', `  📊 [Priya T${tmTier}] Strategic insight — +${pm.toFixed(1)} Eff`, true);
+        lg('mu', `  📊 [Priya T${tmTier}] Strategic insight — +${pm.toFixed(2)} Eff`, true);
       }
     }
 
@@ -394,11 +442,21 @@ export function calcTurn(cards, ctx) {
     // sick_day_policy: WB never drops below 20% from a single play
     if (desk('sick_day_policy') && wb < 20) {
       wb = 20;
-      lg('ok', `  🤒 [Sick Day Policy] WB floored at 20%`);
+      dlg('ok', `  🤒 [Sick Day Policy] WB floored at 20%`);
     }
 
     playLog.push(rec);
     if (gameOver) break;
+  }
+
+  // ── Brief post-loop effects ───────────────────────────
+  if (brief === 'hyper_growth' && !gameOver) {
+    const hasProd = cards.some(c => c.archetype === 'PRODUCTION');
+    if (!hasProd && acc.chips > 0) {
+      const before = acc.chips;
+      acc.chips = Math.round(acc.chips * 0.8);
+      blg('ng', `  📈 [Hyper-Growth] No PRODUCTION — chips −20%: ${before} → ${acc.chips}`);
+    }
   }
 
   // ── Desk Item post-loop effects ───────────────────────
@@ -406,7 +464,7 @@ export function calcTurn(cards, ctx) {
   if (desk('rubber_duck') && cards.length === 1 && !gameOver) {
     const before = acc.chips;
     acc.chips = Math.round(acc.chips * 2);
-    lg('ch', `  🦆 [Rubber Duck] Solo play — Output ×2: ${before} → ${acc.chips}`);
+    dlg('ch', `  🦆 [Rubber Duck] Solo play — Output ×2: ${before} → ${acc.chips}`);
   }
 
   // assembly_line: PRODUCTION chip modifier
@@ -415,12 +473,12 @@ export function calcTurn(cards, ctx) {
     if (prodCardCount >= 2) {
       const before = acc.chips;
       acc.chips = Math.round(acc.chips * 1.8);
-      lg('ch', `  🏭 [Assembly Line] ${prodCardCount} PRODUCTION — chips ×1.8: ${before} → ${acc.chips}`);
+      dlg('ch', `  🏭 [Assembly Line] ${prodCardCount} PRODUCTION — chips ×1.8: ${before} → ${acc.chips}`);
     } else {
       // solo PRODUCTION: −30%
       const before = acc.chips;
       acc.chips = Math.round(acc.chips * 0.7);
-      lg('ng', `  🏭 [Assembly Line] Solo PRODUCTION — chips ×0.7: ${before} → ${acc.chips}`);
+      dlg('ng', `  🏭 [Assembly Line] Solo PRODUCTION — chips ×0.7: ${before} → ${acc.chips}`);
     }
   }
 
@@ -429,12 +487,12 @@ export function calcTurn(cards, ctx) {
     if (cards.length === 1 && cards[0].archetype === 'PRODUCTION') {
       const before = acc.chips;
       acc.chips = Math.round(acc.chips * 4);
-      lg('ch', `  📒 [Overtime Log] Solo PRODUCTION — Output ×4: ${before} → ${acc.chips}`);
+      dlg('ch', `  📒 [Overtime Log] Solo PRODUCTION — Output ×4: ${before} → ${acc.chips}`);
     } else if (cards.length > 1 && prodCardCount > 0) {
       // PRODUCTION chips don't count in mixed play — subtract prodChips
       if (prodChips > 0) {
         acc.chips = Math.max(0, acc.chips - prodChips);
-        lg('ng', `  📒 [Overtime Log] Mixed play — PRODUCTION chips negated (−${prodChips})`);
+        dlg('ng', `  📒 [Overtime Log] Mixed play — PRODUCTION chips negated (−${prodChips})`);
       }
     }
   }
@@ -532,13 +590,13 @@ export function calcTurn(cards, ctx) {
     if (desk('hourglass') && ctx.plays === 1) {
       const hbefore = score;
       score = Math.floor(score * 1.5);
-      lg('sc', `  ⏳ [Hourglass] Last play of week — Revenue ×1.5: ${hbefore} → ${score}`);
+      dlg('sc', `  ⏳ [Hourglass] Last play of week — Revenue ×1.5: ${hbefore} → ${score}`);
     }
     // Desk Item: golden_mug — every 5th play (totalPlayCount is BEFORE this play)
     if (desk('golden_mug') && (totalPlayCount + 1) % 5 === 0) {
       const gbefore = score;
       score = score * 2;
-      lg('sc', `  🥇 [Golden Mug] Play #${totalPlayCount + 1} — every 5th play: Revenue ×2: ${gbefore} → ${score}`);
+      dlg('sc', `  🥇 [Golden Mug] Play #${totalPlayCount + 1} — every 5th play: Revenue ×2: ${gbefore} → ${score}`);
     }
     lg('sc', `  ▶ REVENUE: $${acc.chips.toLocaleString()} × ${fmt1(acc.mult)} = $${score.toLocaleString()}`);
 
@@ -551,7 +609,7 @@ export function calcTurn(cards, ctx) {
       score, baseScore: score, wb: finalWb, tox: finalTox, bo: finalBo, gameOver: false,
       comboMult: 1.0, chips: acc.chips, mult: fmt1(acc.mult),
       scaleLog: acc.scaleLog,
-      log, activeSynergies,
+      log, activeSynergies, deskActivations, briefActivations, briefProgressDelta,
       firstCrunchUsed, weekCrunchCount, firstCardThisWeek, newExhausted,
       effLabel: eff.label,
       wbDelta: finalWb - ctx.wb, toxDelta: finalTox - ctx.tox, boDelta: finalBo - ctx.bo,
@@ -588,6 +646,8 @@ export function simulateTurn(cards, G) {
     handSize:                G.hand ? G.hand.length - cards.length : 0,
     totalPlayCount:          G.totalPlayCount || 0,
     lastMeetingType:         G.lastMeetingType || null,
+    brief:                   G.brief || null,
+    weekEffBonus:            G.weekEffBonus || 0,
     mode: 'preview',
   });
 }

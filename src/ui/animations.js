@@ -333,16 +333,31 @@ export function initScoringAnimation(G) {
 export function initPackReveal() {
   const slots = Array.from(document.querySelectorAll('.pack-slot'));
   if (!slots.length) return;
-  // Stagger each slot landing: 800ms, 1400ms, 2000ms
-  const timings = [800, 1400, 2000];
+  // All slots start hidden, then appear + land one by one
+  slots.forEach(s => s.classList.add('pack-slot-pre'));
   slots.forEach((slot, i) => {
+    const base = i * 900;
+    // Unhide (start spinning)
+    setTimeout(() => slot.classList.remove('pack-slot-pre'), base);
+    // Land
     setTimeout(() => {
       slot.classList.remove('pack-slot-spinning');
       slot.classList.add('pack-slot-landed');
-    }, timings[i]);
+      const rarity = slot.dataset.rarity;
+      if (rarity === 'LEGENDARY') _rarityFlash('#ffd700', 700);
+      else if (rarity === 'RARE')  _rarityFlash('#7090ff', 500);
+    }, base + 600);
   });
-  // Enable pick buttons after all land
+  // Enable pick buttons after last slot lands
   setTimeout(() => {
     document.querySelectorAll('.ps-pick-btn').forEach(btn => btn.removeAttribute('disabled'));
-  }, 2200);
+  }, (slots.length - 1) * 900 + 800);
+}
+
+function _rarityFlash(color, dur) {
+  const el = document.createElement('div');
+  el.className = 'rarity-flash-overlay';
+  el.style.setProperty('--flash-color', color);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), dur + 100);
 }

@@ -226,6 +226,30 @@ export const DESK_ITEMS_DB = {
   },
 };
 
+// ── Desk Item Combo Pairs ────────────────────────────
+// When a player acquires both items in a pair, inject a "FACILITIES MEMO"
+// inbox email explaining the synergy.
+export const DESK_COMBO_PAIRS = [
+  {
+    ids: ['strategy_deck', 'consultants_notes'],
+    subject: 'RE: Office equipment — strategy materials',
+    body: "We've noticed you've been using both the Strategy Deck and the Consultant's Notes. Per Facilities: these are approved for use in tandem. The Deck's double-count effect applies on top of the Notes' per-card bonus. Combined correctly, three STRATEGY cards deliver significant Efficiency.",
+    ps: "P.S. The EXECUTIVE BRIEF meeting format becomes accessible after a Strategy Session.",
+  },
+  {
+    ids: ['burnout_culture_trophy', 'assembly_line'],
+    subject: 'RE: Q3 output — production pipeline review',
+    body: "Your desk configuration has been flagged by Facilities as a 'High Output Setup'. The Assembly Line multiplier and the Burnout Culture Trophy's damage-free CRUNCH stack independently. If you can keep the archetypes clean — no mixing — the numbers get interesting. HR is aware.",
+    ps: "P.S. The DEATH MARCH meeting unlocks when you play 3+ CRUNCH alone.",
+  },
+  {
+    ids: ['wellness_program', 'office_plant'],
+    subject: 'RE: Wellness Initiative — facilities audit',
+    body: "Great news: your workspace has been flagged as compliant with the Wellness Initiative. The plant handles passive Toxicity reduction and the Program converts recovery output into bonus chips. The combination technically qualifies as a 'Sustainable Workload Strategy'.",
+    ps: "P.S. The MENTAL HEALTH DAY meeting triggers if you play a single RECOVERY card alone.",
+  },
+];
+
 export const DESK_ITEMS_LIST = Object.values(DESK_ITEMS_DB);
 export const DESK_ITEMS_BY_RARITY = {
   COMMON:    DESK_ITEMS_LIST.filter(d => d.rarity === 'COMMON'),

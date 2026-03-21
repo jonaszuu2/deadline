@@ -353,6 +353,19 @@
                   padding:3px 6px;background:rgba(255,232,122,.1);border:1px solid rgba(255,232,122,.35);margin:2px 0}
 .tmc-loyalty.bond{color:#00ffcc;background:rgba(0,255,204,.12);border-color:rgba(0,255,204,.5)}
 .rp-tm-loyalty.bond{color:#00ffcc}
+.tmc-switch-warn{font:bold 9px 'Courier New',monospace;color:#ff8040;text-align:center;
+                 margin:4px 0 2px;padding:3px 6px;
+                 background:rgba(255,128,64,.08);border:1px solid rgba(255,128,64,.4);
+                 border-radius:2px;letter-spacing:.3px}
+.tmc-friction{font:bold 9px 'Courier New',monospace;color:#ffaa44;text-align:center;
+              margin:4px 0 2px;padding:3px 6px;
+              background:rgba(255,170,68,.08);border:1px solid rgba(255,170,68,.4);
+              border-radius:2px;letter-spacing:.3px}
+.tmc-alex-warn{font:bold 9px 'Courier New',monospace;color:#ff5544;text-align:center;
+               margin:4px 0 2px;padding:3px 6px;
+               background:rgba(255,85,68,.1);border:1px solid rgba(255,85,68,.5);
+               border-radius:2px;letter-spacing:.3px}
+.tmc-card.tmc-opposed{border-color:rgba(255,170,68,.55);}
 
 /* ══ UPGRADE FLASH OVERLAY ══ */
 .upgrade-flash-overlay{position:fixed;inset:0;pointer-events:none;z-index:2200;

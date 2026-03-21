@@ -204,6 +204,59 @@ export function getMeetingUpgradeHint(meeting, deskItems = [], ctx = {}) {
   return { special: false, addArch: path.addArch, text: `+1 ${path.addArch} → ${next.icon} ${next.name}` };
 }
 
+// ── Secret meeting partial-match hints ───────────────
+// Returns {sm, text} for the "closest" secret meeting the player is approaching,
+// or null if nothing relevant. Only fires when player has the required desk item.
+export function getSecretMeetingHints(sel = [], deskItems = [], ctx = {}) {
+  const deskIds = new Set((deskItems || []).map(d => d.id));
+  const p  = sel.filter(c => c.archetype === 'PRODUCTION').length;
+  const s  = sel.filter(c => c.archetype === 'STRATEGY').length;
+  const cr = sel.filter(c => c.archetype === 'CRUNCH').length;
+  const r  = sel.filter(c => c.archetype === 'RECOVERY').length;
+  const total = sel.length;
+
+  const hints = [];
+
+  if (deskIds.has('assembly_line') && ctx.lastMeetingType === 'sprint_review') {
+    // agile_sprint: 3+ PRODUCTION, 0 others
+    if (p > 0 && p < 3 && s === 0 && cr === 0 && r === 0)
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'agile_sprint'), text: `⚡ AGILE SPRINT — add ${3 - p} more PRODUCTION` });
+    else if (p >= 3 && (s > 0 || cr > 0 || r > 0))
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'agile_sprint'), text: `⚡ AGILE SPRINT — remove non-PRODUCTION cards` });
+  }
+
+  if (deskIds.has('strategy_deck') && ctx.lastMeetingType === 'strategy_session') {
+    // executive_brief: 3+ STRATEGY, 0 others
+    if (s > 0 && s < 3 && p === 0 && cr === 0 && r === 0)
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'executive_brief'), text: `💼 EXECUTIVE BRIEF — add ${3 - s} more STRATEGY` });
+  }
+
+  if (deskIds.has('burnout_culture_trophy')) {
+    // death_march: 3+ CRUNCH, 0 others
+    if (cr > 0 && cr < 3 && p === 0 && s === 0 && r === 0)
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'death_march'), text: `💀 DEATH MARCH — add ${3 - cr} more CRUNCH` });
+    else if (cr >= 3 && (p > 0 || s > 0 || r > 0))
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'death_march'), text: `💀 DEATH MARCH — remove non-CRUNCH cards` });
+  }
+
+  if (deskIds.has('wellness_program')) {
+    // mental_health_day: exactly 1 RECOVERY, total 1
+    if (r === 1 && total > 1)
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'mental_health_day'), text: `🌿 MENTAL HEALTH DAY — play solo RECOVERY only` });
+    else if (r === 0 && total === 0)
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'mental_health_day'), text: `🌿 MENTAL HEALTH DAY available — select 1 RECOVERY alone` });
+  }
+
+  if (deskIds.has('consultants_notes') &&
+      (ctx.lastMeetingType === 'strategy_session' || ctx.lastMeetingType === 'board_meeting')) {
+    // strategic_pivot: PROD + STRAT, no CRUNCH, no RECOVERY
+    if ((p === 0 || s === 0) && cr === 0 && r === 0 && (p > 0 || s > 0))
+      hints.push({ sm: SECRET_MEETINGS.find(m => m.id === 'strategic_pivot'), text: `🔀 STRATEGIC PIVOT — need both PRODUCTION + STRATEGY` });
+  }
+
+  return hints.length ? hints[0] : null;
+}
+
 // Tier color for display
 export const MEETING_TIER_COLORS = {
   1: '#888',

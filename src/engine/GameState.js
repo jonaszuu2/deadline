@@ -4,6 +4,7 @@
 //  No game logic, no phase transitions, no UI calls except _commit.
 // ═══════════════════════════════════════════════════════
 import { PLAYS, DISCS, HAND, MAX_SEL, KPI, clamp } from '../data/constants.js';
+import { BRIEFS_DB } from '../data/briefs.js';
 import { ui } from './uiStore.js';
 
 // ── Valid phase transitions (warning-only guard) ──────
@@ -12,7 +13,8 @@ const VALID_TRANSITIONS = {
   play:            ['scoring'],
   scoring:         ['play', 'result', 'review'],
   result:          ['shop', 'review'],
-  shop:            ['teammate_choice', 'upgrade_result', 'play'],
+  shop:            ['brief_select', 'teammate_choice', 'upgrade_result', 'play'],
+  brief_select:    ['teammate_choice', 'play'],
   upgrade_result:  ['shop'],
   review:          [],
 };
@@ -20,7 +22,7 @@ const VALID_TRANSITIONS = {
 export class GameState {
   constructor() {
     this.week = 1; this.wb = 100; this.tox = 0; this.bo = 0;
-    this.wscore = 0; this.playsMax = PLAYS; this.plays = PLAYS; this.discs = DISCS; this.coins = 0;
+    this.wscore = 0; this.totalEarnings = 0; this.playsMax = PLAYS; this.plays = PLAYS; this.discs = DISCS; this.coins = 0;
     this.exhausted = new Set(); this.shopItems = [];
     this.purchasedThisShop = false;
     this.openedPack = null;       // { packId, items:[{type,id,name,icon,rarity,desc,negative,data,archetype?,flavor?}] } | null
@@ -35,7 +37,7 @@ export class GameState {
 
     // Teammate state
     this.teammate = null; this.teammateOptions = []; this.alexWeeksCount = 0;
-    this.pendingSnitch = false; this.teammateTier = 1;
+    this.pendingSnitch = false; this.alexWarning = false; this.teammateTier = 1;
     this.consecutiveSameTeammate = 0; this.loyaltyTeammateId = null;
 
     // End-game tracking
@@ -74,11 +76,20 @@ export class GameState {
     this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
     this.pendingUpgrade = false;
 
+    // Brief system
+    this.brief = null;
+    this.briefOptions = null;      // 3 random brief IDs shown at brief_select
+    this.briefProgress = 0;        // general progress counter (meaning varies per brief)
+    this.briefCompleted = false;   // side objective achieved
+    this.briefConsecutiveWeeks = 0; // hyper_growth: consecutive 150%+ weeks
+    this.weekEffBonus = 0;         // restructure: +Eff per play this week
+
     // Desk Items
     this.deskItems = [];           // up to 5 active desk items
     this.deskItemOffer = null;     // [{item, source}] offer pending player choice
     this.pendingDeskSwap = null;   // {item} — new item waiting when desk is full
     this.resignationLetterUsed = false;
+    this.discoveredCombos = new Set(); // combo pair keys already notified
 
     // Power Progression
     this.justBreakthrough = false;
@@ -102,6 +113,11 @@ export class GameState {
     // Desk item carry state
     this.shopPacksBought = 0; // budget_freeze: 1 pack per shop limit
 
+    // Onboarding discovery tracking
+    this.bankingEverUsed = false;
+    this.bankingHintShown = false;
+    this.week1HookShown = false;
+
   }
 
   // ── Queries ──────────────────────────────────────────
@@ -111,12 +127,15 @@ export class GameState {
     const benMult = this.teammate === 'ben'
       ? (this.getTeammateTier() === 1 ? 0.88 : this.getTeammateTier() === 3 ? 0.75 : 0.92)
       : 1.0;
-    const pipMult = (this.deskItems||[]).some(d => d.id === 'performance_improvement_plan') ? 0.75 : 1.0;
-    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier * pipMult);
+    const pipMult   = (this.deskItems||[]).some(d => d.id === 'performance_improvement_plan') ? 0.75 : 1.0;
+    const briefMult = this.brief === 'scale_or_fail' ? 1.15 : 1.0;
+    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier * pipMult * briefMult);
   }
 
   handLimit() {
-    return HAND + ((this.deskItems||[]).some(d => d.id === 'flex_schedule') ? -1 : 0);
+    const flexMinus  = (this.deskItems||[]).some(d => d.id === 'flex_schedule') ? -1 : 0;
+    const briefMinus = this.brief === 'hyper_growth' ? -1 : 0;
+    return HAND + flexMinus + briefMinus;
   }
   maxSel() {
     const strategyDeck = (this.deskItems||[]).some(d => d.id === 'strategy_deck');

@@ -788,6 +788,54 @@
 /* sc-deltas inside sm-bottom */
 .sm-scoring-mode .sc-deltas{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .sm-scoring-mode .sc-hint{display:block;text-align:center;margin-top:2px}
+/* ══ BRIEF ACTIVATION STRIP ══ */
+.sc-brief-strip{
+  width:100%;max-width:480px;
+  display:flex;flex-direction:column;gap:2px;
+  margin:2px 0 6px;
+  padding:4px 6px;
+  border:1px solid var(--bc,#cc99ff);
+  background:rgba(0,0,0,.25);
+  border-radius:3px;
+}
+.sc-brief-entry{
+  display:flex;align-items:center;gap:7px;
+  padding:2px 4px;
+  border-left:2px solid var(--bc,#cc99ff);
+  opacity:0;
+  animation:briefEntryIn 0.25s ease-out forwards;
+}
+@keyframes briefEntryIn{
+  from{opacity:0;transform:translateX(-8px)}
+  to  {opacity:1;transform:none}
+}
+.sc-brief-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
+.sc-brief-name{font:bold 9px 'Courier New',monospace;color:var(--bc,#cc99ff);min-width:130px;flex-shrink:0;letter-spacing:.5px;text-transform:uppercase}
+.sc-brief-detail{font:10px 'Courier New',monospace;flex:1;text-align:right;color:var(--bc,#cc99ff);opacity:.85}
+
+/* ══ DESK ITEM ACTIVATION STRIP ══ */
+.sc-desk-strip{
+  width:100%;max-width:480px;
+  display:flex;flex-direction:column;gap:3px;
+  margin:2px 0 4px;
+}
+.sc-desk-entry{
+  display:flex;align-items:center;gap:7px;
+  padding:3px 10px;
+  border-left:2px solid var(--da-color,#555);
+  background:rgba(255,255,255,0.04);
+  border-radius:0 3px 3px 0;
+  opacity:0;
+  animation:deskEntryIn 0.22s ease-out forwards;
+}
+@keyframes deskEntryIn{
+  from{opacity:0;transform:translateX(-10px)}
+  to  {opacity:1;transform:none}
+}
+.sc-da-icon{font-size:13px;flex-shrink:0;width:18px;text-align:center}
+.sc-da-name{font:10px 'Courier New',monospace;color:#888;min-width:120px;flex-shrink:0;letter-spacing:.3px}
+.sc-da-detail{font:10px 'Courier New',monospace;flex:1;text-align:right;letter-spacing:.3px}
+
 /* ══ MANAGER EMAIL ══ */
 @keyframes mgrSlideIn{
   from{opacity:0;transform:translateY(24px) scale(0.97)}

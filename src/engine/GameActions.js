@@ -168,6 +168,32 @@ export function playSelected() {
   for (const c of cards) this.weekArchetypes[c.archetype] = (this.weekArchetypes[c.archetype] || 0) + 1;
   for (const c of cards.filter(c => c.exhaust)) this.addLog('ng', `> ⊗ [${c.name}] exhausted — gone until next week.`);
 
+  // ── Brief per-play effects ────────────────────────────
+  if (this.brief === 'digital_transformation') {
+    const stratCards = cards.filter(c => c.archetype === 'STRATEGY');
+    for (const sc of stratCards) {
+      const allCopies = [...this.deck, ...this.hand, ...this.pile].filter(c => c.id === sc.id);
+      for (const copy of allCopies) copy.fx = {...copy.fx, chips: (copy.fx.chips || 0) + 3};
+      this.briefProgress++;
+      this.addLog('sy', `> 💻 [Digital Transformation] [${sc.name}] — all copies +3 chips · ${this.briefProgress}/25`);
+    }
+    if (!this.briefCompleted && this.briefProgress >= 25) {
+      this.briefCompleted = true;
+      this.permMult = fmt1((this.permMult || 0) + 1.0);
+      this.addLog('sy', `> 💻 [Digital Transformation] OBJECTIVE COMPLETE — +1.0 perm Eff → ${this.permMult}×`);
+    }
+  }
+  if (this.brief === 'sustainable_growth') {
+    if (res.briefProgressDelta) {
+      this.briefProgress += res.briefProgressDelta;
+      if (!this.briefCompleted && this.briefProgress >= 3000) {
+        this.briefCompleted = true;
+        this.permMult = fmt1((this.permMult || 0) + 2.0);
+        this.addLog('sy', `> 🌱 [Sustainable Growth] OBJECTIVE COMPLETE — +2.0 perm Eff → ${this.permMult}×`);
+      }
+    }
+  }
+
   // Compute scoring reveal intensity
   const cm = res.comboMult || 1.0;
   const comboLabel = (res.log.filter(e => e.cls === 'sy' && e.t.includes('COMBO')).pop()?.t.match(/\[([^\]]+)\]/) || [])[1] || null;
@@ -192,6 +218,8 @@ export function playSelected() {
     scaleLabel: hasScale ? `⚡ ${res.scaleLog.join(' · ')}` : null,
     crossedKpi: !res.gameOver && !prevPassed && newWscore >= this.kpi(),
     activeSynergies: res.activeSynergies,
+    deskActivations: res.deskActivations || [],
+    briefActivations: res.briefActivations || [],
     playedCards: cards.map(c => ({ name: c.name, archetype: c.archetype })),
     nextPhase,
   };
@@ -251,6 +279,8 @@ export function processTurn(cards, _unused = {}, handSizeBeforePlay = 0) {
     handSize:                handSizeBeforePlay,
     totalPlayCount:          this.totalPlayCount || 0,
     lastMeetingType:         this.lastMeetingType || null,
+    brief:                   this.brief || null,
+    weekEffBonus:            this.weekEffBonus || 0,
     mode: 'real',
   });
   this.firstCrunchUsed   = result.firstCrunchUsed;
@@ -358,9 +388,18 @@ export function useResignationLetter() {
 
 export function bankRemainingPlays() {
   if (this.plays <= 0 || this.phase !== 'result') return;
-  const earned = this.plays * 4;
+  this.bankingEverUsed = true;
+  // Scaling reward: 4 + 6 + 8 + 10 + ... (triangular, +2 per play)
+  let earned = 0;
+  for (let i = 0; i < this.plays; i++) earned += 4 + i * 2;
+  const toxRecovery = this.plays * 5;
   this.coins += earned;
-  this.addLog('ok', `> 💰 Banked ${this.plays} play${this.plays > 1 ? 's' : ''} — +${earned} CC → ${this.coins} CC`);
+  const prevTox = this.tox;
+  this.tox = clamp(this.tox - toxRecovery, 0, 100);
+  const actualToxDrop = prevTox - this.tox;
+  let msg = `> 💰 Banked ${this.plays} play${this.plays > 1 ? 's' : ''} — +${earned} CC → ${this.coins} CC`;
+  if (actualToxDrop > 0) msg += ` · -${actualToxDrop}% TOX → ${this.tox}%`;
+  this.addLog('ok', msg);
   this.plays = 0;
   this._commit();
 }

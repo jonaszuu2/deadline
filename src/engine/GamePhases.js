@@ -4,14 +4,15 @@
 //  end-of-run logic. Mixed into Game.prototype in game.js.
 // ═══════════════════════════════════════════════════════
 import { PLAYS, DISCS, TOTAL_WEEKS, clamp, FAIL_BO } from '../data/constants.js';
+import { BRIEFS_DB } from '../data/briefs.js';
 import { nextUid, shuffle, fmt1, getUnlockedTier, setUnlockedTier } from './utils.js';
-import { DESK_ITEMS_BY_RARITY, DESK_ITEMS_LIST } from '../data/deskItems.js';
+import { DESK_ITEMS_BY_RARITY, DESK_ITEMS_LIST, DESK_COMBO_PAIRS } from '../data/deskItems.js';
 import { makeDeck, pickShopItems } from './deck.js';
 import { calculateFinalScore } from './scoring.js';
 import { TEAMMATES_DB } from '../data/content.js';
 import { SHOP_DB, PACK_DB, NEGATIVE_ITEMS } from '../data/shop.js';
 import { DB } from '../data/cards.js';
-import { shouldShowEmail, buildManagerEmail } from '../data/managerEmails.js';
+import { shouldShowEmail, buildManagerEmail, WEEK1_HOOK_EMAIL, BANKING_HINT_EMAIL_1, BANKING_HINT_EMAIL_2 } from '../data/managerEmails.js';
 import { ui } from './uiStore.js';
 
 // ═══════════════════════════════════════════════════════
@@ -94,18 +95,18 @@ export function chooseTeammate(id) {
     const pct = tier === 1 ? 12 : tier === 3 ? 25 : 8;
     this.addLog(tier === 3 ? 'ng' : 'ok', `> 🙋 [Ben T${tier}] KPI this week: ${this.kpi()} (−${pct}%)`);
   }
-  // Alex penalty tracker: tier-aware snitch
+  // Alex penalty tracker: tier-aware snitch (Beat 3 — only fires after alexWarning)
   if (this.teammate === 'alex') {
     this.alexWeeksCount++;
     const tier = this.getTeammateTier();
-    const snitchEvery = tier === 1 ? 4 : tier === 3 ? 1 : 3;
-    const snitchWb  = tier === 1 ? -10 : tier === 3 ? -25 : -15;
-    const snitchTox = tier === 1 ?  8  : tier === 3 ?  20 :  10;
-    if (this.alexWeeksCount % snitchEvery === 0) {
+    if (this.alexWarning && this.tox > 60) {
+      const snitchWb  = tier === 1 ? -10 : tier === 3 ? -25 : -15;
+      const snitchTox = tier === 1 ?  8  : tier === 3 ?  20 :  10;
       this.wb  = clamp(this.wb  + snitchWb,  0, 100);
       this.tox = clamp(this.tox + snitchTox, 0, 100);
       this.pendingSnitch = true;
-      this.addLog('ng', `> 🦈 [Alex T${tier} — HR Snitch] ${snitchWb} WB → ${this.wb}% | +${snitchTox} Tox → ${this.tox}%`);
+      this.alexWarning = false;
+      this.addLog('ng', `> 🦈 [Alex T${tier} — HR Snitch] "Look, I had to. You understand." ${snitchWb} WB → ${this.wb}% | +${snitchTox}% Tox → ${this.tox}%`);
     }
   }
   // Priya T3: +10 Tox at week start
@@ -141,6 +142,23 @@ export function openShop() {
     const email = buildManagerEmail(this, emailCtx);
     this.inbox.unshift({ ...email, id: Date.now(), unread: true, storedWeek: this.week });
   }
+  // Week 1 hook — "It's mostly true" — fires once, first time player opens shop
+  if (this.week === 1 && !this.week1HookShown) {
+    this.week1HookShown = true;
+    this.inbox.unshift({ ...WEEK1_HOOK_EMAIL, id: Date.now() + 2, unread: true, storedWeek: 1 });
+  }
+  // Banking discovery hint — diegetic tutorial
+  if (!this.bankingHintShown) {
+    if (this.week === 1 && this.wscore >= this.kpi() && this.plays > 0) {
+      // Player hit KPI with plays left — they could have banked
+      this.bankingHintShown = true;
+      this.inbox.unshift({ ...BANKING_HINT_EMAIL_1, id: Date.now() + 1, unread: true, storedWeek: 1 });
+    } else if (this.week === 2 && !this.bankingEverUsed) {
+      // Week 2 fallback — player still hasn't discovered banking
+      this.bankingHintShown = true;
+      this.inbox.unshift({ ...BANKING_HINT_EMAIL_2, id: Date.now() + 1, unread: true, storedWeek: 2 });
+    }
+  }
   if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
   this.shopPackIds = shuffle(Object.keys(PACK_DB)).slice(0, 2); // 2 of 3 rolled each week
   this.shopPacksBought = 0;
@@ -162,7 +180,32 @@ export function skipShop() {
   this.startNextWeek();
 }
 
+export function selectBrief(id) {
+  if (this.brief || !BRIEFS_DB[id]) return;
+  this.brief = id;
+  const b = BRIEFS_DB[id];
+  this.addLog('sy', `> 📋 Brief assigned: ${b.name}`);
+  this.addLog('i',  `> Effect: ${b.effectShort}`);
+  this.startNextWeek();
+}
+
 export function startNextWeek() {
+  // Brief select: intercept after week 1 shop, before week 2 starts
+  if (this.week === 1 && !this.brief) {
+    if (!this.briefOptions) {
+      const keys = Object.keys(BRIEFS_DB);
+      // shuffle and pick 3
+      for (let i = keys.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [keys[i], keys[j]] = [keys[j], keys[i]];
+      }
+      this.briefOptions = keys.slice(0, 3);
+    }
+    this.phase = 'brief_select';
+    this._commit();
+    return;
+  }
+
   this.week++; this.wscore = 0;
   this.playsMax = PLAYS;
   this.plays = this.playsMax;
@@ -172,22 +215,35 @@ export function startNextWeek() {
     if (this.nextWeekPlaysBonus < 0) this.addLog('ng', `> 📢 [All-Hands] -${Math.abs(this.nextWeekPlaysBonus)} play this week → ${this.plays}`);
     this.nextWeekPlaysBonus = 0;
   }
+  // Failed weeks permanently reduce max plays (cap: -2)
+  const failPenalty = Math.min(this.failedWeeks, 2);
+  if (failPenalty > 0) {
+    this.plays = Math.max(3, this.plays - failPenalty);
+    this.playsMax = this.plays;
+    if (failPenalty === 1) this.addLog('ng', `> 📉 [Performance Record] 1 failed week — max plays reduced to ${this.plays}`);
+    else this.addLog('ng', `> 📉 [Performance Record] ${failPenalty} failed weeks — max plays reduced to ${this.plays}`);
+  }
   this.discs = DISCS;
   // Toxicity Zone 3 (81%+): Toxic Culture — -1 Discard
   if (this.tox >= 81) {
     this.discs = Math.max(0, this.discs - 1);
     this.addLog('ng', `> ⚡ [Toxic Culture] Środowisko krytycznie toksyczne — -1 Discard → ${this.discs}`);
   }
-  // Critical Burnout (80%+): -1 play this week
-  if (this.bo >= 80) {
-    this.plays = Math.max(1, this.plays - 1);
-    this.playsMax = this.plays;
-    this.addLog('ng', `> 🔥 [Critical Burnout] BO ${this.bo}% ≥ 80% — -1 play this week → ${this.plays}`);
-  }
   this.weekCrunched = false; this.weekCrunchCount = 0; this.lastScore = null;
   this.exhausted = new Set(); this.firstDraw = true; this.supportInjected = false;
   this.weekArchetypes = {PRODUCTION:0, STRATEGY:0, CRUNCH:0, RECOVERY:0};
   this.firstCardThisWeek = true; this.firstCrunchUsed = false;
+  // Brief: restructure — weekEffBonus based on deck size
+  this.weekEffBonus = 0;
+  if (this.brief === 'restructure') {
+    const deckSz = this.deckSize();
+    if (deckSz <= 10) {
+      this.weekEffBonus = Math.round((10 - deckSz) * 0.1 * 10) / 10;
+      this.addLog('sy', `> 📉 [Restructure] Deck ${deckSz} cards — +${fmt1(this.weekEffBonus)} Eff bonus this week`);
+    }
+    // Card removal always free
+    this.freeRemovalUsed = false;
+  }
   // flex_schedule: +1 play per week
   if ((this.deskItems||[]).some(d => d.id === 'flex_schedule')) {
     this.plays++;
@@ -224,6 +280,7 @@ export function startNextWeek() {
 
 export function _processEndOfWeekStats() {
   const passed = this.wscore >= this.kpi();
+  this.totalEarnings += this.wscore;
   this.weekHistory.push({ week: this.week, passed, score: this.wscore });
   if (this.wb >= 70) { this.wellnessWeeks++; this.addLog('wg', `> ❤ Wellness streak — WB ${this.wb}% ≥ 70% (${this.wellnessWeeks} wk)`); }
   this.purchasedThisShop = false;
@@ -255,10 +312,22 @@ export function _processEndOfWeekStats() {
   } else {
     this.consecutiveFails = 0;
     const overPct = this.wscore / this.kpi();
-    const passReward = overPct >= 1.3 ? 12 : overPct >= 1.1 ? 9 : 6;
-    this.coins += passReward;
-    const bonusLabel = overPct >= 1.3 ? ' 🏆 Overperformance bonus!' : overPct >= 1.1 ? ' ⭐ Good work!' : '';
-    this.addLog('ok', `> Week ${this.week} PASSED! +${passReward} CC → ${this.coins} CC${bonusLabel}`);
+    // scale_or_fail: pass gives perm Eff instead of CC
+    if (this.brief === 'scale_or_fail') {
+      const mult = overPct >= 1.3 ? 0.4 : overPct >= 1.1 ? 0.3 : 0.2;
+      this.permMult = fmt1((this.permMult || 0) + mult);
+      this.briefProgress++;
+      this.addLog('sy', `> 🚀 [Scale or Fail] Pass → +${mult} perm Eff → ${this.permMult}× (no CC) · weeks passed: ${this.briefProgress}`);
+      if (!this.briefCompleted && this.briefProgress >= 8) {
+        this.briefCompleted = true;
+        this.addLog('sy', `> 🚀 [Scale or Fail] OBJECTIVE COMPLETE — perm Eff ×2 at run end`);
+      }
+    } else {
+      const passReward = overPct >= 1.3 ? 12 : overPct >= 1.1 ? 9 : 6;
+      this.coins += passReward;
+      const bonusLabel = overPct >= 1.3 ? ' 🏆 Overperformance bonus!' : overPct >= 1.1 ? ' ⭐ Good work!' : '';
+      this.addLog('ok', `> Week ${this.week} PASSED! +${passReward} CC → ${this.coins} CC${bonusLabel}`);
+    }
     if (this.wscore >= this.kpi() * 2) {
       this.permMult = fmt1((this.permMult || 0) + 0.5);
       this.justBreakthrough = true;
@@ -266,6 +335,32 @@ export function _processEndOfWeekStats() {
     }
     if (this.checkGameEndConditions(passed)) return false;
   }
+  // ── Brief end-of-week effects ─────────────────────────
+  if (this.brief === 'cost_reduction' && !this.briefCompleted && this.tox < 35) {
+    this.briefProgress++;
+    this.addLog('sy', `> ✂️ [Cost Reduction] TOX ${this.tox}% < 35% — ${this.briefProgress}/5 low-tox weeks`);
+    if (this.briefProgress >= 5) {
+      this.briefCompleted = true;
+      this.freeRemovalUsed = false;
+      this.addLog('sy', `> ✂️ [Cost Reduction] OBJECTIVE COMPLETE — free card removal next shop`);
+    }
+  }
+  if (this.brief === 'hyper_growth' && !this.briefCompleted) {
+    const overPct2 = this.wscore / this.kpi();
+    if (passed && overPct2 >= 1.5) {
+      this.briefConsecutiveWeeks++;
+      this.addLog('sy', `> 📈 [Hyper-Growth] ${Math.round(overPct2*100)}% KPI — streak ${this.briefConsecutiveWeeks}/3`);
+      if (this.briefConsecutiveWeeks >= 3) {
+        this.briefCompleted = true;
+        this.nextWeekPlaysBonus += 1;
+        this.addLog('sy', `> 📈 [Hyper-Growth] OBJECTIVE COMPLETE — +1 play next week`);
+      }
+    } else {
+      if (this.briefConsecutiveWeeks > 0) this.addLog('i', `> 📈 [Hyper-Growth] Streak broken (${this.briefConsecutiveWeeks}/3)`);
+      this.briefConsecutiveWeeks = 0;
+    }
+  }
+
   // Office Plant: -3% Tox at end of each week
   if ((this.deskItems||[]).some(d => d.id === 'office_plant')) {
     this.tox = clamp(this.tox - 3, 0, 100);
@@ -295,6 +390,13 @@ export function _processEndOfWeekStats() {
     this.coins += 5;
     this.addLog('ok', `> 🌟 [Wellness Reward] WB ${this.wb}% ≥ 75% — +5 CC → ${this.coins} CC`);
   }
+  // ── Alex snitch Beat 1: Signal ─────────────────────
+  if (this.teammate === 'alex' && this.tox > 70) {
+    this.alexWarning = true;
+    this.addLog('ng', `> 🦈 [Alex] Alex has been unusually quiet this week.`);
+  } else if (this.tox <= 60) {
+    this.alexWarning = false; // TOX recovered — warning clears
+  }
   return true;
 }
 
@@ -309,6 +411,18 @@ export function checkGameEndConditions(passed) {
   }
   if (passed && this.week >= TOTAL_WEEKS) {
     this.isTerminated = false; this.endCondition = 'annual';
+    // scale_or_fail: double permMult if side objective completed
+    if (this.brief === 'scale_or_fail' && this.briefCompleted) {
+      const before = this.permMult;
+      this.permMult = fmt1(this.permMult * 2);
+      this.addLog('sy', `> 🚀 [Scale or Fail] OBJECTIVE BONUS — perm Eff ×2: ${before}× → ${this.permMult}×`);
+    }
+    // restructure: +3.0 perm Eff if deck ≤8
+    if (this.brief === 'restructure' && !this.briefCompleted && this.deckSize() <= 8) {
+      this.briefCompleted = true;
+      this.permMult = fmt1((this.permMult || 0) + 3.0);
+      this.addLog('sy', `> 📉 [Restructure] OBJECTIVE COMPLETE — deck ${this.deckSize()} ≤ 8 — +3.0 perm Eff → ${this.permMult}×`);
+    }
     this.checkRunUnlocks(); this.transition('review'); this._commit(); return true;
   }
   return false;
@@ -519,6 +633,26 @@ export function _applyPackItem(item) {
     if ((this.deskItems||[]).length < 5) {
       this.deskItems = [...(this.deskItems||[]), item.data];
       this.addLog('ok', `> 🗂️ [${item.name}] placed on desk.`);
+      // Check for newly completed combo pairs → inject FACILITIES MEMO
+      const currentIds = new Set(this.deskItems.map(d => d.id));
+      for (const combo of DESK_COMBO_PAIRS) {
+        const key = combo.ids.slice().sort().join('+');
+        if (!this.discoveredCombos.has(key) && combo.ids.every(id => currentIds.has(id))) {
+          this.discoveredCombos.add(key);
+          this.inbox.unshift({
+            id: Date.now() + Math.random(),
+            unread: true,
+            storedWeek: this.week,
+            type: 'desk_combo',
+            mgr: { name: 'Facilities Management', title: 'Office Ops', email: 'facilities@deadline-corp.com' },
+            subject: combo.subject,
+            body: combo.body,
+            ps: combo.ps || null,
+            dayName: 'Today',
+            passed: true,
+          });
+        }
+      }
     } else {
       // Desk full — offer swap
       this.pendingDeskSwap = { item: item.data };

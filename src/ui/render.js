@@ -1,7 +1,8 @@
 import { clamp, KPI, TOTAL_WEEKS, PLAYS, MAX_SEL, CAREER_DB, UPGRADE_TIERS } from '../data/constants.js';
+import { BRIEFS_DB } from '../data/briefs.js';
 import { SHOP_DB, PACK_DB } from '../data/shop.js';
-import { detectMeeting, getMeetingUpgradeHint, MEETING_TIER_COLORS, BASE_MEETINGS, SECRET_MEETINGS } from '../data/meetingTypes.js';
-import { TEAMMATES_DB } from '../data/content.js';
+import { detectMeeting, getMeetingUpgradeHint, getSecretMeetingHints, MEETING_TIER_COLORS, BASE_MEETINGS, SECRET_MEETINGS } from '../data/meetingTypes.js';
+import { TEAMMATES_DB, BRIEF_TEAMMATE_FRICTION } from '../data/content.js';
 import { DB } from '../data/cards.js';
 import { getEffectiveFx, simulateTurn } from '../engine/calcTurn.js';
 import { calculateFinalScore, predictCareerTier } from '../engine/scoring.js';
@@ -201,6 +202,10 @@ export function render(G) {
   }
   if (G.phase === 'upgrade_result') {
     winBody.innerHTML = `<div class="full-phase-wrap">${renderUpgradeResult(G)}</div>`;
+    return;
+  }
+  if (G.phase === 'brief_select') {
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderBriefSelect(G)}</div>`;
     return;
   }
   if (G.phase === 'shop') {
@@ -489,7 +494,7 @@ function renderMeetingList(G, activeMeetingId) {
 }
 
 function renderLeftPanel(G, preview, selCards = []) {
-  const {wb, tox, bo} = G;
+  const {wb, tox} = G;
 
   // Detect active meeting from current selection
   const activeMeeting = selCards.length
@@ -513,11 +518,7 @@ function renderLeftPanel(G, preview, selCards = []) {
           <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${tox}%;background:var(--color-toxicity);"></div></div>
           <span class="lp-sb-val" style="color:var(--color-toxicity);">${tox}%</span>
         </div>
-        <div class="lp-sb-row">
-          <span class="lp-sb-label">Burnout</span>
-          <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${bo}%;background:var(--color-burnout);"></div></div>
-          <span class="lp-sb-val" style="color:${bo > 0 ? 'var(--color-burnout)' : 'var(--color-text-muted)'};">${bo}%</span>
-        </div>
+        ${G.failedWeeks > 0 ? `<div class="lp-sb-row"><span class="lp-sb-label" style="color:var(--color-fail)">Failed</span><span class="lp-sb-val" style="color:var(--color-fail)">−${Math.min(G.failedWeeks,2)} play${Math.min(G.failedWeeks,2)>1?'s':''}/wk</span></div>` : ''}
       </div>
     </div>`;
 
@@ -538,7 +539,31 @@ function renderLeftPanel(G, preview, selCards = []) {
       </div>
     </div>` : '';
 
-  return `<div class="left-panel">${statBars}${tierBadge}${meetingList}${miniLog}</div>`;
+  // Brief preview inline — shows when cards selected and brief fires this play
+  let briefPreview = '';
+  if (preview && G.brief && (preview.briefActivations || []).length) {
+    const b = BRIEFS_DB[G.brief];
+    const lines = preview.briefActivations.map(a => {
+      const m = a.t.match(/^\s*\S+\s+\[[^\]]+\]\s+(.+)$/);
+      return m ? `<div class="lp-brief-line">${m[1]}</div>` : '';
+    }).join('');
+    briefPreview = `<div class="lp-brief-preview" style="--bc:${b?.color||'#cc99ff'}">
+      <div class="lp-brief-label">${b?.icon||'📋'} ${b?.name||'BRIEF'}</div>
+      ${lines}
+    </div>`;
+  }
+
+  // Secret meeting hint — when player has the desk item + selection is "close"
+  let secretHint = '';
+  if (selCards.length > 0 && !activeMeeting?.secret && (G.deskItems || []).length) {
+    const ctx = { lastMeetingType: G.lastMeetingType || null };
+    const hint = getSecretMeetingHints(selCards, G.deskItems, ctx);
+    if (hint) {
+      secretHint = `<div class="lp-secret-hint">? ${esc(hint.text)}</div>`;
+    }
+  }
+
+  return `<div class="left-panel">${statBars}${tierBadge}${meetingList}${briefPreview}${secretHint}${miniLog}</div>`;
 }
 
 function renderFormulaRow(preview, wscore, target, G) {
@@ -695,15 +720,29 @@ function renderActionBarNew(G, preview) {
 
   if (phase === 'result') {
     const passed = wscore >= target;
+    const _bankVal = n => { let v = 0; for (let i = 0; i < n; i++) v += 4 + i * 2; return v; };
     const bankBtn = G.plays > 0
-      ? `<button class="btn-skip-new" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} PLAYS (+${G.plays * 4} CC)</button>`
+      ? `<button class="btn-skip-new" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} PLAYS (+${_bankVal(G.plays)} CC · -${G.plays * 5}% TOX)</button>`
       : '';
     const nextBtn = passed && G.week >= TOTAL_WEEKS
       ? `<button class="btn-confirm ready" onclick="G.openShop()">🏆 CLAIM VICTORY</button>`
       : `<button class="btn-confirm ready" onclick="G.openShop()">${passed ? '✓ PASSED — SHOP' : '✗ FAILED — SHOP'}</button>`;
     const skipBtn = `<button class="btn-skip-new" onclick="G.skipShop()" title="Skip Shop: +3 CC">⏭ SKIP (+3 CC)</button>`;
-    const hintCls  = passed ? 'ok' : 'bad';
-    const hintText = passed ? `PASS — $${wscore.toLocaleString()} / $${target.toLocaleString()}` : `FAIL — need $${(target-wscore).toLocaleString()} more`;
+    const overPct = wscore / target;
+    let hintCls, hintText;
+    if (overPct >= 1.4) {
+      hintCls  = 'result-crush';
+      hintText = `★ CRUSHED IT — $${wscore.toLocaleString()} / $${target.toLocaleString()}`;
+    } else if (overPct >= 1.0) {
+      hintCls  = 'result-pass';
+      hintText = `✓ PASSED — $${wscore.toLocaleString()} / $${target.toLocaleString()}`;
+    } else if (overPct >= 0.85) {
+      hintCls  = 'result-near';
+      hintText = `~ NEAR MISS — $${(target-wscore).toLocaleString()} short`;
+    } else {
+      hintCls  = 'result-fail';
+      hintText = `✗ FAILED — $${wscore.toLocaleString()} / $${target.toLocaleString()}`;
+    }
     return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${hintText}</div>${bankBtn}${skipBtn}${nextBtn}</div>`;
   }
 
@@ -889,6 +928,18 @@ export function renderHeader(G) {
         const pwrCls = pwr >= 120 ? '#60ff80' : pwr >= 80 ? '#ffdd44' : pwr >= 50 ? '#ff9840' : '#ff5050';
         return `<div class="hr-row2" title="${tip}"><b>${getBuildName(G)}</b> · <span style="color:${t.color}">T${t.tier} ${esc(t.title)}</span> · <span style="color:${pwrCls}">PWR ${pwr}%</span></div>`;
       })()}
+      ${G.brief ? (() => {
+        const b = BRIEFS_DB[G.brief];
+        if (!b) return '';
+        const prog = G.briefProgress || 0;
+        const done = G.briefCompleted;
+        const pct = Math.min(100, Math.round(prog / b.sideTarget * 100));
+        return `<div class="brief-badge-full" style="--bc:${b.color}" title="${b.effectShort}">
+          <div class="brief-badge-top"><span>${b.icon}</span><span style="color:${b.color}">${b.name}</span></div>
+          <div class="brief-badge-side">${done ? '✓ OBJECTIVE COMPLETE' : `${prog} / ${b.sideTarget} — ${b.sideObjectiveDesc}`}</div>
+          ${!done ? `<div class="brief-prog-track"><div class="brief-prog-fill" style="width:${pct}%;background:${b.color}"></div></div>` : ''}
+        </div>`;
+      })() : ''}
     </div>
   </div>`;
 }
@@ -1196,7 +1247,8 @@ export function renderActions(G, preview) {
   if (phase === 'result') {
     const passed = wscore >= target;
     if (G.plays > 0) {
-      bankBtn = `<button class="btn btn-bank" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} UNUSED PLAY${G.plays > 1 ? 'S' : ''} (+${G.plays * 4} CC)</button>`;
+      { const _bv = n => { let v = 0; for (let i = 0; i < n; i++) v += 4 + i * 2; return v; };
+        bankBtn = `<button class="btn btn-bank" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} UNUSED PLAY${G.plays > 1 ? 'S' : ''} (+${_bv(G.plays)} CC · -${G.plays * 5}% TOX)</button>`; }
     }
     playBtn = passed && week >= TOTAL_WEEKS
       ? `<button class="btn btn-safe" onclick="G.openShop()">🏆 CLAIM VICTORY</button>`
@@ -1334,11 +1386,25 @@ export function renderTeammateChoice(G) {
   const tierLabels = {1:'NORMAL ENV', 2:'ELEVATED TOX', 3:'HIGH TOX'};
   const toxTier = G.tox >= 81 ? 3 : G.tox >= 31 ? 2 : 1;
 
+  const currentStreak = G.consecutiveSameTeammate || 0;
+  const currentLoyalId = G.loyaltyTeammateId;
+  const currentLoyalName = currentLoyalId && TEAMMATES_DB[currentLoyalId]
+    ? TEAMMATES_DB[currentLoyalId].name || TEAMMATES_DB[currentLoyalId].fullName
+    : null;
+  const streakLabel = currentStreak >= 7 ? 'Unbreakable Bond'
+    : currentStreak >= 5 ? 'Deep Partnership'
+    : currentStreak >= 3 ? 'Trusted Ally'
+    : `${currentStreak}-week streak`;
+
   const cardsHtml = (G.teammateOptions || []).map(id => {
     const tm = TEAMMATES_DB[id];
     const tierData = tm.tiers[toxTier - 1];
     const isCurrent = id === G.loyaltyTeammateId;
-    const streak = isCurrent ? (G.consecutiveSameTeammate || 0) : 0;
+    const streak = isCurrent ? currentStreak : 0;
+    // Warn about loyalty cost when switching away from current partner
+    const switchWarn = !isCurrent && currentStreak >= 2 && currentLoyalName
+      ? `<div class="tmc-switch-warn">⚠ Switching resets ${streakLabel} with ${currentLoyalName}</div>`
+      : '';
     const loyaltyTag = streak >= 7
       ? `<div class="tmc-loyalty bond">🤝 Unbreakable Bond (${streak} wks) — +0.6 Eff/play</div>`
       : streak >= 5
@@ -1363,7 +1429,16 @@ export function renderTeammateChoice(G) {
         : fmt1(Math.min(10, Math.floor(G.tox / 10) * 1.0));
       garyPreview = `<div class="tmc-gary-preview">≈ +${bonus} Eff @ ${G.tox}% TOX now</div>`;
     }
-    return `<div class="tmc-card${isCurrent && streak >= 2 ? ' returning' : ''}" onclick="G.chooseTeammate('${id}')">
+    // Brief alignment friction signal
+    const isOpposed = G.brief && BRIEF_TEAMMATE_FRICTION.has(`${G.brief}:${id}`);
+    const frictionTag = isOpposed
+      ? `<div class="tmc-friction">⚡ Out of sync with your Brief — effectiveness −20%</div>`
+      : '';
+    // Alex warning badge
+    const alexWarnTag = id === 'alex' && G.alexWarning
+      ? `<div class="tmc-alex-warn">⚠ LOYALTY UNDER PRESSURE — high TOX may have consequences</div>`
+      : '';
+    return `<div class="tmc-card${isCurrent && streak >= 2 ? ' returning' : ''}${isOpposed ? ' tmc-opposed' : ''}" onclick="G.chooseTeammate('${id}')">
       <div class="tmc-portrait" style="color:${tm.color}">${tm.portrait}</div>
       <div class="tmc-name" style="color:${tm.color}">${esc(tm.fullName)}</div>
       <div class="tmc-tier" style="color:${tierColors[toxTier]}">T${toxTier} — ${tierLabels[toxTier]}</div>
@@ -1375,6 +1450,9 @@ export function renderTeammateChoice(G) {
       </div>
       ${garyPreview}
       ${loyaltyTag}
+      ${switchWarn}
+      ${frictionTag}
+      ${alexWarnTag}
       <div class="tmc-quote">"${esc(tierData.triggerQuote)}"</div>
       <button class="tmc-btn">ASSIGN THIS COLLEAGUE</button>
     </div>`;
@@ -1450,6 +1528,40 @@ export function renderScoring(G) {
       <span class="sc-combo-total" id="sc-combo-total">0</span>
     </div>` : '';
 
+  // Brief activation strip — shown above desk items, uses brief color
+  const briefActs = (d.briefActivations || []);
+  const briefColor = G.brief ? (BRIEFS_DB[G.brief]?.color || '#cc99ff') : '#cc99ff';
+  const briefIcon  = G.brief ? (BRIEFS_DB[G.brief]?.icon  || '📋')      : '📋';
+  const briefStripHtml = briefActs.length ? `<div class="sc-brief-strip" style="--bc:${briefColor}">${
+    briefActs.map((a, i) => {
+      const m = a.t.match(/^\s*(\S+)\s+\[([^\]]+)\]\s+(.+)$/);
+      if (!m) return '';
+      const [, , , detail] = m;
+      return `<div class="sc-brief-entry" style="animation-delay:${i * 90}ms">
+        <span class="sc-brief-icon">${briefIcon}</span>
+        <span class="sc-brief-name">${BRIEFS_DB[G.brief]?.name || 'BRIEF'}</span>
+        <span class="sc-brief-detail">${detail}</span>
+      </div>`;
+    }).join('')
+  }</div>` : '';
+
+  // Desk item activation strip
+  const activations = (d.deskActivations || []);
+  const clsToColor = { ch:'#6ab4ff', mu:'#ff9966', sc:'#ffd700', bo:'#ff6060', ng:'#888888', ok:'#80ffa8', sy:'#cc99ff' };
+  const deskStripHtml = activations.length ? `<div class="sc-desk-strip">${
+    activations.map((a, i) => {
+      const m = a.t.match(/^\s*(\S+)\s+\[([^\]]+)\]\s+(.+)$/);
+      if (!m) return '';
+      const [, icon, name, detail] = m;
+      const color = clsToColor[a.cls] || '#aaa';
+      return `<div class="sc-desk-entry" style="--da-color:${color};animation-delay:${i * 110}ms">
+        <span class="sc-da-icon">${icon}</span>
+        <span class="sc-da-name">${name}</span>
+        <span class="sc-da-detail" style="color:${color}">${detail}</span>
+      </div>`;
+    }).join('')
+  }</div>` : '';
+
   const leds = ['#6ab4ff','#ff7070','#50ffaa','#ff80c8','#ffdd44','#ff8800','#7070ff','#80ffcc'];
   const ledHtml = leds.map(c => `<div class="sm-led" style="background:${c};color:${c}"></div>`).join('');
 
@@ -1460,6 +1572,8 @@ export function renderScoring(G) {
       <div id="score-machine">
         <div class="sm-led-strip">${ledHtml}</div>
         <div class="sc-cards-row">${cardBadges}</div>
+        ${briefStripHtml}
+        ${deskStripHtml}
         <div class="sm-displays">
           <div class="sm-panel">
             <div class="sm-lbl">OUTPUT</div>
@@ -1761,7 +1875,7 @@ export function renderPackReveal(G) {
     const negBadge = isNeg ? `<div class="ps-neg-badge">⚠ NEGATIVE</div>` : '';
     const archBadge = item.archetype ? `<div class="ps-arch" style="color:${archColors[item.archetype]||'#aaa'}">${item.archetype}</div>` : '';
     const flavorHtml = item.flavor ? `<div class="ps-flavor">"${esc(item.flavor)}"</div>` : '';
-    return `<div class="pack-slot pack-slot-spinning${isNeg ? ' pack-slot-neg' : ''}" id="pack-slot-${i}" style="--pack-color:${pack.color}">
+    return `<div class="pack-slot pack-slot-spinning${isNeg ? ' pack-slot-neg' : ''}" id="pack-slot-${i}" data-rarity="${item.rarity||''}" style="--pack-color:${pack.color}">
       <div class="ps-spin-face"><span class="ps-spin-icon">${pack.icon}</span></div>
       <div class="ps-content">
         ${negBadge}
@@ -1791,12 +1905,37 @@ export function renderPackReveal(G) {
   </div>`;
 }
 
+export function renderBriefSelect(G) {
+  const options = (G.briefOptions || []).map(id => BRIEFS_DB[id]).filter(Boolean);
+  const cards = options.map(b => `
+    <div class="brief-card" onclick="G.selectBrief('${b.id}')" style="--bc:${b.color}">
+      <div class="brief-card-icon">${b.icon}</div>
+      <div class="brief-card-name" style="color:${b.color}">${b.name}</div>
+      <div class="brief-card-tagline">${esc(b.tagline)}</div>
+      <div class="brief-card-sep"></div>
+      <div class="brief-card-effect">${esc(b.effectShort)}<br><span style="color:#ff9966;font-size:9px">⚠ ${esc(b.constraintShort)}</span></div>
+      <div class="brief-card-side">
+        <div class="brief-side-label">SIDE OBJECTIVE</div>
+        <div class="brief-side-obj">${esc(b.sideObjectiveDesc)}</div>
+        <div class="brief-side-rw">→ ${esc(b.sideRewardDesc)}</div>
+      </div>
+      <button class="brief-pick-btn w95-btn" style="color:${b.color};border-color:${b.color}">ACCEPT BRIEF</button>
+    </div>
+  `).join('');
+  return `<div class="brief-select-screen">
+    <div class="brief-select-title">📋 PROJECT BRIEF ASSIGNMENT</div>
+    <div class="brief-select-sub">Week 1 complete. Select your mandate for weeks 2–10. This defines your run.</div>
+    <div class="brief-select-cards">${cards}</div>
+  </div>`;
+}
+
 export function renderPackShop(G) {
   const { week, coins, wscore } = G;
-  const passed = wscore >= G.kpi();
+  const kpi = G.kpi();
+  const passed = wscore >= kpi;
+  const overPct = wscore / kpi;
   const wbColor  = G.wb  >= 70 ? '#70ff78' : G.wb  >= 40 ? '#ffdd44' : '#ff7070';
   const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
-  const boColor  = G.bo  >= 90 ? '#ff2020' : G.bo  >= 70 ? '#ff8040' : G.bo >= 50 ? '#ffdd44' : '#808080';
 
   // Packs grid — all 3 always available
   const packsHtml = (G.shopPackIds || []).map(id => PACK_DB[id]).filter(Boolean).map(pack => {
@@ -1835,12 +1974,13 @@ export function renderPackShop(G) {
   return `<div class="draft-screen">
     <div class="dr-header">
       <div class="dr-title">📊 WEEKLY REVIEW — WEEK ${week}</div>
-      <div class="dr-sub" style="color:${passed ? '#70ff78' : '#ff7070'};font-weight:bold">${passed ? `✓ PASSED — ${wscore} / ${G.kpi()}` : `✗ FAILED — ${wscore} / ${G.kpi()}`}</div>
+      <div class="dr-sub result-banner ${overPct >= 1.4 ? 'result-crush' : overPct >= 1.0 ? 'result-pass' : overPct >= 0.85 ? 'result-near' : 'result-fail'}">${overPct >= 1.4 ? `★ CRUSHED IT — ${wscore} / ${kpi}` : overPct >= 1.0 ? `✓ PASSED — ${wscore} / ${kpi}` : overPct >= 0.85 ? `~ NEAR MISS — ${wscore} / ${kpi}` : `✗ FAILED — ${wscore} / ${kpi}`}</div>
       <div class="sh2-stats">
         <span style="color:${wbColor}">❤ WB ${G.wb}%</span>
         <span style="color:${toxColor}">☣ TOX ${G.tox}%</span>
-        <span style="color:${boColor}">🔥 BO ${G.bo}%</span>
+        ${G.failedWeeks > 0 ? `<span style="color:#ff6060">📉 ${G.failedWeeks} fail${G.failedWeeks>1?'s':''} (−${Math.min(G.failedWeeks,2)} play/wk)</span>` : ''}
         <span style="color:#ffdd44">💰 ${coins} CC</span>
+        <span style="color:#aaaaaa">📈 $${G.totalEarnings.toLocaleString()} total</span>
       </div>
     </div>
     ${meltdownAdvisory}
