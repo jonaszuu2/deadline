@@ -142,7 +142,7 @@ export function openShop() {
     this.inbox.unshift({ ...email, id: Date.now(), unread: true, storedWeek: this.week });
   }
   if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
-  this.shopPackIds = Object.keys(PACK_DB); // all 3 always available
+  this.shopPackIds = shuffle(Object.keys(PACK_DB)).slice(0, 2); // 2 of 3 rolled each week
   this.shopPacksBought = 0;
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
@@ -265,20 +265,12 @@ export function _processEndOfWeekStats() {
       this.justBreakthrough = true;
       this.addLog('sy', `> 💥 BREAKTHROUGH! Revenue $${this.wscore.toLocaleString()} ≥ 2× Target — +0.5 permanent Eff → ${this.permMult}×`);
     }
-    // SCALE_ON_KPI passive: each KPI pass → +0.3 perm Mult
-    for (const p of this.passives) {
-      if (p.passiveType === 'SCALE_ON_KPI') {
-        this.permMult = fmt1((this.permMult || 0) + p.passiveVal);
-        this.addLog('sy', `> 📈 [${p.name}] KPI passed — +${p.passiveVal} perm Eff → ${this.permMult}×`);
-      }
-    }
     if (this.checkGameEndConditions(passed)) return false;
   }
-  for (const p of this.passives) {
-    if (p.passiveType === 'TOX_PER_WEEK') {
-      this.tox = clamp(this.tox - p.passiveVal, 0, 100);
-      this.addLog('tl', `> ${p.name}: -${p.passiveVal}% Toxicity`);
-    }
+  // Office Plant: -3% Tox at end of each week
+  if ((this.deskItems||[]).some(d => d.id === 'office_plant')) {
+    this.tox = clamp(this.tox - 3, 0, 100);
+    this.addLog('tl', `> 🌿 [Office Plant] -3% Tox → ${this.tox}%`);
   }
   if (this.tox <= 30) {
     const bonus = 4;
@@ -382,9 +374,6 @@ export function buyItem(itemId) {
     if (fx.tox) this.tox = clamp(this.tox + fx.tox, 0, 100);
     if (fx.bo)  this.bo  = clamp(this.bo  + fx.bo,  0, 100);
     this.addLog(fx.logCls, `> ${fx.logMsg}`);
-  } else if (item.type === 'PASSIVE') {
-    this.passives.push({itemId, name:item.name, passiveType:item.passiveType, passiveVal:item.passiveVal});
-    this.addLog('ok', `> Passive unlocked: ${item.name}`);
   } else if (item.type === 'ADD_CARD') {
     const newCard = {...item.card, uid:`${item.card.id}_${nextUid()}`};
     const at = Math.floor(Math.random() * (this.deck.length + 1));
@@ -475,12 +464,9 @@ export function _rollPackItems(packId) {
   if (packId === 'executive') {
     const ownedIds = new Set((this.deskItems||[]).map(d => d.id));
     const rareDeskPool = DESK_ITEMS_LIST.filter(d => ['RARE','LEGENDARY'].includes(d.rarity) && !ownedIds.has(d.id));
-    const ownedPassiveIds = new Set(this.passives.map(p => p.itemId));
-    const passiveIds = ['sh_chair','sh_plant','sh_keyboard','sh_cooler','sh_coach','sh_compound','sh_hostile','sh_perf_bonus','sh_crisis_mode','sh_grinder_perk','sh_strategist_perk','sh_survivor_perk'];
-    const passiveItems = passiveIds.filter(id => !ownedPassiveIds.has(id)).map(id => this._packifyShopItem(id)).filter(Boolean);
     const upgradeItem = { type:'UPGRADE_CARD', id:'upgrade_card', name:'Performance Upgrade', icon:'⬆️', rarity:'RARE', desc:'Permanently upgrade 1 card: +80 Output & +0.3 Eff added to base stats.', negative:false, data:{} };
-    const rareDesks = shuffle([...rareDeskPool]).slice(0,2).map(d => ({ type:'DESK_ITEM', id:d.id, name:d.name, icon:d.icon, rarity:d.rarity, desc:d.effect||d.desc||'', negative:false, data:d }));
-    const pool = shuffle([...rareDesks, ...passiveItems, upgradeItem]);
+    const rareDesks = shuffle([...rareDeskPool]).slice(0,3).map(d => ({ type:'DESK_ITEM', id:d.id, name:d.name, icon:d.icon, rarity:d.rarity, desc:d.effect||d.desc||'', flavor:d.flavor||'', negative:false, data:d }));
+    const pool = shuffle([...rareDesks, upgradeItem]);
     while (pool.length < 3) pool.push(upgradeItem);
     return pool.slice(0, 3);
   }
@@ -530,20 +516,14 @@ export function _applyPackItem(item) {
     if (fx.tox) this.tox = clamp(this.tox + fx.tox, 0, 100);
     if (fx.bo)  this.bo  = clamp(this.bo  + fx.bo,  0, 100);
     this.addLog(fx.logCls, `> ${fx.logMsg}`);
-  } else if (item.type === 'PASSIVE') {
-    if (!this.passives.some(p => p.itemId === item.id)) {
-      this.passives.push({ itemId:item.id, name:item.name, passiveType:item.data.passiveType, passiveVal:item.data.passiveVal });
-      this.addLog('ok', `> ✓ [${item.name}] passive installed.`);
-    } else {
-      this.coins += Math.floor(item.data.cost / 2);
-      this.addLog('ok', `> [${item.name}] already owned — refunded ${Math.floor(item.data.cost/2)} CC.`);
-    }
   } else if (item.type === 'DESK_ITEM') {
     if ((this.deskItems||[]).length < 5) {
       this.deskItems = [...(this.deskItems||[]), item.data];
       this.addLog('ok', `> 🗂️ [${item.name}] placed on desk.`);
     } else {
-      this.addLog('ng', `> ⚠ Desk full — [${item.name}] lost.`);
+      // Desk full — offer swap
+      this.pendingDeskSwap = { item: item.data };
+      this.addLog('i', `> 🗂️ Desk full — choose an item to replace with [${item.name}].`);
     }
   } else if (item.type === 'CARD') {
     const cardDef = DB[item.id];
@@ -621,6 +601,11 @@ export function _processDeskItemWeekEnd(passed) {
   if (desk('mouse_pad') && this.tox <= 20) {
     this.permMult = fmt1((this.permMult || 0) + 0.8);
     this.addLog('sy', `> 🖱️ [Mouse Pad] Clean week (Tox ${this.tox}%) — +0.8 perm Eff → ${this.permMult}×`);
+  }
+  // compound_interest: KPI pass → +0.3 perm Eff
+  if (desk('compound_interest') && passed) {
+    this.permMult = fmt1((this.permMult || 0) + 0.3);
+    this.addLog('sy', `> 📈 [Compound Interest] KPI passed — +0.3 perm Eff → ${this.permMult}×`);
   }
 }
 

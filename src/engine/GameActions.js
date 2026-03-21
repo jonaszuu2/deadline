@@ -311,8 +311,10 @@ export function claimDeskItem(itemId) {
   const found = this.deskItemOffer.find(d => d.id === itemId);
   if (!found) return;
   this.deskItemOffer = null;
-  if ((this.deskItems || []).length >= 4) {
-    this.addLog('ng', `> ⚠ Desk is full (4/4) — could not add ${found.name}.`);
+  if ((this.deskItems || []).length >= 5) {
+    // Desk full — offer swap
+    this.pendingDeskSwap = { item: found };
+    this.addLog('i', `> 🗂️ Desk full (5/5) — choose an item to swap out for [${found.icon} ${found.name}].`);
     this._commit(); return;
   }
   this.deskItems = [...(this.deskItems || []), found];
@@ -323,6 +325,22 @@ export function claimDeskItem(itemId) {
 export function skipDeskOffer() {
   this.deskItemOffer = null;
   this.addLog('i', '> [Desk Offer] Passed on the item.');
+  this._commit();
+}
+
+export function confirmDeskSwap(removeId) {
+  if (!this.pendingDeskSwap) return;
+  const { item } = this.pendingDeskSwap;
+  this.pendingDeskSwap = null;
+  const removedItem = (this.deskItems || []).find(d => d.id === removeId);
+  this.deskItems = [...(this.deskItems || []).filter(d => d.id !== removeId), item];
+  this.addLog('ok', `> 🗂️ Swapped: ${removedItem?.icon || ''} ${removedItem?.name || removeId} → ${item.icon} ${item.name}`);
+  this._commit();
+}
+
+export function skipDeskSwap() {
+  this.pendingDeskSwap = null;
+  this.addLog('i', '> [Desk] Kept current desk layout.');
   this._commit();
 }
 

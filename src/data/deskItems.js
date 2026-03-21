@@ -6,6 +6,11 @@
 
 export const DESK_ITEMS_DB = {
   // ── COMMON ──────────────────────────────────────────
+  office_plant: {
+    id:'office_plant', name:'Office Plant', icon:'🌿', rarity:'COMMON',
+    desc:'End of each week: −3% Toxicity.',
+    flavor:'"The only living thing that survived the Q3 restructure."',
+  },
   coffee_mug: {
     id:'coffee_mug', name:'Coffee Mug', icon:'☕', rarity:'COMMON',
     desc:'First play each week: +150 Output.',
@@ -27,6 +32,31 @@ export const DESK_ITEMS_DB = {
     flavor:"Covered in diagrams no one remembers drawing.",
   },
   // ── UNCOMMON ────────────────────────────────────────
+  ergonomic_chair: {
+    id:'ergonomic_chair', name:'Ergonomic Chair', icon:'🪑', rarity:'UNCOMMON',
+    desc:'All cards: WB damage reduced by 2 per card.',
+    flavor:'"Lumbar support. The only support HR provides."',
+  },
+  mechanical_keyboard: {
+    id:'mechanical_keyboard', name:'Mechanical Keyboard', icon:'⌨️', rarity:'UNCOMMON',
+    desc:'PRODUCTION cards: +50 Output each.',
+    flavor:'"Clicky. Loud. Passive-aggressive at volume."',
+  },
+  water_cooler: {
+    id:'water_cooler', name:'Water Cooler', icon:'💧', rarity:'UNCOMMON',
+    desc:'RECOVERY cards: healing and Tox reduction both ×1.25.',
+    flavor:'"The true meeting room. No agenda. No notes. No follow-ups."',
+  },
+  agile_coach: {
+    id:'agile_coach', name:'Agile Coach', icon:'📊', rarity:'UNCOMMON',
+    desc:'STRATEGY cards: +0.1 Eff each.',
+    flavor:'"Charges by the hour. Delivers by the quarter."',
+  },
+  performance_bonus: {
+    id:'performance_bonus', name:'Performance Bonus', icon:'💰', rarity:'UNCOMMON',
+    desc:'Each card played this turn: +75 Output.',
+    flavor:'"Discretionary. Subject to change. Probably already changed."',
+  },
   rubber_duck: {
     id:'rubber_duck', name:'Rubber Duck', icon:'🦆', rarity:'UNCOMMON',
     desc:"Solo play (1 card only): that play's Output ×2.",
@@ -72,6 +102,21 @@ export const DESK_ITEMS_DB = {
     flavor:'"Breathe in. Breathe out. Submit your deliverable."',
   },
   // ── RARE ────────────────────────────────────────────
+  crisis_mode: {
+    id:'crisis_mode', name:'Crisis Mode', icon:'🚨', rarity:'RARE',
+    desc:'CRUNCH cards: WB damage halved.',
+    flavor:'"The alarm is just background noise now."',
+  },
+  compound_interest: {
+    id:'compound_interest', name:'Compound Interest', icon:'📈', rarity:'RARE',
+    desc:'Each KPI pass: +0.3 permanent Eff (stacks every week).',
+    flavor:'"Your resilience compounds. So does your overtime."',
+  },
+  hostile_environment: {
+    id:'hostile_environment', name:'Hostile Environment', icon:'⚗️', rarity:'RARE',
+    desc:'Tox > 30%: +100 Output per 10% Tox above 30% each play.',
+    flavor:'"Channel the dysfunction. It\'s a feature now."',
+  },
   hourglass: {
     id:'hourglass', name:'Hourglass', icon:'⏳', rarity:'RARE',
     desc:'Last play of the week (1 play remaining): Revenue ×1.5.',

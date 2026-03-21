@@ -180,8 +180,7 @@ export function initCardTooltip() {
     const c = allCards.find(x => x.uid === uid);
     if (!c) { tip.classList.remove('visible'); return; }
 
-    const passives = G.passives || [];
-    const fx = getEffectiveFx(c, passives);
+    const fx = getEffectiveFx(c, []);
     const rawFx = c.fx;
 
     const archColor = ARCH_COLORS[c.archetype] || '#fff';

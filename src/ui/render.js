@@ -213,6 +213,11 @@ export function render(G) {
     winBody.innerHTML = `<div class="full-phase-wrap">${renderDeskItemOffer(G)}</div>`;
     return;
   }
+  // Desk swap — triggered when desk is full and a new item is claimed
+  if (G.pendingDeskSwap) {
+    winBody.innerHTML = `<div class="full-phase-wrap">${renderDeskSwap(G)}</div>`;
+    return;
+  }
 
   // ── PLAY / RESULT phase — 3-column layout ──
   const {week, wb, tox, bo, wscore, plays, discs, phase, hand, sel, log, playsMax} = G;
@@ -227,7 +232,7 @@ export function render(G) {
         ${renderFormulaRow(preview, wscore, target, G)}
         <div class="hand-label-new">HAND (${hand.length}) · ${sel.length ? `${sel.length} selected` : `select 1–${G.maxSel()}`}</div>
         <div class="cards-area-new">
-          ${hand.map(c => renderCard(c, sel, preview, G.passives, {target, wscore, crunchCount: G.weekCrunchCount, maxSel: G.maxSel()})).join('')}
+          ${hand.map(c => renderCard(c, sel, preview, [], {target, wscore, crunchCount: G.weekCrunchCount, maxSel: G.maxSel()})).join('')}
         </div>
         ${renderDeskRow(G)}
         ${renderActionBarNew(G, preview)}
@@ -769,17 +774,6 @@ function renderRightPanelNew(G) {
     </div>`;
   }
 
-  // Perks
-  const perksHtml = (G.passives || []).length
-    ? (G.passives || []).map(p => {
-        const icon = SHOP_DB[p.itemId]?.icon || '⚡';
-        return `<div class="rp-perk-new">
-          <span style="font-size:14px;flex-shrink:0">${icon}</span>
-          <div><div class="rp-perk-name-new">${esc(p.name)}</div><div class="rp-perk-desc-new">${p.passiveType} ×${p.passiveVal}</div></div>
-        </div>`;
-      }).join('')
-    : `<div class="empty-slot-new">No perks.<br>Buy in shop after each week.</div>`;
-
   // Build name + career forecast (compact)
   const pwr = getPowerRating(G);
   const s = calculateFinalScore(G);
@@ -796,10 +790,6 @@ function renderRightPanelNew(G) {
     <div>
       <div class="section-title">Teammate</div>
       ${tmHtml}
-    </div>
-    <div>
-      <div class="section-title">Perks</div>
-      ${perksHtml}
     </div>
     <div>
       <div class="section-title">Build</div>
@@ -1022,16 +1012,6 @@ export function renderForecastPanel(G) {
 }
 
 export function renderRightPanel(G) {
-  // Perks from shop passives
-  const perksHtml = (G.passives || []).length
-    ? (G.passives || []).map(p => {
-        const icon = SHOP_DB[p.itemId]?.icon || '⚡';
-        return `<div class="rp-perk">
-          <div class="rp-perk-icon">${icon}</div>
-          <div><div class="rp-perk-name">${esc(p.name)}</div><div class="rp-perk-desc">${p.passiveType} ×${p.passiveVal}</div></div>
-        </div>`;
-      }).join('')
-    : `<div class="rp-empty">No perks installed.</div>`;
 
   // Teammate
   let tmHtml = '<div class="rp-empty">No teammate assigned.</div>';
@@ -1062,9 +1042,9 @@ export function renderRightPanel(G) {
   // DESK — active desk items
   const deskItems = G.deskItems || [];
   const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
-  let deskHtml = `<div class="rp-section-hdr" style="margin-top:8px">DESK <span style="color:var(--dim);font-size:9px">(${deskItems.length}/4)</span></div>`;
+  let deskHtml = `<div class="rp-section-hdr" style="margin-top:8px">DESK <span style="color:var(--dim);font-size:9px">(${deskItems.length}/5)</span></div>`;
   if (!deskItems.length) {
-    deskHtml += `<div class="rp-empty" style="color:#888;font-size:10px;text-align:center;padding:10px 4px">No desk items yet.<br>Earn one by ending a week with WB ≥75%.</div>`;
+    deskHtml += `<div class="rp-empty" style="color:#888;font-size:10px;text-align:center;padding:10px 4px">No desk items yet.<br>Open packs in the shop.</div>`;
   } else {
     deskHtml += `<div class="rp-desk-grid">${deskItems.map(d => {
       const col = rarityColors[d.rarity] || '#aaa';
@@ -1082,8 +1062,7 @@ export function renderRightPanel(G) {
   }
 
   return `<div id="right-panel">
-    <div class="rp-section-hdr">PERKS</div>${perksHtml}
-    <div class="rp-section-hdr" style="margin-top:8px">TEAMMATE</div>${tmHtml}
+    <div class="rp-section-hdr">TEAMMATE</div>${tmHtml}
     ${deskHtml}
     ${renderForecastPanel(G)}
   </div>`;
@@ -1617,7 +1596,7 @@ export function renderDeskItemOffer(G) {
     const col = rarityColors[d.rarity] || '#aaa';
     return `<span class="desk-cur-item" title="${esc(d.desc)}">${d.icon} <span style="color:${col}">${esc(d.name)}</span></span>`;
   }).join('');
-  const deskStatus = `<div class="desk-offer-current">CURRENT DESK (${(G.deskItems||[]).length}/4): ${currentDesk || '<span style="color:var(--dim)">empty</span>'}</div>`;
+  const deskStatus = `<div class="desk-offer-current">CURRENT DESK (${(G.deskItems||[]).length}/5): ${currentDesk || '<span style="color:var(--dim)">empty</span>'}</div>`;
   return `<div class="draft-screen">
     <div class="dr-header">
       <div class="dr-title">🗂️ DESK ITEM — ${esc(source)}</div>
@@ -1627,6 +1606,38 @@ export function renderDeskItemOffer(G) {
     <div class="desk-offer-grid">${cardsHtml}</div>
     <div class="dr-skip-row">
       <button class="dr-skip-btn" onclick="skipDeskOffer()">✕ Skip — keep desk lean</button>
+    </div>
+  </div>`;
+}
+
+export function renderDeskSwap(G) {
+  const { item } = G.pendingDeskSwap;
+  const rarityColors = {COMMON:'#aaaaaa', UNCOMMON:'#50d8a0', RARE:'#7090ff', LEGENDARY:'#ffd700'};
+  const col = rarityColors[item.rarity] || '#aaa';
+  const deskItems = G.deskItems || [];
+  const currentHtml = deskItems.map(d => {
+    const dc = rarityColors[d.rarity] || '#aaa';
+    return `<div class="desk-offer-card" onclick="G.confirmDeskSwap('${d.id}')" style="cursor:pointer">
+      <div class="desk-offer-rarity" style="color:${dc}">${d.rarity}</div>
+      <div class="desk-offer-icon">${d.icon}</div>
+      <div class="desk-offer-name" style="color:${dc}">${esc(d.name)}</div>
+      <div class="desk-offer-desc">${esc(d.desc)}</div>
+      <div class="desk-offer-flavor">"${esc(d.flavor)}"</div>
+      <button class="desk-offer-btn" style="background:var(--color-fail);border-color:var(--color-fail)">✕ Remove this</button>
+    </div>`;
+  }).join('');
+  return `<div class="draft-screen">
+    <div class="dr-header">
+      <div class="dr-title">📋 DESK FULL — SWAP REQUIRED</div>
+      <div class="dr-sub">Your desk is full (5/5). Choose an item to remove and replace with the new one.</div>
+      <div class="desk-offer-current" style="margin-top:8px">
+        <span style="color:${col}">${item.icon} <strong>${esc(item.name)}</strong></span>
+        <span style="color:var(--dim);margin-left:8px">${esc(item.desc)}</span>
+      </div>
+    </div>
+    <div class="desk-offer-grid">${currentHtml}</div>
+    <div class="dr-skip-row">
+      <button class="dr-skip-btn" onclick="G.skipDeskSwap()">✕ Discard new item — keep current desk</button>
     </div>
   </div>`;
 }
@@ -1765,7 +1776,7 @@ export function renderPackReveal(G) {
 }
 
 export function renderPackShop(G) {
-  const { week, coins, wscore, passives } = G;
+  const { week, coins, wscore } = G;
   const passed = wscore >= G.kpi();
   const wbColor  = G.wb  >= 70 ? '#70ff78' : G.wb  >= 40 ? '#ffdd44' : '#ff7070';
   const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
@@ -1777,7 +1788,7 @@ export function renderPackShop(G) {
     const poolDesc = {
       standard:   'Consumables + Common Desk Items',
       talent_acq: 'Cards for deck + Overtime Briefcase',
-      executive:  'Rare Desk Items, passives, Upgrade Card',
+      executive:  'Rare Desk Items + Upgrade Card',
     }[pack.id] || '';
     return `<div class="pack-card${canAfford ? ' pack-buyable' : ' pack-broke'}" ${canAfford ? `onclick="G.buyPack('${pack.id}')"` : ''} style="--pack-color:${pack.color}">
       <div class="pk-icon">${pack.icon}</div>
@@ -1790,10 +1801,6 @@ export function renderPackShop(G) {
     </div>`;
   }).join('');
 
-  const shopPassives = passives.filter(p => !p.isComp);
-  const passiveList = shopPassives.length
-    ? `<div class="sh2-installed">Installed: ${shopPassives.map(p => `<span class="sp-tag">${SHOP_DB[p.itemId]?.icon || '•'} ${p.name}</span>`).join('')}</div>`
-    : '';
   const heldList = G.heldCards && G.heldCards.length
     ? `<div class="sh2-installed" style="color:#80ffa8">💼 Held: ${G.heldCards.map(c => `<span class="sp-tag">${c.name}</span>`).join('')}</div>`
     : '';
@@ -1829,7 +1836,7 @@ export function renderPackShop(G) {
       <button class="dr-skip-btn" ${canAffordShred ? '' : 'disabled'} onclick="G.startRemoval()">${shredLabel}</button>
       <button class="sh2-upgrade-btn" ${canAffordUpgrade ? '' : 'disabled'} onclick="G.buyItem('sh_upgrade')" title="+80 Output &amp; +0.3 Eff added permanently to 1 card">${upgradeLabel}</button>
     </div>
-    ${passiveList}${heldList}
+    ${heldList}
     <div class="sh2-footer">
       <button class="sh2-skip-btn" onclick="G.skipShop()" ${G.purchasedThisShop ? 'disabled' : ''}>⏭ SKIP (+3 CC)</button>
       <button class="sh2-next-btn" onclick="G.startNextWeek()">${nextLabel}</button>

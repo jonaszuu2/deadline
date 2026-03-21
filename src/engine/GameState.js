@@ -21,7 +21,7 @@ export class GameState {
   constructor() {
     this.week = 1; this.wb = 100; this.tox = 0; this.bo = 0;
     this.wscore = 0; this.playsMax = PLAYS; this.plays = PLAYS; this.discs = DISCS; this.coins = 0;
-    this.passives = []; this.exhausted = new Set(); this.shopItems = [];
+    this.exhausted = new Set(); this.shopItems = [];
     this.purchasedThisShop = false;
     this.openedPack = null;       // { packId, items:[{type,id,name,icon,rarity,desc,negative,data,archetype?,flavor?}] } | null
     this.nextWeekPlaysBonus = 0;  // applied at start of next week
@@ -75,8 +75,9 @@ export class GameState {
     this.pendingUpgrade = false;
 
     // Desk Items
-    this.deskItems = [];           // up to 4 active desk items
+    this.deskItems = [];           // up to 5 active desk items
     this.deskItemOffer = null;     // [{item, source}] offer pending player choice
+    this.pendingDeskSwap = null;   // {item} — new item waiting when desk is full
     this.resignationLetterUsed = false;
 
     // Power Progression

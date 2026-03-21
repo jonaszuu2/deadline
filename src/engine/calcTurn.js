@@ -4,30 +4,10 @@ import { wbEff } from './deck.js';
 import { detectMeeting } from '../data/meetingTypes.js';
 
 // ═══════════════════════════════════════════════════════
-//  PASSIVE SYSTEM
+//  CARD FX — now desk-item based, no separate passive system
 // ═══════════════════════════════════════════════════════
-export function getEffectiveFx(card, passives) {
-  if (!passives || !passives.length) return card.fx;
-  const fx = {...card.fx};
-  for (const p of passives) {
-    switch (p.passiveType) {
-      case 'WB_COST_FLAT':
-        if (fx.wb < 0) fx.wb = Math.min(0, fx.wb + p.passiveVal); break;
-      case 'PRODUCTION_CHIPS':
-        if (card.archetype === 'PRODUCTION') fx.chips = (fx.chips || 0) + p.passiveVal; break;
-      case 'STRATEGY_MULT':
-        if (card.archetype === 'STRATEGY') fx.mult = (fx.mult || 0) + p.passiveVal; break;
-      case 'RECOVERY_BOOST':
-        if (card.archetype === 'RECOVERY') {
-          if (fx.wb > 0) fx.wb = Math.round(fx.wb * p.passiveVal);
-          if (fx.tox < 0) fx.tox = Math.round(fx.tox * p.passiveVal);
-        } break;
-      case 'CRUNCH_WB_HALVE':
-        if (card.archetype === 'CRUNCH' && fx.wb < 0)
-          fx.wb = Math.round(fx.wb * p.passiveVal); break;
-    }
-  }
-  return fx;
+export function getEffectiveFx(card, _passives) {
+  return card.fx;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -83,7 +63,7 @@ export function getRiskLevel(wb, tox, bo) {
 // ═══════════════════════════════════════════════════════
 export function calcTurn(cards, ctx) {
   const {
-    passives = [], teammate = null,
+    teammate = null,
     permMult = 0,
     mode = 'preview',
     deskItems = [],
@@ -203,11 +183,20 @@ export function calcTurn(cards, ctx) {
   // Zone 1: 0-30% Safe | Zone 2: 31-60% Hostile | Zone 3: 61-80% Toxic | Zone 4: 81%+ Hazardous
   const toxTier = tox >= 81 ? 4 : tox >= 61 ? 3 : tox >= 31 ? 2 : 1;
 
+  // Hostile Environment: +100 Output per 10% Tox above 30% (pre-loop, flat bonus)
+  if (desk('hostile_environment') && tox > 30) {
+    const toxBonus = Math.floor((tox - 30) / 10) * 100;
+    if (toxBonus > 0) {
+      acc.chips += toxBonus;
+      lg('ch', `  ⚗️ [Hostile Environment] Tox ${Math.round(tox)}% → +${toxBonus} Output`);
+    }
+  }
+
   // ── Card loop ─────────────────────────────────────────
   for (const card of cards) {
     const snap = {wb, tox, bo, week: ctx.week, plays: ctx.plays};
     const rec  = {id: card.id, arch: card.archetype, uid: card.uid, snap};
-    const fx   = {...getEffectiveFx(card, passives)};
+    const fx   = {...card.fx};
 
 
     // Desk Item: calendar — PRODUCTION +[week × 2] Chips
@@ -251,6 +240,22 @@ export function calcTurn(cards, ctx) {
     if (desk('strategy_deck') && card.archetype === 'STRATEGY' && fx.mult) {
       fx.mult = fx.mult * 2;
     }
+
+    // ── Converted passive desk item effects ──────────────
+    // Ergonomic Chair: WB damage -2 per card
+    if (desk('ergonomic_chair') && fx.wb < 0) fx.wb = Math.min(0, fx.wb + 2);
+    // Mechanical Keyboard: PRODUCTION +50 Output
+    if (desk('mechanical_keyboard') && card.archetype === 'PRODUCTION') fx.chips = (fx.chips||0) + 50;
+    // Water Cooler: RECOVERY heals & cleanses ×1.25
+    if (desk('water_cooler') && card.archetype === 'RECOVERY') {
+      if (fx.wb > 0)  fx.wb  = Math.round(fx.wb  * 1.25);
+      if (fx.tox < 0) fx.tox = Math.round(fx.tox * 1.25);
+    }
+    // Agile Coach: STRATEGY +0.1 Eff
+    if (desk('agile_coach') && card.archetype === 'STRATEGY') fx.mult = (fx.mult||0) + 0.1;
+    // Crisis Mode: CRUNCH WB damage halved
+    if (desk('crisis_mode') && card.archetype === 'CRUNCH' && fx.wb < 0) fx.wb = Math.round(fx.wb * 0.5);
+
     // Tox Zone 2 (31-60%): CRUNCH gets +40% Output
     if (toxTier === 2 && card.archetype === 'CRUNCH' && fx.chips > 0) {
       fx.chips = Math.round(fx.chips * 1.4);
@@ -262,19 +267,16 @@ export function calcTurn(cards, ctx) {
     if (fx.chips) { acc.chips += fx.chips; lg('ch', `  [${card.name}] +${fx.chips} Output`, true); }
     if (fx.chips && card.archetype === 'PRODUCTION') prodChips += fx.chips;
     if (fx.mult)  { acc.mult  += fx.mult;  lg('mu', `  [${card.name}] +${fx.mult.toFixed(2)} Eff`, true); }
-    // Context per-card mult
 
     // Gary T1: +100 Output per card
     if (teammate === 'gary' && tmTier === 1) {
       acc.chips += 100;
       lg('ch', `  🗣️ [Gary T1 — Helpful] Pre-read the brief — +100 Output`, true);
     }
-    // CHIPS_PER_PLAY passive: +passiveVal Output per card played
-    for (const p of passives) {
-      if (p.passiveType === 'CHIPS_PER_PLAY') {
-        acc.chips += p.passiveVal;
-        lg('ch', `  ★ [${p.name}] +${p.passiveVal} Output`, true);
-      }
+    // Performance Bonus: +75 Output per card played
+    if (desk('performance_bonus')) {
+      acc.chips += 75;
+      lg('ch', `  💰 [Performance Bonus] +75 Output`, true);
     }
 
     // red_bull_stash: CRUNCH → +0.4 Eff stacking + +2 BO
@@ -584,7 +586,6 @@ export function simulateTurn(cards, G) {
   if (!cards.length) return null;
   return calcTurn(cards, {
     wb: G.wb, tox: G.tox, bo: G.bo, week: G.week || 1, plays: G.plays,
-    passives:                G.passives || [],
     teammate:                G.teammate,
     consecutiveSameTeammate: G.consecutiveSameTeammate || 0,
     firstCardThisWeek:       G.firstCardThisWeek !== undefined ? G.firstCardThisWeek : true,
