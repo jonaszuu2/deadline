@@ -299,10 +299,10 @@ export function _processEndOfWeekStats() {
     if (passed) this.addLog('sy', `> 📊 [KPI Dashboard] KPI passed — all PRODUCTION cards +15 chips`);
     else this.addLog('ng', `> 📊 [KPI Dashboard] KPI failed — all PRODUCTION cards −10 chips`);
   }
-  // ── Desk Item offer: WB ≥75% (always, pass or fail) ──
-  if (this.wb >= 75 && (this.deskItems || []).length < 4) {
-    this.deskItemOffer = this._buildDeskItemOffer(['COMMON', 'UNCOMMON']);
-    this.addLog('ok', `> 🌟 [Wellness Reward] WB ${this.wb}% ≥ 75% — choose a Desk Item!`);
+  // ── Wellness Reward: WB ≥75% → +5 CC ──
+  if (this.wb >= 75) {
+    this.coins += 5;
+    this.addLog('ok', `> 🌟 [Wellness Reward] WB ${this.wb}% ≥ 75% — +5 CC → ${this.coins} CC`);
   }
   return true;
 }
@@ -373,19 +373,6 @@ export function _buildCardDraftPool() {
 // ═══════════════════════════════════════════════════════
 
 export function buyItem(itemId) {
-  // Desk item shop slot
-  if (itemId === 'shop_desk_item') {
-    const cost = 5;
-    if (this.coins < cost) return;
-    const offer = this._buildDeskItemOffer(['COMMON', 'UNCOMMON']);
-    if (!offer || !offer.length) return;
-    this.coins -= cost;
-    this.purchasedThisShop = true;
-    this.deskItemOffer = offer;
-    this.shopItems = this.shopItems.filter(id => id !== 'shop_desk_item');
-    this.addLog('ok', `> 🗂️ Desk Item — choose from 3 options. (-5 CC → ${this.coins} CC)`);
-    this._commit(); return;
-  }
   const item = SHOP_DB[itemId]; if (!item || this.coins < item.cost) return;
   this.coins -= item.cost;
   this.purchasedThisShop = true;
