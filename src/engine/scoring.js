@@ -52,14 +52,13 @@ export function calculateFinalScore(G) {
   const multPts     = Math.floor(avgMult * 1000);
   const wellnessPts = (G.wellnessWeeks || 0) * 150;
   const wbPts       = G.wb * 10;
-  const boPts       = G.bo * (-25);
   const toxPts      = G.peakTox * (-5);
   const synPts      = G.totalTeammateWeeks * 50;
-  const baseTotal   = rawPts + multPts + wellnessPts + wbPts + boPts + toxPts + synPts;
+  const baseTotal   = rawPts + multPts + wellnessPts + wbPts + toxPts + synPts;
   const achievements = computeAchievements(G, baseTotal, fmt1(avgMult), chips);
   const achPts       = achievements.reduce((sum, a) => sum + (a.pts || 0), 0);
   const total        = baseTotal + achPts;
-  return {chips, avgMult:fmt1(avgMult), weeksPlayed:G.week, rawPts, multPts, wellnessPts, wbPts, boPts, toxPts, synPts, achPts, achievements, total};
+  return {chips, avgMult:fmt1(avgMult), weeksPlayed:G.week, rawPts, multPts, wellnessPts, wbPts, toxPts, synPts, achPts, achievements, total};
 }
 
 export function predictCareerTier(total) {

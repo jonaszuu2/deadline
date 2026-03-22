@@ -167,8 +167,8 @@ export function render(G) {
     atm.forEach(c => win.classList.remove(c));
     if      (G.tox >= 81)  win.classList.add('atm-meltdown');
     else if (G.tox >= 60)  win.classList.add('atm-toxic');
-    if (G.wb  <  30)       win.classList.add('atm-wb-crit');
-    else if (G.bo > 70)    win.classList.add('atm-burnout');
+    if (G.wb  <  0)        win.classList.add('atm-burnout');
+    else if (G.wb < 30)    win.classList.add('atm-wb-crit');
   }
 
   // Status bar
@@ -502,16 +502,22 @@ function renderLeftPanel(G, preview, selCards = []) {
     : null;
 
   // Stat bars
-  const wbDanger  = wb  < 25  ? ' wb-danger'  : '';
+  const wbDanger  = wb  < 0   ? ' wb-danger'  : wb < 25 ? ' wb-danger' : '';
   const toxDanger = tox > 80  ? ' tox-danger' : '';
+  const wbBarPct  = (wb + 100) / 2;  // -100→0%, 0→50%, 100→100%
+  const wbColor   = wb >= 60 ? 'var(--color-wellbeing)' : wb >= 0 ? '#ffdd44' : '#ff4444';
+  const wbLabel   = wb < 0 ? `<span style="color:#ff4444;font-size:9px">BURNING OUT</span>` : '';
   const statBars = `
     <div>
       <div class="section-title">Employee Status</div>
       <div class="lp-stat-bars">
         <div class="lp-sb-row${wbDanger}">
           <span class="lp-sb-label">Wellbeing</span>
-          <div class="lp-sb-track"><div class="lp-sb-fill" style="width:${wb}%;background:var(--color-wellbeing);"></div></div>
-          <span class="lp-sb-val" style="color:var(--color-wellbeing);">${wb}%</span>
+          <div class="lp-sb-track" style="${wb < 0 ? 'background:rgba(255,68,68,.15)' : ''}">
+            ${wb < 0 ? '<div class="lp-sb-zero" style="left:50%"></div>' : ''}
+            <div class="lp-sb-fill" style="width:${wbBarPct}%;background:${wbColor};"></div>
+          </div>
+          <span class="lp-sb-val" style="color:${wbColor};">${wb}${wbLabel}</span>
         </div>
         <div class="lp-sb-row${toxDanger}">
           <span class="lp-sb-label">Toxicity</span>
@@ -720,10 +726,6 @@ function renderActionBarNew(G, preview) {
 
   if (phase === 'result') {
     const passed = wscore >= target;
-    const _bankVal = n => { let v = 0; for (let i = 0; i < n; i++) v += 4 + i * 2; return v; };
-    const bankBtn = G.plays > 0
-      ? `<button class="btn-skip-new" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} PLAYS (+${_bankVal(G.plays)} CC · -${G.plays * 5}% TOX)</button>`
-      : '';
     const nextBtn = passed && G.week >= TOTAL_WEEKS
       ? `<button class="btn-confirm ready" onclick="G.openShop()">🏆 CLAIM VICTORY</button>`
       : `<button class="btn-confirm ready" onclick="G.openShop()">${passed ? '✓ PASSED — SHOP' : '✗ FAILED — SHOP'}</button>`;
@@ -743,7 +745,7 @@ function renderActionBarNew(G, preview) {
       hintCls  = 'result-fail';
       hintText = `✗ FAILED — $${wscore.toLocaleString()} / $${target.toLocaleString()}`;
     }
-    return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${hintText}</div>${bankBtn}${skipBtn}${nextBtn}</div>`;
+    return `<div class="action-bar-new">${deckTracker}<div class="action-hint ${hintCls}">${hintText}</div>${skipBtn}${nextBtn}</div>`;
   }
 
   // Build confirm button
@@ -944,23 +946,43 @@ export function renderHeader(G) {
   </div>`;
 }
 
-export function renderEmployeeDashboard(wb, tox, bo, preview) {
+export function renderEmployeeDashboard(wb, tox, preview) {
   const p   = preview;
   const wbD = p ? p.wbDelta  : 0;
   const toxD = p ? p.toxDelta : 0;
-  const boD  = p ? p.boDelta  : 0;
   const toxRisk = p ? Math.min(p.expectedToxDmg, wb + wbD) : 0;
+
+  // WB uses -100..100 range; normalize to 0-100% for bar display
+  const wbBarPct  = (wb + 100) / 2;
+  const wbColor   = wb >= 60 ? '#80ffa8' : wb >= 0 ? '#ffdd44' : '#ff4444';
+  const wbValStr  = wb < 0 ? `${wb} ⚠` : `${wb}%`;
+  const wbAfter   = clamp(wb + wbD, -100, 100);
+  const wbAfterPct = (wbAfter + 100) / 2;
+  const isWbGood  = wbD > 0;
+  const isWbBad   = wbD < 0;
+  const wbDSign   = wbD > 0 ? '+' : '';
+  const wbDColor  = isWbGood ? '#80ffa8' : isWbBad ? '#ff8080' : '';
+  const wbDHtml   = wbD !== 0 && wbDColor ? `<span class="ed-delta" style="color:${wbDColor}">${wbDSign}${wbD}</span>` : '';
+
+  // WB forecast bar overlay
+  let wbFc = '';
+  if (wbD < 0) { const s = wbAfterPct; const w = wbBarPct - wbAfterPct; if (w > 0) wbFc += `<div class="ed-fc loss" style="left:${s}%;width:${w}%"></div>`; }
+  if (wbD > 0) { const s = wbBarPct; const w = wbAfterPct - wbBarPct; if (w > 0) wbFc += `<div class="ed-fc heal" style="left:${s}%;width:${w}%"></div>`; }
+  if (toxRisk > 0) {
+    const base = wbBarPct;
+    const rW = Math.min(toxRisk / 2, base);
+    wbFc += `<div class="ed-fc risk" style="left:${clamp(base - rW, 0, 100)}%;width:${rW}%"></div>`;
+  }
 
   function edStat(icon, label, val, fillCls, delta, color, extraCls = '', fcExtra = '') {
     const dSign  = delta > 0 ? '+' : '';
-    const isGood = (fillCls === 'wb' && delta > 0) || (fillCls === 'tox' && delta < 0);
-    const isBad  = (fillCls === 'wb' && delta < 0) || (fillCls === 'tox' && delta > 0) || (fillCls === 'bo' && delta > 0);
+    const isGood = (fillCls === 'tox' && delta < 0);
+    const isBad  = (fillCls === 'tox' && delta > 0);
     const dColor = isGood ? '#80ffa8' : isBad ? '#ff8080' : '';
     const dHtml  = delta !== 0 && dColor ? `<span class="ed-delta" style="color:${dColor}">${dSign}${delta}%</span>` : '';
     let fc = '';
     if (delta < 0) { const s = clamp(val + delta, 0, 100); const w = Math.min(Math.abs(delta), 100 - s); if (w > 0) fc += `<div class="ed-fc loss" style="left:${s}%;width:${w}%"></div>`; }
-    if (delta > 0 && (fillCls === 'tox' || fillCls === 'bo')) { const w = Math.min(delta, 100 - val); if (w > 0) fc += `<div class="ed-fc tox-g" style="left:${val}%;width:${w}%"></div>`; }
-    if (delta > 0 && fillCls === 'wb') { const w = Math.min(delta, 100 - val); if (w > 0) fc += `<div class="ed-fc heal" style="left:${val}%;width:${w}%"></div>`; }
+    if (delta > 0) { const w = Math.min(delta, 100 - val); if (w > 0) fc += `<div class="ed-fc tox-g" style="left:${val}%;width:${w}%"></div>`; }
     fc += fcExtra;
     return `<div class="ed-stat${extraCls ? ` ${extraCls}` : ''}">
       <div class="ed-icon">${icon}</div>
@@ -974,22 +996,27 @@ export function renderEmployeeDashboard(wb, tox, bo, preview) {
     </div>`;
   }
 
-  const wbRiskFc = toxRisk > 0 ? (() => {
-    const base = clamp(wb + wbD, 0, 100);
-    const rW = Math.min(toxRisk, base);
-    return `<div class="ed-fc risk" style="left:${clamp(base - rW, 0, 100)}%;width:${rW}%"></div>`;
-  })() : '';
-
   const tierInfo = tox >= 81 ? {cls:'tier-meltdown', lbl:'☣ HAZARDOUS',      tip:'Eff ×1.6 · −2 WB/card · −1 Discard next week'}
                  : tox >= 61 ? {cls:'tier-toxic',    lbl:'⚡ TOXIC CULTURE',  tip:'Eff ×1.3 · −1 WB/card played'}
                  : tox >= 31 ? {cls:'tier-passive',  lbl:'😶 HOSTILE OFFICE', tip:'CRUNCH cards +40% Output'}
                  :              {cls:'tier-pro',      lbl:'✅ SAFE',           tip:'End of week: +4 WB if Tox ≤30%'};
   return `<div id="employee-dashboard">
     <div class="ed-title">EMPLOYEE DASHBOARD</div>
-    ${edStat('❤️', 'Wellbeing', wb,  'wb',  wbD,  '#ff80c8', wb  < 25 ? 'danger' : '', wbRiskFc)}
+    <div class="ed-stat${wb < 0 ? ' danger' : wb < 25 ? ' danger' : ''}">
+      <div class="ed-icon">❤️</div>
+      <div class="ed-info">
+        <div class="ed-row">
+          <span class="ed-label">Wellbeing${wb < 0 ? ' <span style="color:#ff4444;font-size:9px">BURNING OUT</span>' : ''}</span>
+          <span class="ed-value" style="color:${wbColor}">${wbValStr}${wbDHtml}</span>
+        </div>
+        <div class="ed-track" data-stat="wb" data-val="${wb}" style="${wb < 0 ? 'background:rgba(255,68,68,.12)' : ''}">
+          ${wb < 0 ? '<div class="ed-zero" style="left:50%"></div>' : ''}
+          <div class="ed-fill wb" style="width:${wbBarPct}%;background:${wbColor}"></div>${wbFc}
+        </div>
+      </div>
+    </div>
     ${edStat('☣️', 'Toxicity',  tox, 'tox', toxD, '#50ffaa', tox > 50 ? 'danger' : '',
       '<div class="tox-zone-mark" style="left:31%"></div><div class="tox-zone-mark" style="left:61%"></div><div class="tox-zone-mark" style="left:81%"></div>')}
-    ${edStat('🔥', 'Burnout',   bo,  'bo',  boD,  '#ff6030', bo  > 75 ? 'danger' : '')}
     <div class="tox-tier-badge ${tierInfo.cls}" title="${tierInfo.tip}">${tierInfo.lbl}</div>
   </div>`;
 }
@@ -1246,10 +1273,6 @@ export function renderActions(G, preview) {
   let bankBtn = '';
   if (phase === 'result') {
     const passed = wscore >= target;
-    if (G.plays > 0) {
-      { const _bv = n => { let v = 0; for (let i = 0; i < n; i++) v += 4 + i * 2; return v; };
-        bankBtn = `<button class="btn btn-bank" onclick="G.bankRemainingPlays()">💰 BANK ${G.plays} UNUSED PLAY${G.plays > 1 ? 'S' : ''} (+${_bv(G.plays)} CC · -${G.plays * 5}% TOX)</button>`; }
-    }
     playBtn = passed && week >= TOTAL_WEEKS
       ? `<button class="btn btn-safe" onclick="G.openShop()">🏆 CLAIM VICTORY</button>`
       : `<div style="display:flex;gap:8px">
@@ -1291,7 +1314,7 @@ export function renderLog(log, preview) {
     const col  = riskColors[preview.riskLevel];
     const wbStr = preview.wbDelta  !== 0 ? ` | WB ${preview.wbDelta  > 0 ? '+' : ''}${preview.wbDelta}%`  : '';
     const tStr  = preview.toxDelta !== 0 ? ` | TOX ${preview.toxDelta > 0 ? '+' : ''}${preview.toxDelta}%` : '';
-    const bStr  = preview.boDelta  !== 0 ? ` | BO +${preview.boDelta}%` : '';
+    const bStr  = '';
     const rStr  = preview.toxChecks > 0  ? ` | ☣ up to -${preview.maxToxDmg} HP risk` : '';
     const sumLine = `<div class="ll preview" style="color:${col}">↓ [${preview.riskLevel}] +$${preview.score.toLocaleString()} Revenue${wbStr}${tStr}${bStr}${rStr}</div>`;
     const breakdownHtml = preview.log.reduce((acc, e, i, arr) => {
@@ -1310,7 +1333,7 @@ export function renderLog(log, preview) {
     const col  = riskColors[preview.riskLevel];
     const wbStr = preview.wbDelta  !== 0 ? ` | WB ${preview.wbDelta  > 0 ? '+' : ''}${preview.wbDelta}%`  : '';
     const tStr  = preview.toxDelta !== 0 ? ` | TOX ${preview.toxDelta > 0 ? '+' : ''}${preview.toxDelta}%` : '';
-    const bStr  = preview.boDelta  !== 0 ? ` | BO +${preview.boDelta}%` : '';
+    const bStr  = '';
     const rStr  = preview.toxChecks > 0  ? ` | ☣ up to -${preview.maxToxDmg} HP risk` : '';
     previewLine = `<div class="ll preview" style="color:${col}">↓ [${preview.riskLevel}] +$${preview.score.toLocaleString()} Revenue${wbStr}${tStr}${bStr}${rStr}</div>`;
   }
@@ -1518,7 +1541,6 @@ export function renderScoring(G) {
     d.wbDelta > 0 ? `<span class="sc-delta sc-d-good">❤ +${d.wbDelta} WB</span>` : '',
     d.toxDelta > 0 ? `<span class="sc-delta sc-d-bad">☣ +${d.toxDelta}% TOX</span>` : '',
     d.toxDelta < 0 ? `<span class="sc-delta sc-d-good">☣ ${d.toxDelta}% TOX</span>` : '',
-    d.boDelta  > 0 ? `<span class="sc-delta sc-d-bad">🔥 +${d.boDelta}% BO</span>` : '',
   ].filter(Boolean).join('');
 
   const comboRow = d.comboMult > 1 ? `
@@ -1781,12 +1803,44 @@ export function renderInbox(G) {
     : emails.map((e, i) => {
         const active = i === (G.inboxSelected || 0);
         const unread = e.unread;
-        return `<div class="ibx-row${active ? ' ibx-row-active' : ''}${unread ? ' ibx-row-unread' : ''}" onclick="G.selectInboxEmail(${i})">
-          <div class="ibx-row-from">${esc(e.mgr.name)}</div>
+        const isPending  = e.choices && e.choiceKey === null;
+        const isResolved = e.choices && e.choiceKey !== null;
+        const choiceBadge = isPending
+          ? `<span class="ibx-badge ibx-badge-pending">RESPOND</span>`
+          : isResolved
+            ? `<span class="ibx-badge ibx-badge-done">✓ ${esc(e.choiceKey.toUpperCase())}</span>`
+            : '';
+        return `<div class="ibx-row${active ? ' ibx-row-active' : ''}${unread ? ' ibx-row-unread' : ''}${isPending ? ' ibx-row-choice' : ''}" onclick="G.selectInboxEmail(${i})">
+          <div class="ibx-row-top">
+            <div class="ibx-row-from">${esc(e.mgr.name)}</div>
+            ${choiceBadge}
+          </div>
           <div class="ibx-row-subj">${esc(e.subject)}</div>
           <div class="ibx-row-meta">Week ${e.storedWeek} · ${esc(e.dayName)}</div>
         </div>`;
       }).join('');
+
+  let choiceBlock = '';
+  if (sel?.choices) {
+    if (sel.choiceKey === null) {
+      // Pending — show buttons
+      const btns = sel.choices.map(c =>
+        `<div class="ibx-choice-option" onclick="G.resolveInboxChoice('${sel.id}','${c.key}')">
+          <div class="ibx-choice-label">${esc(c.label)}</div>
+          <div class="ibx-choice-hint">${esc(c.hint)}</div>
+        </div>`
+      ).join('');
+      choiceBlock = `<div class="ibx-choice-bar"><div class="ibx-choice-prompt">— Reply required —</div>${btns}</div>`;
+    } else {
+      // Resolved — show outcome
+      const chosen = sel.choices.find(c => c.key === sel.choiceKey);
+      choiceBlock = `<div class="ibx-choice-result">
+        <span class="ibx-choice-result-lbl">Your response:</span>
+        <span class="ibx-choice-result-val">${esc(chosen?.label || sel.choiceKey.toUpperCase())}</span>
+        <span class="ibx-choice-result-hint">${esc(chosen?.hint || '')}</span>
+      </div>`;
+    }
+  }
 
   const previewHtml = sel ? `
     <div class="ibx-msg-header">
@@ -1799,6 +1853,7 @@ export function renderInbox(G) {
       <p>${esc(sel.body)}</p>
       ${sel.ps ? `<p class="ibx-msg-ps">${esc(sel.ps)}</p>` : ''}
     </div>
+    ${choiceBlock}
     <div class="ibx-msg-sig">
       <div class="ibx-sig-name">${esc(sel.mgr.name)}</div>
       <div class="ibx-sig-title">${esc(sel.mgr.title)}</div>
@@ -1934,38 +1989,49 @@ export function renderPackShop(G) {
   const kpi = G.kpi();
   const passed = wscore >= kpi;
   const overPct = wscore / kpi;
-  const wbColor  = G.wb  >= 70 ? '#70ff78' : G.wb  >= 40 ? '#ffdd44' : '#ff7070';
+  const wbColor  = G.wb  >= 60 ? '#70ff78' : G.wb  >= 0  ? '#ffdd44' : '#ff4444';
   const toxColor = G.tox >= 70 ? '#ff7070' : G.tox >= 40 ? '#ffdd44' : '#70ff78';
 
-  // Packs grid — all 3 always available
-  const packsHtml = (G.shopPackIds || []).map(id => PACK_DB[id]).filter(Boolean).map(pack => {
-    const canAfford = coins >= pack.cost;
-    const poolDesc = {
-      standard:   'Consumables + Common Desk Items',
-      talent_acq: 'Cards for deck + Overtime Briefcase',
-      executive:  'Rare Desk Items + Upgrade Card',
-    }[pack.id] || '';
-    return `<div class="pack-card${canAfford ? ' pack-buyable' : ' pack-broke'}" ${canAfford ? `onclick="G.buyPack('${pack.id}')"` : ''} style="--pack-color:${pack.color}">
+  const poolDesc = {
+    standard:   'Consumables + Common Desk Items',
+    talent_acq: 'Cards for deck + Overtime Briefcase',
+    executive:  'Rare Desk Items + Upgrade',
+    shred:      'Remove 1 card permanently',
+    upgrade:    'Improve 1 card permanently',
+  };
+
+  // Rolled packs
+  const rolledPacksHtml = (G.shopPackIds || []).map(id => PACK_DB[id]).filter(Boolean).map(pack => {
+    const isAction = pack.id === 'shred' || pack.id === 'upgrade';
+    const effectiveCost = (pack.id === 'shred' && !G.freeRemovalUsed) ? 0 : pack.cost;
+    const canAfford = coins >= effectiveCost;
+    const costLabel = effectiveCost === 0 ? 'FREE' : `${effectiveCost} CC`;
+    return `<div class="pack-card${canAfford ? ' pack-buyable' : ' pack-broke'}${isAction ? ' pack-action' : ''}" ${canAfford ? `onclick="G.buyPack('${pack.id}')"` : ''} style="--pack-color:${pack.color}">
       <div class="pk-icon">${pack.icon}</div>
       <div class="pk-name">${esc(pack.name)}</div>
       <div class="pk-tagline">${esc(pack.tagline)}</div>
-      <div class="pk-pool">${poolDesc}</div>
+      <div class="pk-pool">${poolDesc[pack.id] || ''}</div>
       <button class="pk-buy-btn${canAfford ? '' : ' pk-cant'}" ${canAfford ? '' : 'disabled'} onclick="event.stopPropagation();G.buyPack('${pack.id}')">
-        ${canAfford ? `OPEN — ${pack.cost} CC` : `${pack.cost} CC — CAN'T AFFORD`}
+        ${canAfford ? (isAction ? `USE — ${costLabel}` : `OPEN — ${costLabel}`) : `${effectiveCost} CC — CAN'T AFFORD`}
       </button>
     </div>`;
   }).join('');
+
+  // Free shred bonus — shown only before first removal is used
+  const freeShredBonus = !G.freeRemovalUsed ? `
+    <div class="pack-card pack-buyable pack-action pack-bonus-free" onclick="G.buyPack('shred')" style="--pack-color:#ff6060">
+      <div class="pk-bonus-badge">FIRST USE</div>
+      <div class="pk-icon">🗑️</div>
+      <div class="pk-name">Performance Review</div>
+      <div class="pk-tagline">"Some cards don't make it to Q2."</div>
+      <div class="pk-pool">Remove 1 card permanently</div>
+      <button class="pk-buy-btn" onclick="event.stopPropagation();G.buyPack('shred')">USE — FREE</button>
+    </div>` : '';
 
   const heldList = G.heldCards && G.heldCards.length
     ? `<div class="sh2-installed" style="color:#80ffa8">💼 Held: ${G.heldCards.map(c => `<span class="sp-tag">${c.name}</span>`).join('')}</div>`
     : '';
 
-  const shredCost = G.freeRemovalUsed ? 3 : 0;
-  const canAffordShred = shredCost === 0 || coins >= shredCost;
-  const shredLabel = shredCost === 0 ? '🗑️ SHRED A CARD — FREE (1st use)' : `🗑️ SHRED A CARD — ${shredCost} CC`;
-  const upgradeCost = SHOP_DB.sh_upgrade.cost;
-  const canAffordUpgrade = coins >= upgradeCost;
-  const upgradeLabel = `⬆️ UPGRADE A CARD — ${upgradeCost} CC`;
   const nextLabel = week >= TOTAL_WEEKS ? '✓ FINAL RESULTS' : `▶ START WEEK ${week + 1}`;
   const meltdownAdvisory = G.tox >= 91
     ? `<div class="meltdown-advisory" style="margin:6px 0 10px">☣ MELTDOWN ZONE — Efficiency ×2 all plays · 20% auto-exhaust risk per card</div>`
@@ -1976,7 +2042,7 @@ export function renderPackShop(G) {
       <div class="dr-title">📊 WEEKLY REVIEW — WEEK ${week}</div>
       <div class="dr-sub result-banner ${overPct >= 1.4 ? 'result-crush' : overPct >= 1.0 ? 'result-pass' : overPct >= 0.85 ? 'result-near' : 'result-fail'}">${overPct >= 1.4 ? `★ CRUSHED IT — ${wscore} / ${kpi}` : overPct >= 1.0 ? `✓ PASSED — ${wscore} / ${kpi}` : overPct >= 0.85 ? `~ NEAR MISS — ${wscore} / ${kpi}` : `✗ FAILED — ${wscore} / ${kpi}`}</div>
       <div class="sh2-stats">
-        <span style="color:${wbColor}">❤ WB ${G.wb}%</span>
+        <span style="color:${wbColor}">❤ WB ${G.wb < 0 ? `${G.wb} ⚠` : `${G.wb}%`}</span>
         <span style="color:${toxColor}">☣ TOX ${G.tox}%</span>
         ${G.failedWeeks > 0 ? `<span style="color:#ff6060">📉 ${G.failedWeeks} fail${G.failedWeeks>1?'s':''} (−${Math.min(G.failedWeeks,2)} play/wk)</span>` : ''}
         <span style="color:#ffdd44">💰 ${coins} CC</span>
@@ -1986,11 +2052,7 @@ export function renderPackShop(G) {
     ${meltdownAdvisory}
     <div class="pack-shop-section">
       <div class="section-title" style="margin-bottom:8px">AVAILABLE PACKS</div>
-      <div class="pack-grid">${packsHtml}</div>
-    </div>
-    <div class="sh2-actions">
-      <button class="dr-skip-btn" ${canAffordShred ? '' : 'disabled'} onclick="G.startRemoval()">${shredLabel}</button>
-      <button class="sh2-upgrade-btn" ${canAffordUpgrade ? '' : 'disabled'} onclick="G.buyItem('sh_upgrade')" title="+80 Output &amp; +0.3 Eff added permanently to 1 card">${upgradeLabel}</button>
+      <div class="pack-grid">${freeShredBonus}${rolledPacksHtml}</div>
     </div>
     ${heldList}
     <div class="sh2-footer">

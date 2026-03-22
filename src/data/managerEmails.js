@@ -27,7 +27,7 @@ const _fill = (str, G) => typeof str !== 'string' ? str : str
   .replace(/\{target\}/g,   (G.kpi ? G.kpi() : 0).toLocaleString())
   .replace(/\{tox\}/g,      G.tox)
   .replace(/\{wb\}/g,       G.wb)
-  .replace(/\{bo\}/g,       G.bo)
+  .replace(/\{bo\}/g,       Math.max(0, -G.wb)) // legacy: {bo} shows WB deficit
   .replace(/\{year\}/g,     G.promotionYear || 1)
   .replace(/\{teammate\}/g, G.teammate ? G.teammate.charAt(0).toUpperCase() + G.teammate.slice(1) : 'the team');
 
@@ -401,7 +401,7 @@ const SCENARIOS = [
 
   {
     id: 'burnout_1',
-    match: (p, l, G) => G.bo > 75 && p >= 100,
+    match: (p, l, G) => G.wb < -25 && p >= 100,
     mgr: MGR.hr,
     subj: 'Burnout Threshold Alert — Action Required',
     body: "Our monitoring system has flagged your burnout metrics this period. You are hitting targets, and I want to add that hitting targets while your burnout index exceeds 75% is a liability for the company. Please reduce your burnout. We've attached a PDF.",
@@ -409,7 +409,7 @@ const SCENARIOS = [
   },
   {
     id: 'burnout_2',
-    match: (p, l, G) => G.bo > 60,
+    match: (p, l, G) => G.wb < 0,
     mgr: MGR.system,
     subj: 'Automated Wellness Notification — Week {week}',
     body: "[Burnout Level: ELEVATED. Recommended Actions: (1) Speak to a trusted colleague. (2) Review the Mindfulness at Work module on the LMS. (3) Take a 10-minute walk. (4) Submit the Burnout Self-Assessment form within 72 hours. (5) Continue performing. Thank you.]",
@@ -1128,3 +1128,58 @@ export function shouldShowEmail(G, d) {
   const total  = (d.prevWscore ?? 0) + (d.score ?? 0);
   return total >= target || (G.plays ?? 0) === 0;
 }
+
+// ═══════════════════════════════════════════════════════
+//  CHOICE EMAILS — require player decision, not just reading
+//  Each has: id, conditions(G), mgr, subject, body, ps, choices:[{key,label,hint}]
+// ═══════════════════════════════════════════════════════
+export const CHOICE_EMAILS = [
+  {
+    id: 'overtime_project',
+    conditions: (G) => G.week >= 3 && G.week <= 7,
+    mgr: MGR.brad,
+    subject: 'RE: Optional project — this week',
+    body: "There's an additional deliverable that came in from above. Technically optional. Your name came up in the resourcing conversation. It would mean working late Friday, but it's a visibility opportunity and the deck looks good from your end right now. Your call — no pressure either way.",
+    ps: "P.S. There's no wrong answer here. One answer is just less career-limiting than the other.",
+    choices: [
+      { key: 'accept', label: '[ TAKE THE PROJECT ]', hint: '+3 plays next week  /  −10 WB at week start' },
+      { key: 'decline', label: '[ PASS ]',             hint: 'Nothing happens. Allegedly.' },
+    ],
+  },
+  {
+    id: 'wellness_survey',
+    conditions: (G) => G.tox >= 60 && G.week >= 2 && G.week <= 9,
+    mgr: MGR.hr,
+    subject: 'MANDATORY: Employee Wellness Survey — Week {week}',
+    body: "Please complete the attached survey by EOD. Participation is mandatory. Responses are confidential. Note: responses may inform resource allocation decisions for Q4. Primary question: are you currently experiencing signs of unsustainable workload pressure?",
+    ps: "This survey is 100% anonymous. Your manager will not see your responses. Your manager has seen last year's responses.",
+    choices: [
+      { key: 'honest', label: '[ YES, WORKLOAD IS UNSUSTAINABLE ]', hint: '−10 Tox  /  +1 Discard next week — HR flags your file' },
+      { key: 'deny',   label: '[ EVERYTHING IS FINE ]',             hint: '+5 Tox. Nobody believes you. Including you.' },
+    ],
+  },
+  {
+    id: 'team_offsite',
+    conditions: (G) => G.week >= 4 && G.week <= 8 && G.wb < 70,
+    mgr: MGR.brad,
+    subject: 'RE: Friday team offsite — attendance',
+    body: "Quick reminder about the offsite this Friday. It's listed as optional in the calendar. Please note that attendance is being recorded as part of the Q3 engagement report. Catering is provided. There will be 'activities'. One of them involves a trust fall. I did not choose the activities.",
+    ps: null,
+    choices: [
+      { key: 'attend', label: '[ ATTEND ]', hint: '+20 WB  /  −15 Tox  /  −1 play next week' },
+      { key: 'skip',   label: '[ SKIP ]',   hint: '+6 Tox. Engagement score noted.' },
+    ],
+  },
+  {
+    id: 'side_deal',
+    conditions: (G) => G.week >= 3 && G.week <= 7 && G.wscore >= (G.kpi ? G.kpi() * 1.3 : Infinity),
+    mgr: MGR.coo,
+    subject: 'RE: Shared resource request — your bandwidth',
+    body: "Following your recent output numbers, I'd like to redirect a portion of your bandwidth to support the Meridian account for one week. You'd receive compensation through the CC allocation pool. Your KPI targets would be adjusted to reflect the dual mandate. This is entirely voluntary and will be reflected positively in your annual review.",
+    ps: "Kevin O'Brien, COO",
+    choices: [
+      { key: 'accept', label: '[ ACCEPT TRANSFER ]', hint: '+10 CC immediately  /  KPI +15% next week' },
+      { key: 'decline', label: '[ DECLINE ]',         hint: "Nothing. Kevin notes it. That's fine." },
+    ],
+  },
+];

@@ -973,6 +973,35 @@
 .ibx-sig-email{font:9px 'Courier New',monospace;color:var(--dim)}
 .ibx-empty{font:11px 'Courier New',monospace;color:var(--dim);padding:20px;text-align:center}
 
+/* ── Inbox row: top row with from + badge ── */
+.ibx-row-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.ibx-row-choice{border-left:3px solid #ffaa00}
+.ibx-badge{font:bold 7px 'Courier New',monospace;padding:2px 5px;border-radius:2px;
+           letter-spacing:.5px;white-space:nowrap;flex-shrink:0}
+.ibx-badge-pending{background:#ffaa00;color:#000}
+.ibx-badge-done{background:rgba(0,255,100,.15);color:#00ff64;border:1px solid rgba(0,255,100,.3)}
+
+/* ── Choice bar (pending) ── */
+.ibx-choice-bar{margin:12px 0;border:1px solid rgba(255,170,0,.4);
+                background:rgba(255,170,0,.05);padding:12px 14px}
+.ibx-choice-prompt{font:bold 9px 'Courier New',monospace;color:#ffaa00;
+                   letter-spacing:.8px;margin-bottom:10px;text-align:center}
+.ibx-choice-option{padding:8px 12px;margin:4px 0;cursor:pointer;
+                   border:1px solid var(--border);background:var(--surf);
+                   transition:border-color .12s, background .12s}
+.ibx-choice-option:hover{border-color:#ffaa00;background:rgba(255,170,0,.08)}
+.ibx-choice-label{font:bold 11px 'Courier New',monospace;color:#ffe;letter-spacing:.3px}
+.ibx-choice-hint{font:9px 'Courier New',monospace;color:var(--dim);margin-top:3px}
+
+/* ── Choice result (resolved) ── */
+.ibx-choice-result{margin:12px 0;padding:10px 14px;
+                   border:1px solid rgba(0,255,100,.25);
+                   background:rgba(0,255,100,.05);
+                   font:'Courier New',monospace;display:flex;flex-direction:column;gap:3px}
+.ibx-choice-result-lbl{font:9px 'Courier New',monospace;color:var(--dim)}
+.ibx-choice-result-val{font:bold 11px 'Courier New',monospace;color:#00ff64}
+.ibx-choice-result-hint{font:9px 'Courier New',monospace;color:#aaa}
+
 /* Topbar inbox button */
 .inbox-topbar-btn{background:transparent;border:1px solid transparent;color:inherit;
                   font:13px 'Courier New',monospace;cursor:pointer;padding:2px 6px;

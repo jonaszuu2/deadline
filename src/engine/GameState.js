@@ -118,6 +118,16 @@ export class GameState {
     this.bankingHintShown = false;
     this.week1HookShown = false;
 
+    // Inbox choice state
+    this.inboxChoicesShown = new Set(); // choice email IDs already injected
+    this.pendingWbStart = 0;            // applied at startNextWeek (pos = heal, neg = damage)
+    this.nextWeekDiscsBonus = 0;        // applied at startNextWeek
+    this.nextWeekKpiMult = 1.0;         // applied at startNextWeek, then reset
+    this.weeklyKpiMod = 1.0;           // one-week KPI modifier, resets each week
+
+    // End-of-run — computed once in checkGameEndConditions, read by render
+    this.careerOutcome = null;         // { tier, raise, isHighScore, finalScore }
+
   }
 
   // ── Queries ──────────────────────────────────────────
@@ -128,8 +138,9 @@ export class GameState {
       ? (this.getTeammateTier() === 1 ? 0.88 : this.getTeammateTier() === 3 ? 0.75 : 0.92)
       : 1.0;
     const pipMult   = (this.deskItems||[]).some(d => d.id === 'performance_improvement_plan') ? 0.75 : 1.0;
-    const briefMult = this.brief === 'scale_or_fail' ? 1.15 : 1.0;
-    return Math.floor(KPI[this.week - 1] * this.kpiMult * benMult * this.kpiMultiplier * pipMult * briefMult);
+    const briefMult = this.brief === 'scale_or_fail' ? 1.10 : 1.0;
+    const kpiBase = KPI[Math.min(this.week - 1, KPI.length - 1)] ?? KPI[KPI.length - 1];
+    return Math.floor(kpiBase * this.kpiMult * benMult * this.kpiMultiplier * pipMult * briefMult * (this.weeklyKpiMod ?? 1.0));
   }
 
   handLimit() {

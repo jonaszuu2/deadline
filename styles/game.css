@@ -825,7 +825,7 @@ body{font-family:var(--font-ui);display:flex;flex-direction:column;height:100vh;
 .lp-stat-bars{display:flex;flex-direction:column;gap:7px}
 .lp-sb-row{display:flex;align-items:center;gap:7px}
 .lp-sb-label{font-size:11px;color:var(--color-text-muted);width:62px;flex-shrink:0;font-family:var(--font-data)}
-.lp-sb-track{flex:1;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden}
+.lp-sb-track{flex:1;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden;position:relative}
 .lp-sb-fill{height:100%;border-radius:3px;transition:width .4s}
 .lp-sb-val{font-size:11px;font-family:var(--font-data);width:30px;text-align:right}
 /* Brief preview in left panel */
@@ -1270,11 +1270,13 @@ body::before{content:'';position:fixed;inset:0;
 /* ═══ PACK SHOP ═══════════════════════════════════════ */
 .pack-shop-section { margin: 12px 0; }
 .pack-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   margin-bottom: 10px;
 }
+.pack-card { width: 140px; flex-shrink: 0; }
 .pack-card {
   background: rgba(0,0,0,0.4);
   border: 1px solid var(--pack-color, #888);
@@ -1312,6 +1314,16 @@ body::before{content:'';position:fixed;inset:0;
 }
 .pk-buy-btn:hover { filter: brightness(1.2); }
 .pk-buy-btn.pk-cant { background: #444; color: #888; cursor: default; }
+.pack-card.pack-action { border-style: dashed; }
+.pack-bonus-free { position: relative; }
+.pk-bonus-badge {
+  position: absolute;
+  top: -8px; left: 50%; transform: translateX(-50%);
+  background: #ff6060; color: #000;
+  font: bold 7px 'Courier New', monospace;
+  padding: 2px 6px; border-radius: 2px;
+  letter-spacing: .5px; white-space: nowrap;
+}
 
 /* ═══ PACK REVEAL ══════════════════════════════════════ */
 .pack-reveal-screen { padding: 16px; }
@@ -1462,6 +1474,14 @@ body::before{content:'';position:fixed;inset:0;
   width:1px;
   background:rgba(255,255,255,.25);
   pointer-events:none;
+}
+.ed-zero, .lp-sb-zero {
+  position:absolute;
+  top:0; bottom:0;
+  width:1px;
+  background:rgba(255,255,255,.4);
+  pointer-events:none;
+  transform:translateX(-50%);
 }
 
 /* ── Passive desk slot ───────────────────────────────── */

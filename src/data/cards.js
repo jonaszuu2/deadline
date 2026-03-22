@@ -73,7 +73,7 @@ export const DB = {
     fx:{chips:750,mult:0,tox:15,wb:-8},synergies:[]},
   crunch_002:{id:'crunch_002',name:'Deadline Sprint',archetype:'CRUNCH',rarity:'UNCOMMON',tier:1,
     flavor:'Four energy drinks and a prayer to the prod server.',
-    exhaust:false,fx:{chips:0,mult:1.5,tox:22,wb:-12},synergies:[]},
+    exhaust:false,fx:{chips:0,mult:1.5,tox:18,wb:-12},synergies:[]},
   crunch_003:{id:'crunch_003',name:'The All-Nighter',archetype:'CRUNCH',rarity:'RARE',tier:3,
     flavor:"Sunrise only means you're already late.",
     exhaust:true,fx:{chips:1000,mult:2.0,tox:25,wb:-15},
@@ -151,7 +151,7 @@ export const DB = {
 
   prod_012:{id:'prod_012',name:'Six Sigma Black Belt',archetype:'PRODUCTION',rarity:'RARE',tier:2,
     flavor:'Three certification workshops. One laminated belt. Infinite LinkedIn posts.',
-    fx:{chips:0,mult:0,tox:5,wb:0},
+    fx:{chips:0,mult:0.2,tox:5,wb:0},
     synergies:[{id:'syn_sixsigma',trigger:'ON_SCORE',desc:'Optimised Output: +0.35 Eff per PRODUCTION card played (max 4)',
       conds:[{type:'ALWAYS'}],eff:{type:'MULT_PER_ARCH',p:{arch:'PRODUCTION',per:0.35,cap:4}}}]},
 

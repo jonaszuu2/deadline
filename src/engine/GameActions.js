@@ -150,18 +150,23 @@ export function playSelected() {
 
   this.log.push(...res.log);
 
-  // Card Leveling: increment playCount, upgrade every 5 plays
+  // Card Leveling: increment playCount via _mutateCard, upgrade every 5 plays
   for (const c of cards) {
-    c.playCount = (c.playCount || 0) + 1;
-    const prevLvl = c.level || 0;
-    if (prevLvl < 3 && c.playCount % 5 === 0) {
-      c.level = prevLvl + 1;
-      if (c.level === 1)      c.fx = {...c.fx, chips: (c.fx.chips||0) + 200};
-      else if (c.level === 2) c.fx = {...c.fx, mult: Number(fmt1((c.fx.mult||0) + 0.2))};
-      else                    { c.fx = {...c.fx, chips: (c.fx.chips||0) + 250, mult: Number(fmt1((c.fx.mult||0) + 0.1))}; }
-      const stars = '★'.repeat(c.level);
-      const desc = c.level === 1 ? '+200 Output base' : c.level === 2 ? '+0.2 Eff base' : '+250 Output +0.1 Eff base';
-      this.addLog('sy', `> ${stars} [${c.name}] LEVEL ${c.level}! ${desc}`);
+    const updated = this._mutateCard(c.uid, card => {
+      const newCount = (card.playCount || 0) + 1;
+      const prevLvl  = card.level || 0;
+      if (prevLvl >= 3 || newCount % 5 !== 0) return { playCount: newCount };
+      const newLvl = prevLvl + 1;
+      let fxPatch;
+      if (newLvl === 1)      fxPatch = { chips: (card.fx.chips||0) + 200 };
+      else if (newLvl === 2) fxPatch = { mult: Number(fmt1((card.fx.mult||0) + 0.2)) };
+      else                   fxPatch = { chips: (card.fx.chips||0) + 250, mult: Number(fmt1((card.fx.mult||0) + 0.1)) };
+      return { playCount: newCount, level: newLvl, fx: {...card.fx, ...fxPatch} };
+    });
+    if (updated && updated.level > (c.level || 0)) {
+      const stars = '★'.repeat(updated.level);
+      const desc = updated.level === 1 ? '+200 Output base' : updated.level === 2 ? '+0.2 Eff base' : '+250 Output +0.1 Eff base';
+      this.addLog('sy', `> ${stars} [${updated.name}] LEVEL ${updated.level}! ${desc}`);
     }
   }
 
@@ -173,7 +178,7 @@ export function playSelected() {
     const stratCards = cards.filter(c => c.archetype === 'STRATEGY');
     for (const sc of stratCards) {
       const allCopies = [...this.deck, ...this.hand, ...this.pile].filter(c => c.id === sc.id);
-      for (const copy of allCopies) copy.fx = {...copy.fx, chips: (copy.fx.chips || 0) + 3};
+      for (const copy of allCopies) this._mutateCard(copy.uid, card => ({ fx: {...card.fx, chips: (card.fx.chips || 0) + 3} }));
       this.briefProgress++;
       this.addLog('sy', `> 💻 [Digital Transformation] [${sc.name}] — all copies +3 chips · ${this.briefProgress}/25`);
     }
@@ -237,7 +242,7 @@ export function finishScoring() {
   this.wscore    = d.pendingWscore;
   this.wb        = d.pendingWb;
   this.tox       = d.pendingTox;
-  this.bo        = d.pendingBo;
+  // this.bo is no longer used; kept in state for email template compat only
   this.lastScore = d.pendingScore;
   ui.animateWscore(d.prevWscore, d.pendingWscore, d.intensity);
   if (d.pendingScore > 0) ui.showScorePopup(d.pendingScore, d.intensity, d.comboLabel);
@@ -266,7 +271,7 @@ export function finishScoring() {
 export function processTurn(cards, _unused = {}, handSizeBeforePlay = 0) {
   this.updateTeammateBehavior();
   const result = calcTurn(cards, {
-    wb: this.wb, tox: this.tox, bo: this.bo,
+    wb: this.wb, tox: this.tox,
     week: this.week, plays: this.plays,
     passives:                this.passives,
     teammate:                this.teammate,
@@ -523,6 +528,61 @@ export function closeInbox() {
 
 export function selectInboxEmail(idx) {
   this.inboxSelected = idx;
+  this._commit();
+}
+
+const _CHOICE_FX = {
+  overtime_project: {
+    accept(G) {
+      G.nextWeekPlaysBonus = (G.nextWeekPlaysBonus || 0) + 3;
+      G.pendingWbStart = (G.pendingWbStart || 0) - 10;
+      G.addLog('ok', '> 📋 [Optional Project] Accepted — +3 plays next week, −10 WB at week start.');
+    },
+    decline(G) {
+      G.addLog('i', '> 📋 [Optional Project] Passed. Brad has noted this. Somewhere.');
+    },
+  },
+  wellness_survey: {
+    honest(G) {
+      G.tox = Math.max(0, G.tox - 10);
+      G.nextWeekDiscsBonus = (G.nextWeekDiscsBonus || 0) + 1;
+      G.addLog('ok', `> 📋 [HR Survey] Admitted workload — −10 Tox → ${G.tox}%, +1 Discard next week.`);
+    },
+    deny(G) {
+      G.tox = Math.min(100, G.tox + 5);
+      G.addLog('ng', `> 📋 [HR Survey] "Everything is fine." +5 Tox → ${G.tox}%.`);
+    },
+  },
+  team_offsite: {
+    attend(G) {
+      G.wb  = Math.min(100, G.wb  + 20);
+      G.tox = Math.max(0,   G.tox - 15);
+      G.nextWeekPlaysBonus = (G.nextWeekPlaysBonus || 0) - 1;
+      G.addLog('ok', `> 📋 [Offsite] Attended — +20 WB → ${G.wb}%, −15 Tox → ${G.tox}%, −1 play next week.`);
+    },
+    skip(G) {
+      G.tox = Math.min(100, G.tox + 6);
+      G.addLog('ng', `> 📋 [Offsite] Skipped. +6 Tox → ${G.tox}%. Engagement score updated.`);
+    },
+  },
+  side_deal: {
+    accept(G) {
+      G.coins = (G.coins || 0) + 10;
+      G.nextWeekKpiMult = 1.15;
+      G.addLog('ok', `> 📋 [Side Deal] Accepted — +10 CC → ${G.coins} CC. KPI +15% next week.`);
+    },
+    decline(G) {
+      G.addLog('i', "› 📋 [Side Deal] Declined. Kevin notes it. That's fine.");
+    },
+  },
+};
+
+export function resolveInboxChoice(emailId, choiceKey) {
+  const email = (this.inbox || []).find(e => e.id === emailId);
+  if (!email || !email.choices || email.choiceKey !== null) return;
+  email.choiceKey = choiceKey;
+  const handler = _CHOICE_FX[email.choiceId]?.[choiceKey];
+  if (handler) handler(this);
   this._commit();
 }
 

@@ -3,16 +3,16 @@
 //  Phase transitions, week flow, shop/boss/draft/teammate screens,
 //  end-of-run logic. Mixed into Game.prototype in game.js.
 // ═══════════════════════════════════════════════════════
-import { PLAYS, DISCS, TOTAL_WEEKS, clamp, FAIL_BO } from '../data/constants.js';
+import { PLAYS, DISCS, TOTAL_WEEKS, clamp, FAIL_BO, FAIL_WB, WB_MIN } from '../data/constants.js';
 import { BRIEFS_DB } from '../data/briefs.js';
 import { nextUid, shuffle, fmt1, getUnlockedTier, setUnlockedTier } from './utils.js';
 import { DESK_ITEMS_BY_RARITY, DESK_ITEMS_LIST, DESK_COMBO_PAIRS } from '../data/deskItems.js';
 import { makeDeck, pickShopItems } from './deck.js';
-import { calculateFinalScore } from './scoring.js';
+import { calculateFinalScore, calculateCareerOutcome } from './scoring.js';
 import { TEAMMATES_DB } from '../data/content.js';
 import { SHOP_DB, PACK_DB, NEGATIVE_ITEMS } from '../data/shop.js';
 import { DB } from '../data/cards.js';
-import { shouldShowEmail, buildManagerEmail, WEEK1_HOOK_EMAIL, BANKING_HINT_EMAIL_1, BANKING_HINT_EMAIL_2 } from '../data/managerEmails.js';
+import { shouldShowEmail, buildManagerEmail, WEEK1_HOOK_EMAIL, BANKING_HINT_EMAIL_1, BANKING_HINT_EMAIL_2, CHOICE_EMAILS } from '../data/managerEmails.js';
 import { ui } from './uiStore.js';
 
 // ═══════════════════════════════════════════════════════
@@ -142,25 +142,55 @@ export function openShop() {
     const email = buildManagerEmail(this, emailCtx);
     this.inbox.unshift({ ...email, id: Date.now(), unread: true, storedWeek: this.week });
   }
+  // Auto-bank remaining plays: 2 CC + -1 tox per play
+  if (this.plays > 0) {
+    const earned = this.plays * 2;
+    const toxDrop = this.plays * 1;
+    this.coins += earned;
+    this.tox = clamp(this.tox - toxDrop, 0, 100);
+    this.addLog('ok', `> 💰 ${this.plays} unused play${this.plays > 1 ? 's' : ''} — +${earned} CC · -${toxDrop}% TOX`);
+    this.plays = 0;
+  }
   // Week 1 hook — "It's mostly true" — fires once, first time player opens shop
   if (this.week === 1 && !this.week1HookShown) {
     this.week1HookShown = true;
     this.inbox.unshift({ ...WEEK1_HOOK_EMAIL, id: Date.now() + 2, unread: true, storedWeek: 1 });
   }
-  // Banking discovery hint — diegetic tutorial
-  if (!this.bankingHintShown) {
-    if (this.week === 1 && this.wscore >= this.kpi() && this.plays > 0) {
-      // Player hit KPI with plays left — they could have banked
-      this.bankingHintShown = true;
-      this.inbox.unshift({ ...BANKING_HINT_EMAIL_1, id: Date.now() + 1, unread: true, storedWeek: 1 });
-    } else if (this.week === 2 && !this.bankingEverUsed) {
-      // Week 2 fallback — player still hasn't discovered banking
-      this.bankingHintShown = true;
-      this.inbox.unshift({ ...BANKING_HINT_EMAIL_2, id: Date.now() + 1, unread: true, storedWeek: 2 });
+  // Choice emails — inject when conditions met and not yet shown
+  for (const ce of CHOICE_EMAILS) {
+    if (!this.inboxChoicesShown.has(ce.id) && ce.conditions(this)) {
+      this.inboxChoicesShown.add(ce.id);
+      const subj = ce.subject.replace(/\{week\}/g, this.week);
+      this.inbox.unshift({
+        id: `choice_${ce.id}_${Date.now()}`,
+        unread: true,
+        storedWeek: this.week,
+        type: 'choice',
+        choiceId: ce.id,
+        choiceKey: null,
+        mgr: ce.mgr,
+        subject: subj,
+        body: ce.body,
+        ps: ce.ps || null,
+        dayName: 'Friday',
+        passed: true,
+        choices: ce.choices,
+      });
     }
   }
+
   if (bt) ui.showComboAnnouncer('💥 BREAKTHROUGH!');
-  this.shopPackIds = shuffle(Object.keys(PACK_DB)).slice(0, 2); // 2 of 3 rolled each week
+  // Weighted roll: build pool by weight, pick 3 unique packs
+  const _packPool = [];
+  for (const [id, pack] of Object.entries(PACK_DB)) {
+    for (let w = 0; w < (pack.weight || 1); w++) _packPool.push(id);
+  }
+  shuffle(_packPool);
+  const _seen = new Set(); this.shopPackIds = [];
+  for (const id of _packPool) {
+    if (!_seen.has(id)) { _seen.add(id); this.shopPackIds.push(id); }
+    if (this.shopPackIds.length >= 3) break;
+  }
   this.shopPacksBought = 0;
   this.shopItems = this._buildShopItems();
   this.transition('shop'); this._commit();
@@ -173,7 +203,7 @@ export function skipShop() {
   if (this.phase === 'result') {
     const passed = this.wscore >= this.kpi();
     this.weekHistory.push({ week: this.week, passed });
-    if (!passed) { this.failedWeeks++; this.bo = clamp(this.bo + FAIL_BO, 0, 100); }
+    if (!passed) { this.failedWeeks++; this.wb = clamp(this.wb - FAIL_WB, -100, 100); }
   }
   this.coins += 3;
   this.addLog('ok', '> ⏭ Skipped shop — +3 Corpo Coins');
@@ -207,6 +237,12 @@ export function startNextWeek() {
   }
 
   this.week++; this.wscore = 0;
+  this.weeklyKpiMod = 1.0;
+  if (this.nextWeekKpiMult !== 1.0) {
+    this.weeklyKpiMod = this.nextWeekKpiMult;
+    this.addLog('ng', `> 📋 [Side Deal] KPI target ×${this.nextWeekKpiMult.toFixed(2)} this week`);
+    this.nextWeekKpiMult = 1.0;
+  }
   this.playsMax = PLAYS;
   this.plays = this.playsMax;
   if (this.nextWeekPlaysBonus !== 0) {
@@ -223,7 +259,19 @@ export function startNextWeek() {
     if (failPenalty === 1) this.addLog('ng', `> 📉 [Performance Record] 1 failed week — max plays reduced to ${this.plays}`);
     else this.addLog('ng', `> 📉 [Performance Record] ${failPenalty} failed weeks — max plays reduced to ${this.plays}`);
   }
+  // Inbox choice deferred effects
+  if (this.pendingWbStart !== 0) {
+    this.wb = clamp(this.wb + this.pendingWbStart, 0, 100);
+    if (this.pendingWbStart < 0) this.addLog('ng', `> 📋 [Optional Project] Late Friday — ${this.pendingWbStart} WB → ${this.wb}%`);
+    else this.addLog('ok', `> 📋 Wellbeing restored → ${this.wb}%`);
+    this.pendingWbStart = 0;
+  }
   this.discs = DISCS;
+  if (this.nextWeekDiscsBonus !== 0) {
+    this.discs = Math.max(0, this.discs + this.nextWeekDiscsBonus);
+    if (this.nextWeekDiscsBonus > 0) this.addLog('ok', `> 📋 [HR Survey] +${this.nextWeekDiscsBonus} Discard this week → ${this.discs}`);
+    this.nextWeekDiscsBonus = 0;
+  }
   // Toxicity Zone 3 (81%+): Toxic Culture — -1 Discard
   if (this.tox >= 81) {
     this.discs = Math.max(0, this.discs - 1);
@@ -285,18 +333,16 @@ export function _processEndOfWeekStats() {
   if (this.wb >= 70) { this.wellnessWeeks++; this.addLog('wg', `> ❤ Wellness streak — WB ${this.wb}% ≥ 70% (${this.wellnessWeeks} wk)`); }
   this.purchasedThisShop = false;
   this.peakTox = Math.max(this.peakTox, this.tox);
-  // Chronic Toxicity → Burnout bleed
-  const toxBo = Math.floor(this.tox / 20);
-  if (toxBo > 0) {
-    this.bo = clamp(this.bo + toxBo, 0, 100);
-    this.addLog('bo', `> ☣ Chronic Toxicity (${this.tox}%) — +${toxBo} Burnout → ${this.bo}%`);
-    if (this.bo > 0) setTimeout(() => ui.showGuideTip?.('bo_first'), 300);
+  // Chronic Toxicity → WB drain
+  const toxDmg = Math.floor(this.tox / 20);
+  if (toxDmg > 0) {
+    this.wb = clamp(this.wb - toxDmg, -100, 100);
+    this.addLog('bo', `> ☣ Chronic Toxicity (${this.tox}%) — −${toxDmg} WB → ${this.wb}%`);
   }
   if (!passed) {
     this.failedWeeks++;
-    const failBo = FAIL_BO;
-    this.bo = clamp(this.bo + failBo, 0, 100);
-    this.addLog('bo', `> Week ${this.week} FAILED (${this.failedWeeks}/3) — +${failBo} Burnout → ${this.bo}%`);
+    this.wb = clamp(this.wb - FAIL_WB, -100, 100);
+    this.addLog('bo', `> Week ${this.week} FAILED (${this.failedWeeks}/3) — −${FAIL_WB} WB → ${this.wb}%`);
     if (this.failedWeeks === 1) setTimeout(() => ui.showContextualTip?.('kpi_fail'), 400);
     if (this.checkGameEndConditions(passed)) return false;
     const pct = this.wscore / this.kpi();
@@ -306,15 +352,14 @@ export function _processEndOfWeekStats() {
     this.consecutiveFails++;
     if (this.consecutiveFails >= 2) {
       this.kpiMult = Math.max(0.5, this.kpiMult - 0.15);
-      this.bo = clamp(this.bo + 5, 0, 100);
-      this.addLog('ng', `> Difficulty adjusted after ${this.consecutiveFails} fails — KPI now ${this.kpi()} (+5 BO → ${this.bo}%)`);
+      this.addLog('ng', `> Difficulty adjusted after ${this.consecutiveFails} fails — KPI now ${this.kpi()}`);
     }
   } else {
     this.consecutiveFails = 0;
     const overPct = this.wscore / this.kpi();
     // scale_or_fail: pass gives perm Eff instead of CC
     if (this.brief === 'scale_or_fail') {
-      const mult = overPct >= 1.3 ? 0.4 : overPct >= 1.1 ? 0.3 : 0.2;
+      const mult = overPct >= 1.3 ? 0.6 : overPct >= 1.1 ? 0.5 : 0.4;
       this.permMult = fmt1((this.permMult || 0) + mult);
       this.briefProgress++;
       this.addLog('sy', `> 🚀 [Scale or Fail] Pass → +${mult} perm Eff → ${this.permMult}× (no CC) · weeks passed: ${this.briefProgress}`);
@@ -401,13 +446,13 @@ export function _processEndOfWeekStats() {
 }
 
 export function checkGameEndConditions(passed) {
-  if (this.bo >= 100) {
+  if (this.wb <= WB_MIN) {
     this.isTerminated = true; this.endCondition = 'burnout';
-    this.checkRunUnlocks(); this.transition('review'); this._commit(); return true;
+    this.checkRunUnlocks(); this._finalizeCareerOutcome(); this.transition('review'); this._commit(); return true;
   }
   if (!passed && this.failedWeeks >= 3) {
     this.isTerminated = true; this.endCondition = 'terminated';
-    this.checkRunUnlocks(); this.transition('review'); this._commit(); return true;
+    this.checkRunUnlocks(); this._finalizeCareerOutcome(); this.transition('review'); this._commit(); return true;
   }
   if (passed && this.week >= TOTAL_WEEKS) {
     this.isTerminated = false; this.endCondition = 'annual';
@@ -423,9 +468,16 @@ export function checkGameEndConditions(passed) {
       this.permMult = fmt1((this.permMult || 0) + 3.0);
       this.addLog('sy', `> 📉 [Restructure] OBJECTIVE COMPLETE — deck ${this.deckSize()} ≤ 8 — +3.0 perm Eff → ${this.permMult}×`);
     }
-    this.checkRunUnlocks(); this.transition('review'); this._commit(); return true;
+    this.checkRunUnlocks(); this._finalizeCareerOutcome(); this.transition('review'); this._commit(); return true;
   }
   return false;
+}
+
+export function _finalizeCareerOutcome() {
+  if (this.careerOutcome) return; // already computed (safety guard)
+  const s = calculateFinalScore(this);
+  const career = calculateCareerOutcome(s.total);
+  this.careerOutcome = { ...career, finalScore: s };
 }
 
 export function checkRunUnlocks() {
@@ -483,9 +535,9 @@ export function buyItem(itemId) {
   this.purchasedThisShop = true;
   if (item.type === 'CONSUMABLE') {
     const fx = item.effects;
-    if (fx.wb)  this.wb  = clamp(this.wb  + fx.wb,  0, 100);
+    if (fx.wb)  this.wb  = clamp(this.wb  + fx.wb,  -100, 100);
     if (fx.tox) this.tox = clamp(this.tox + fx.tox, 0, 100);
-    if (fx.bo)  this.bo  = clamp(this.bo  + fx.bo,  0, 100);
+    if (fx.bo)  this.wb  = clamp(this.wb  - fx.bo,  -100, 100);
     this.addLog(fx.logCls, `> ${fx.logMsg}`);
   } else if (item.type === 'ADD_CARD') {
     const newCard = {...item.card, uid:`${item.card.id}_${nextUid()}`};
@@ -527,11 +579,38 @@ export function buyPack(packId) {
   const pack = PACK_DB[packId];
   if (!pack) return;
   const hasBudgetFreeze = (this.deskItems||[]).some(d => d.id === 'budget_freeze');
-  // budget_freeze: max 1 pack per shop
   if (hasBudgetFreeze && (this.shopPacksBought||0) >= 1) {
     this.addLog('ng', `> 🧊 [Budget Freeze] Only 1 pack per shop visit.`);
     return;
   }
+
+  // Shred pack — action pack, skips reveal
+  if (packId === 'shred') {
+    const cost = hasBudgetFreeze ? 0 : (this.freeRemovalUsed ? pack.cost : 0);
+    if (cost > 0 && this.coins < cost) return;
+    this.coins -= cost;
+    this.freeRemovalUsed = true;
+    this.purchasedThisShop = true;
+    this.shopPacksBought = (this.shopPacksBought||0) + 1;
+    this.shopPackIds = (this.shopPackIds||[]).filter(id => id !== 'shred');
+    this.pendingRemove = true;
+    this.addLog('ok', `> 🗑️ [Performance Review]${cost === 0 ? ' FREE —' : ` −${cost} CC —`} choose a card to permanently remove.`);
+    this._commit(); return;
+  }
+
+  // Upgrade pack — action pack, skips reveal
+  if (packId === 'upgrade') {
+    const cost = hasBudgetFreeze ? 0 : pack.cost;
+    if (cost > 0 && this.coins < cost) return;
+    this.coins -= cost;
+    this.purchasedThisShop = true;
+    this.shopPacksBought = (this.shopPacksBought||0) + 1;
+    this.shopPackIds = (this.shopPackIds||[]).filter(id => id !== 'upgrade');
+    this.pendingUpgrade = true;
+    this.addLog('ok', `> ⬆️ [Performance Upgrade]${hasBudgetFreeze ? ' FREE —' : ` −${cost} CC —`} choose a card to improve permanently.`);
+    this._commit(); return;
+  }
+
   const cost = hasBudgetFreeze ? 0 : pack.cost;
   if (this.coins < cost) return;
   this.coins -= cost;
@@ -625,9 +704,9 @@ export function _packifyCard(c) {
 export function _applyPackItem(item) {
   if (item.type === 'CONSUMABLE') {
     const fx = item.data.effects;
-    if (fx.wb)  this.wb  = clamp(this.wb  + fx.wb,  0, 100);
+    if (fx.wb)  this.wb  = clamp(this.wb  + fx.wb,  -100, 100);
     if (fx.tox) this.tox = clamp(this.tox + fx.tox, 0, 100);
-    if (fx.bo)  this.bo  = clamp(this.bo  + fx.bo,  0, 100);
+    if (fx.bo)  this.wb  = clamp(this.wb  - fx.bo,  -100, 100);
     this.addLog(fx.logCls, `> ${fx.logMsg}`);
   } else if (item.type === 'DESK_ITEM') {
     if ((this.deskItems||[]).length < 5) {
@@ -684,7 +763,7 @@ export function _applyPackItem(item) {
     if (fx.resetLoyalty)  { this.consecutiveSameTeammate = 0; this.loyaltyTeammateId = null; this.addLog('ng', `> 🤵 [${item.name}] — teammate loyalty reset`); }
     if (fx.removeDeskItem && this.deskItems?.length) { const ri = Math.floor(Math.random()*this.deskItems.length); const rm = this.deskItems.splice(ri,1)[0]; this.addLog('ng', `> 🗃️ [${item.name}] — [${rm.name}] removed from desk`); }
     if (fx.tox) { this.tox = clamp(this.tox + fx.tox, 0, 100); this.addLog('tg', `> 📋 [${item.name}] — +${fx.tox}% Tox → ${this.tox}%`); }
-    if (fx.bo)  { this.bo  = clamp(this.bo  + fx.bo,  0, 100); this.addLog('ng', `> 🔥 [${item.name}] — +${fx.bo}% BO → ${this.bo}%`); }
+    if (fx.bo)  { this.wb  = clamp(this.wb  - fx.bo,  -100, 100); this.addLog('ng', `> 🔥 [${item.name}] — −${fx.bo} WB → ${this.wb}`); }
   }
 }
 

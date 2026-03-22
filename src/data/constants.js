@@ -4,46 +4,42 @@ export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // ═══════════════════════════════════════════════════════
 //  GAME CONSTANTS & KPI
 // ═══════════════════════════════════════════════════════
-export const KPI = [2400, 3550, 4850, 6350, 7350, 8500, 10200, 12400, 14800, 17300];
+export const KPI = [2400, 3550, 4850, 6350, 7350, 8500, 9200, 11000, 13000, 15000];
 export const TOTAL_WEEKS = 10;
 export const PLAYS = 5;
 export const DISCS = 3;
 export const HAND = 5;
 export const MAX_SEL = 3;
 export const TOX_DMG = 10;
-export const FAIL_BO = 20;
+export const FAIL_WB = 20;   // WB damage on a failed week
+export const FAIL_BO = 20;   // kept for import compat — equals FAIL_WB
+export const WB_MIN  = -100; // death threshold
 
 // ═══════════════════════════════════════════════════════
 //  STATUS EFFECTS DATABASE
 // ═══════════════════════════════════════════════════════
 export const STATUS_EFFECTS_DB = {
   wb:[
-    {min:60,max:100,label:'Optimal Health',color:'#80ffa8',
+    {min:60,  max:100, label:'Optimal Health',  color:'#80ffa8',
      desc:'No penalties. Keep it up.'},
-    {min:30,max:59,label:'Fatigued',color:'#ffdd44',
-     desc:'All Efficiency reduced by 10%. The meetings are getting to you.'},
-    {min:1,max:29,label:'Critically Ill',color:'#ff8040',
-     desc:'All Output reduced by 25%. All Efficiency reduced by 20%. You should not be here.'},
-    {min:0,max:0,label:'GAME OVER',color:'#ff2020',
-     desc:'You have burned out completely. HR is filing the paperwork.'},
+    {min:30,  max:59,  label:'Fatigued',        color:'#ffdd44',
+     desc:'All Efficiency reduced by 10%.'},
+    {min:1,   max:29,  label:'Critically Ill',  color:'#ff8040',
+     desc:'All Output reduced by 25%. All Efficiency reduced by 20%.'},
+    {min:-99, max:0,   label:'BURNING OUT',     color:'#ff4400',
+     desc:'In the red. Recovery cards cannot restore positive Wellbeing.'},
+    {min:-100,max:-100,label:'GAME OVER',       color:'#ff2020',
+     desc:'Total burnout. The laptop stays with the company.'},
   ],
   tox:[
-    {min:0,max:30,label:'Safe Environment',color:'#80ffa8',
+    {min:0,  max:30,  label:'Safe Environment', color:'#80ffa8',
      desc:'No penalties. CRUNCH: normal output.'},
-    {min:31,max:60,label:'Hostile Office',color:'#ffdd44',
+    {min:31, max:60,  label:'Hostile Office',   color:'#ffdd44',
      desc:'CRUNCH cards deal +40% Output. Something to show for it.'},
-    {min:61,max:80,label:'Toxic Culture',color:'#ff8040',
+    {min:61, max:80,  label:'Toxic Culture',    color:'#ff8040',
      desc:'ALL Eff ×1.3. −1 WB per card played. This is not sustainable.'},
-    {min:81,max:100,label:'Hazardous',color:'#ff2020',
-     desc:'ALL Eff ×1.6. −2 WB per card played. −1 Discard next week. You are surviving, not working.'},
-  ],
-  bo:[
-    {min:0,max:79,label:'Healthy',color:'#80ffa8',
-     desc:'No penalties. Sustainable pace.'},
-    {min:80,max:99,label:'Critical Burnout',color:'#ff8040',
-     desc:'Max PLAYS reduced by 1. Your brain has throttled itself.'},
-    {min:100,max:100,label:'GAME OVER',color:'#ff0000',
-     desc:'Total burnout. The laptop stays with the company.'},
+    {min:81, max:100, label:'Hazardous',        color:'#ff2020',
+     desc:'ALL Eff ×1.6. −2 WB per card played. −1 Discard next week.'},
   ],
 };
 

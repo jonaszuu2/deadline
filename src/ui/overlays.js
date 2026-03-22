@@ -1,7 +1,7 @@
 import { TOTAL_WEEKS } from '../data/constants.js';
 import { esc } from '../engine/utils.js';
 import { DB } from '../data/cards.js';
-import { calculateFinalScore, calculateCareerOutcome } from '../engine/scoring.js';
+import { calculateFinalScore } from '../engine/scoring.js';
 
 export function ovGameOver(G) {
   return `<div class="ov"><div class="ovb">
@@ -10,7 +10,7 @@ export function ovGameOver(G) {
       <span class="ov-ico">💀</span>
       <div class="ov-title">BURNOUT — FATAL EXCEPTION</div>
       <div class="ov-body">Your nervous system has performed an illegal operation<br>and will be shut down.<br>HR is processing your offboarding request.</div>
-      <div class="ov-stat">Week: ${G.week} | WB: ${G.wb}% | TOX: ${G.tox}% | BO: ${G.bo}%</div>
+      <div class="ov-stat">Week: ${G.week} | WB: ${G.wb} | TOX: ${G.tox}%</div>
       <div class="ov-btns"><button class="w95-btn" onclick="G.restart()">↩ New Game</button></div>
     </div>
   </div></div>`;
@@ -23,16 +23,15 @@ export function ovWin(G) {
       <span class="ov-ico">🏆</span>
       <div class="ov-title">PROMOTED</div>
       <div class="ov-body">You survived 5 weeks of corporate hell.<br>You are now a <b>Senior Deadline Manager.</b><br>Next deadline in 8 hours.</div>
-      <div class="ov-stat">WB: ${G.wb}% | TOX: ${G.tox}% | Burnout: ${G.bo}%</div>
+      <div class="ov-stat">WB: ${G.wb} | TOX: ${G.tox}%</div>
       <div class="ov-btns"><button class="w95-btn" onclick="G.restart()">↩ New Game</button></div>
     </div>
   </div></div>`;
 }
 
 export function ovFinalReview(G) {
-  const s = calculateFinalScore(G);
-  const career = calculateCareerOutcome(s.total);
-  const {tier, raise, isHighScore} = career;
+  const s = G.careerOutcome?.finalScore ?? calculateFinalScore(G);
+  const {tier, raise, isHighScore} = G.careerOutcome ?? {};
   const sign = n => n >= 0 ? `+${n}` : String(n);
   const ptsClass = n => n > 0 ? 'pos' : n < 0 ? 'neg' : 'neu';
   const terminated = G.isTerminated;
@@ -88,8 +87,7 @@ export function ovFinalReview(G) {
         <div class="apr-line"><span class="apr-lbl">🔴 Efficiency Path — Avg Efficiency</span><span class="apr-val">${s.avgMult}× (×1000)</span><span class="apr-pts ${ptsClass(s.multPts)}">${sign(s.multPts)} pts</span></div>
         <div class="apr-line"><span class="apr-lbl">❤ Wellness Path — WB≥70% weeks</span><span class="apr-val">${G.wellnessWeeks || 0} / ${TOTAL_WEEKS} (×150)</span><span class="apr-pts ${ptsClass(s.wellnessPts)}">${sign(s.wellnessPts)} pts</span></div>
         <div class="apr-divider">· · · · · · · · · · · · · · · · · · · · · · · · · · · ·</div>
-        <div class="apr-line"><span class="apr-lbl">Final Wellbeing</span><span class="apr-val">${G.wb}%</span><span class="apr-pts ${ptsClass(s.wbPts)}">${sign(s.wbPts)} pts</span></div>
-        <div class="apr-line"><span class="apr-lbl">Final Burnout</span><span class="apr-val">${G.bo}%</span><span class="apr-pts ${ptsClass(s.boPts)}">${sign(s.boPts)} pts</span></div>
+        <div class="apr-line"><span class="apr-lbl">Final Wellbeing</span><span class="apr-val">${G.wb < 0 ? G.wb : `${G.wb}%`}</span><span class="apr-pts ${ptsClass(s.wbPts)}">${sign(s.wbPts)} pts</span></div>
         <div class="apr-line"><span class="apr-lbl">Peak Toxicity</span><span class="apr-val">${G.peakTox}%</span><span class="apr-pts ${ptsClass(s.toxPts)}">${sign(s.toxPts)} pts</span></div>
         <div class="apr-divider">· · · · · · · · · · · · · · · · · · · · · · · · · · · ·</div>
         <div class="apr-line"><span class="apr-lbl">Team Synergy</span><span class="apr-val">${G.totalTeammateWeeks} wk${G.totalTeammateWeeks !== 1 ? 's' : ''}</span><span class="apr-pts ${ptsClass(s.synPts)}">${sign(s.synPts)} pts</span></div>

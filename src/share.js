@@ -15,7 +15,7 @@ export function generateShareText(G, s, career, achievements) {
     `📈 Raise: +${raise}%  |  💯 Score: ${s.total.toLocaleString()} pts`,
     line,
     `⚡ Output: ${s.chips.toLocaleString()}  |  ×${s.avgMult} avg eff`,
-    `💚 WB: ${G.wb}%  |  🔥 BO: ${G.bo}%  |  ☢ Peak TOX: ${G.peakTox}%`,
+    `💚 WB: ${G.wb < 0 ? G.wb : `${G.wb}%`}  |  ☢ Peak TOX: ${G.peakTox}%`,
     `${end}`,
     line,
     badgesStr,

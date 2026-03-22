@@ -67,9 +67,11 @@ export const SHOP_DB = {
 };
 
 export const PACK_DB = {
-  standard:   { id:'standard',   name:'Standard Issue',    tagline:'"Approved by Procurement."',                        icon:'📦', cost:4, color:'#c0c0c0' },
-  talent_acq: { id:'talent_acq', name:'Talent Acquisition', tagline:'"We\'re a family here. A dysfunctional one."',    icon:'👔', cost:6, color:'#6ab4ff' },
-  executive:  { id:'executive',  name:'Executive Perks',   tagline:'"Not available to all employees."',                 icon:'💼', cost:9, color:'#ffd700' },
+  standard:   { id:'standard',   name:'Standard Issue',    tagline:'"Approved by Procurement."',                     icon:'📦', cost:4, color:'#c0c0c0', weight:4 },
+  talent_acq: { id:'talent_acq', name:'Talent Acquisition',tagline:'"We\'re a family here. A dysfunctional one."',   icon:'👔', cost:6, color:'#6ab4ff', weight:3 },
+  executive:  { id:'executive',  name:'Executive Perks',   tagline:'"Not available to all employees."',              icon:'💼', cost:9, color:'#ffd700', weight:2 },
+  shred:      { id:'shred',      name:'Performance Review', tagline:'"Some cards don\'t make it to Q2."',            icon:'🗑️', cost:3, color:'#ff6060', weight:2 },
+  upgrade:    { id:'upgrade',    name:'Performance Upgrade',tagline:'"Invest in your deliverables. Literally."',     icon:'⬆️', cost:6, color:'#80aaff', weight:2 },
 };
 
 export const NEGATIVE_ITEMS = [
